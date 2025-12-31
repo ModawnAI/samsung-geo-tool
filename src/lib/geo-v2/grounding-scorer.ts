@@ -123,6 +123,9 @@ function calculateSourceAuthorityScore(
 /**
  * Coverage Score (0-3 points)
  * Based on how well grounding covers all content sections
+ *
+ * Per 2-Stage Strategy: ALL USPs are HIGH confidence (video = ground truth)
+ * USP quality bonus now based on evidence coverage instead of confidence tiers
  */
 function calculateCoverageScore(
   sectionsWithGrounding: number,
@@ -135,13 +138,12 @@ function calculateCoverageScore(
   const sectionCoverage = sectionsWithGrounding / totalSections
   let score = sectionCoverage * 2 // Max 2 points from section coverage
 
-  // Bonus for USP confidence levels (max 1 additional point)
-  const highConfidenceUSPs = usps.filter(u => u.confidence === 'high').length
-  const mediumConfidenceUSPs = usps.filter(u => u.confidence === 'medium').length
-
+  // Per 2-Stage Strategy: ALL USPs are HIGH confidence
+  // Bonus now based on evidence coverage (USPs with grounding sources)
   if (usps.length > 0) {
-    const uspQuality = (highConfidenceUSPs * 1 + mediumConfidenceUSPs * 0.5) / usps.length
-    score += uspQuality // Max 1 point from USP quality
+    const uspsWithEvidence = usps.filter(u => u.evidence.sources.length > 0).length
+    const evidenceQuality = uspsWithEvidence / usps.length
+    score += evidenceQuality // Max 1 point from evidence coverage
   }
 
   return Math.min(3, score)

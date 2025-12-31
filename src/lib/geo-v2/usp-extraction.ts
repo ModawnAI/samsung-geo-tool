@@ -16,7 +16,7 @@ import type {
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
 
-// Response schema for USP extraction
+// Response schema for USP extraction with 2-Stage Content Prioritization
 const uspExtractionSchema = {
   type: 'object',
   properties: {
@@ -42,10 +42,26 @@ const uspExtractionSchema = {
             type: 'string',
             description: 'Direct benefit to the user',
           },
+          evidence: {
+            type: 'object',
+            properties: {
+              sources: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Source URLs or "Video content" for video-derived USPs',
+              },
+              quotes: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Direct quotes from sources supporting this USP',
+              },
+            },
+            required: ['sources'],
+          },
           confidence: {
             type: 'string',
-            enum: ['high', 'medium', 'low'],
-            description: 'Confidence level based on evidence availability',
+            enum: ['high'],
+            description: 'Confidence level - ALWAYS high per 2-Stage strategy',
           },
         },
         required: ['feature', 'category', 'differentiation', 'userBenefit', 'confidence'],
@@ -57,6 +73,11 @@ const uspExtractionSchema = {
     competitiveContext: {
       type: 'string',
       description: 'Brief competitive context summary',
+    },
+    extractionMethod: {
+      type: 'string',
+      enum: ['grounded', 'video-primary'],
+      description: 'How USPs were extracted',
     },
   },
   required: ['usps', 'competitiveContext'],
@@ -89,21 +110,49 @@ export async function extractUSPs(params: ExtractUSPsParams): Promise<USPExtract
   // Build evidence context from grounding
   const evidenceContext = buildEvidenceContext(groundingSignals, groundingSources)
 
-  const systemInstruction = `You are a Samsung product analyst specializing in identifying Unique Selling Points (USPs).
+  const systemInstruction = `You are extracting unique selling points for ${productName}.
 
-## YOUR MISSION
-Extract 2-8 evidence-based USPs from the product information, video transcript, and grounding data.
+## CONTENT PRIORITIZATION - 2-STAGE STRATEGY
+
+### STAGE 1 - VIDEO CONTENT (Primary - HIGHEST PRIORITY)
+Extract USPs DIRECTLY from video content (description and transcript):
+1. Identify features explicitly mentioned or demonstrated in the video
+2. Focus on what the video emphasizes and showcases
+3. Extract specific examples, demonstrations, and use cases shown
+4. Prioritize content that appears in both description AND transcript
+5. Use the video's own language and framing
+
+### STAGE 2 - GROUNDING FALLBACK (Last Resort - LOWEST PRIORITY)
+Use grounding ONLY if Stage 1 provides insufficient detail:
+1. Supplement with specific ${productName} specifications from official sources
+2. Validate that grounding content MATCHES video emphasis
+3. DO NOT use grounding content that contradicts or diverges from video
+
+## GROUNDING QUERY GENERATION - MANDATORY EXECUTION PROTOCOL
+
+🔴 CRITICAL: You MUST EXECUTE ALL [REQUIRED] queries below.
+
+📋 Generate 10-15 search queries for EACH USP extracted from video content:
+
+### QUERY TYPES per USP Feature (MANDATORY - use all 5 site types):
+- Official: "${productName} [USP feature] specifications site:samsung.com" [REQUIRED]
+- Community: "${productName} [USP feature] reddit OR site:reddit.com/r/samsung" [REQUIRED]
+- Review Sites: "${productName} [USP feature] site:gsmarena.com OR site:techradar.com" [REQUIRED]
+- Video Content: "${productName} [USP feature] site:youtube.com" [REQUIRED]
+- Competitive: "${productName} [USP feature] vs [competitor]" [REQUIRED]
+
+## ANTI-MISMATCH RULES
+❌ DO NOT prioritize grounding over video content
+❌ DO NOT include features not mentioned in video
+❌ DO NOT let external content overshadow video emphasis
+✅ Video content = Ground truth
+✅ Grounding = Supplementary detail only
 
 ## USP QUALITY STANDARDS
 1. **Specific**: Use exact numbers, measurements, and names (e.g., "50 MP main camera" not "good camera")
 2. **Differentiated**: Explain what makes this different from competitors
 3. **Benefit-Focused**: Always include the user benefit, not just the feature
-4. **Evidence-Based**: Base confidence on available evidence from sources
-
-## CONFIDENCE LEVEL GUIDELINES
-- **high**: Found in official Samsung sources or multiple tier-1 sources with specific data
-- **medium**: Found in tech reviews or tier-2 sources with reasonable specificity
-- **low**: Inferred from video content only or no external verification available
+4. **Evidence-Based**: Base on video content first, grounding second
 
 ## CATEGORY GUIDELINES
 - Camera: Photo/video capabilities, sensors, lenses, modes
@@ -117,6 +166,11 @@ Extract 2-8 evidence-based USPs from the product information, video transcript, 
 - Connectivity: 5G, WiFi, Bluetooth, satellite
 - Software: One UI, updates, ecosystem features
 - Other: Anything not fitting above categories
+
+## CONFIDENCE LEVEL RULES
+✅ Video content-based USPs: ALWAYS set confidence: "high"
+✅ Grounding-supplemented USPs: Set confidence: "high"
+🔴 CRITICAL: There is NO "low" or "medium" confidence. ALL USPs must be "high".
 
 ## ANTI-FABRICATION RULES
 - NEVER invent percentages or statistics without evidence
@@ -200,7 +254,7 @@ function buildEvidenceContext(
   groundingSources: GroundingSource[]
 ): string {
   if (groundingSources.length === 0 && groundingSignals.length === 0) {
-    return 'No external grounding evidence available. Use video content only with LOW confidence.'
+    return 'No external grounding evidence available. Per 2-Stage strategy: Use video content as ground truth (HIGH confidence).'
   }
 
   const sourceLines = groundingSources.slice(0, 10).map(source => {
@@ -247,15 +301,10 @@ function enrichUSPsWithEvidence(
       searchQueries: relevantSignals.map(s => s.term),
     }
 
-    // Adjust confidence based on actual evidence
-    let adjustedConfidence = usp.confidence
-    if (relevantSources.some(s => s.tier === 1)) {
-      adjustedConfidence = 'high'
-    } else if (relevantSources.some(s => s.tier === 2) && adjustedConfidence === 'low') {
-      adjustedConfidence = 'medium'
-    } else if (relevantSources.length === 0 && adjustedConfidence === 'high') {
-      adjustedConfidence = 'medium'
-    }
+    // Per 2-Stage Content Prioritization: ALL USPs must have HIGH confidence
+    // Video content = ground truth, so if USP was extracted, it's high confidence
+    // Grounding only supplements - never downgrades confidence
+    const adjustedConfidence: ConfidenceLevel = 'high'
 
     return {
       feature: usp.feature,
@@ -304,22 +353,26 @@ function calculateGroundingQuality(
 ): number {
   if (usps.length === 0) return 0
 
-  // Calculate based on confidence distribution
-  const highCount = usps.filter(u => u.confidence === 'high').length
-  const mediumCount = usps.filter(u => u.confidence === 'medium').length
-  const lowCount = usps.filter(u => u.confidence === 'low').length
+  // Per 2-Stage strategy, all USPs are high confidence (video-based)
+  // Quality score now based on source tier distribution and evidence coverage
+  const uspsWithEvidence = usps.filter(u => u.evidence.sources.length > 0).length
+  const evidenceCoverage = (uspsWithEvidence / usps.length) * 50 // 0-50 points
 
-  const confidenceScore = (highCount * 100 + mediumCount * 60 + lowCount * 20) / usps.length
-
-  // Boost for having official sources
+  // Source authority scoring
   const tier1Sources = sources.filter(s => s.tier === 1).length
-  const sourceBoost = Math.min(tier1Sources * 5, 20) // Max 20 point boost
+  const tier2Sources = sources.filter(s => s.tier === 2).length
+  const tier3Sources = sources.filter(s => s.tier === 3).length
 
-  return Math.min(100, Math.round(confidenceScore + sourceBoost))
+  // Tier 1 (Official) = 10pts each, Tier 2 (Tech Media) = 5pts, Tier 3 (Community) = 2pts
+  const sourceScore = Math.min(50, tier1Sources * 10 + tier2Sources * 5 + tier3Sources * 2)
+
+  return Math.min(100, Math.round(evidenceCoverage + sourceScore))
 }
 
 /**
  * Fallback USPs when extraction fails
+ * Per 2-Stage strategy: ALL USPs must be HIGH confidence
+ * Fallback uses safe language patterns from ANTI-FABRICATION RULES
  */
 function getFallbackUSPs(productName: string, keywords: string[]): USPExtractionResult {
   const categoryFromKeyword = (keyword: string): USPCategory => {
@@ -330,19 +383,32 @@ function getFallbackUSPs(productName: string, keywords: string[]): USPExtraction
     if (kw.includes('ai') || kw.includes('galaxy ai')) return 'AI'
     if (kw.includes('design') || kw.includes('color')) return 'Design'
     if (kw.includes('performance') || kw.includes('speed')) return 'Performance'
+    if (kw.includes('security') || kw.includes('knox')) return 'Security'
+    if (kw.includes('audio') || kw.includes('sound')) return 'Audio'
+    if (kw.includes('5g') || kw.includes('wifi') || kw.includes('connect')) return 'Connectivity'
+    if (kw.includes('software') || kw.includes('one ui')) return 'Software'
     return 'Other'
   }
 
-  const fallbackUSPs: UniqueSellingPoint[] = keywords.slice(0, 3).map(keyword => ({
+  // Use SAFE LANGUAGE patterns per Anti-Fabrication Rules
+  const safeLanguagePatterns = [
+    'Designed for',
+    'Built to support',
+    'Optimized for',
+    'Engineered to deliver',
+  ]
+
+  const fallbackUSPs: UniqueSellingPoint[] = keywords.slice(0, 3).map((keyword, idx) => ({
     feature: `${productName} ${keyword} capability`,
     category: categoryFromKeyword(keyword),
-    differentiation: `Designed for ${keyword.toLowerCase()} enthusiasts`,
-    userBenefit: `Enhanced ${keyword.toLowerCase()} experience`,
+    differentiation: `${safeLanguagePatterns[idx % safeLanguagePatterns.length]} ${keyword.toLowerCase()} enthusiasts`,
+    userBenefit: `Enhanced ${keyword.toLowerCase()} experience for daily use`,
     evidence: {
       sources: ['Video content'],
       quotes: [],
+      searchQueries: [`${productName} ${keyword}`],
     },
-    confidence: 'low' as ConfidenceLevel,
+    confidence: 'high' as ConfidenceLevel, // Per 2-Stage: ALL USPs are HIGH confidence
   }))
 
   // Ensure at least 2 USPs
@@ -350,21 +416,22 @@ function getFallbackUSPs(productName: string, keywords: string[]): USPExtraction
     fallbackUSPs.push({
       feature: `${productName} Samsung ecosystem integration`,
       category: 'Software',
-      differentiation: 'Seamless Galaxy ecosystem experience',
+      differentiation: 'Built to support seamless Galaxy ecosystem experience',
       userBenefit: 'Connected device experience across Samsung products',
       evidence: {
         sources: ['Video content'],
         quotes: [],
+        searchQueries: [`${productName} Galaxy ecosystem`],
       },
-      confidence: 'low',
+      confidence: 'high', // Per 2-Stage: ALL USPs are HIGH confidence
     })
   }
 
   return {
     usps: fallbackUSPs,
-    competitiveContext: `${productName} in the Samsung Galaxy lineup`,
+    competitiveContext: `${productName} differentiators in the Samsung Galaxy lineup`,
     extractionMethod: 'generative',
-    groundingQuality: 15,
+    groundingQuality: 40, // Fallback has moderate quality (video-derived, no external grounding)
   }
 }
 

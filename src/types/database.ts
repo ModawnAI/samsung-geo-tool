@@ -124,6 +124,11 @@ export interface Database {
           campaign_tag: string | null
           created_at: string
           updated_at: string
+          geo_score_v2: Json | null
+          json_ld_schema: string | null
+          schema_type: string | null
+          simulation_results: Json | null
+          created_with_prompt_version: string | null
         }
         Insert: {
           id?: string
@@ -141,6 +146,11 @@ export interface Database {
           campaign_tag?: string | null
           created_at?: string
           updated_at?: string
+          geo_score_v2?: Json | null
+          json_ld_schema?: string | null
+          schema_type?: string | null
+          simulation_results?: Json | null
+          created_with_prompt_version?: string | null
         }
         Update: {
           id?: string
@@ -158,6 +168,11 @@ export interface Database {
           campaign_tag?: string | null
           created_at?: string
           updated_at?: string
+          geo_score_v2?: Json | null
+          json_ld_schema?: string | null
+          schema_type?: string | null
+          simulation_results?: Json | null
+          created_with_prompt_version?: string | null
         }
       }
       grounding_cache: {
@@ -257,6 +272,214 @@ export interface Database {
           hit_count?: number
           created_at?: string
           expires_at?: string
+        }
+      }
+      prompt_versions: {
+        Row: {
+          id: string
+          name: string
+          version: string
+          engine: 'gemini' | 'perplexity' | 'cohere'
+          system_prompt: string
+          description: string | null
+          is_active: boolean
+          performance_score: number | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          version: string
+          engine: 'gemini' | 'perplexity' | 'cohere'
+          system_prompt: string
+          description?: string | null
+          is_active?: boolean
+          performance_score?: number | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          version?: string
+          engine?: 'gemini' | 'perplexity' | 'cohere'
+          system_prompt?: string
+          description?: string | null
+          is_active?: boolean
+          performance_score?: number | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      scoring_weights: {
+        Row: {
+          id: string
+          name: string
+          version: string
+          weights: Json
+          is_active: boolean
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          version: string
+          weights: Json
+          is_active?: boolean
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          version?: string
+          weights?: Json
+          is_active?: boolean
+          created_by?: string | null
+          created_at?: string
+        }
+      }
+      batch_jobs: {
+        Row: {
+          id: string
+          name: string
+          type: string
+          status: 'pending' | 'running' | 'paused' | 'completed' | 'failed'
+          total_items: number
+          processed_items: number
+          failed_items: number
+          config: Json | null
+          results: Json | null
+          error_log: string[] | null
+          estimated_cost: number | null
+          actual_cost: number | null
+          started_at: string | null
+          completed_at: string | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          type: string
+          status?: 'pending' | 'running' | 'paused' | 'completed' | 'failed'
+          total_items: number
+          processed_items?: number
+          failed_items?: number
+          config?: Json | null
+          results?: Json | null
+          error_log?: string[] | null
+          estimated_cost?: number | null
+          actual_cost?: number | null
+          started_at?: string | null
+          completed_at?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          type?: string
+          status?: 'pending' | 'running' | 'paused' | 'completed' | 'failed'
+          total_items?: number
+          processed_items?: number
+          failed_items?: number
+          config?: Json | null
+          results?: Json | null
+          error_log?: string[] | null
+          estimated_cost?: number | null
+          actual_cost?: number | null
+          started_at?: string | null
+          completed_at?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+      }
+      batch_job_items: {
+        Row: {
+          id: string
+          batch_job_id: string
+          sequence_number: number
+          input_data: Json
+          output_data: Json | null
+          status: 'pending' | 'processing' | 'completed' | 'failed'
+          error_message: string | null
+          processing_time_ms: number | null
+          created_at: string
+          processed_at: string | null
+        }
+        Insert: {
+          id?: string
+          batch_job_id: string
+          sequence_number: number
+          input_data: Json
+          output_data?: Json | null
+          status?: 'pending' | 'processing' | 'completed' | 'failed'
+          error_message?: string | null
+          processing_time_ms?: number | null
+          created_at?: string
+          processed_at?: string | null
+        }
+        Update: {
+          id?: string
+          batch_job_id?: string
+          sequence_number?: number
+          input_data?: Json
+          output_data?: Json | null
+          status?: 'pending' | 'processing' | 'completed' | 'failed'
+          error_message?: string | null
+          processing_time_ms?: number | null
+          created_at?: string
+          processed_at?: string | null
+        }
+      }
+      validation_results: {
+        Row: {
+          id: string
+          generation_id: string | null
+          prompt_version_id: string | null
+          weights_version_id: string | null
+          ai_scores: Json
+          human_scores: Json | null
+          score_diff: number | null
+          validation_status: 'pending' | 'approved' | 'rejected'
+          validated_by: string | null
+          validated_at: string | null
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          generation_id?: string | null
+          prompt_version_id?: string | null
+          weights_version_id?: string | null
+          ai_scores: Json
+          human_scores?: Json | null
+          score_diff?: number | null
+          validation_status?: 'pending' | 'approved' | 'rejected'
+          validated_by?: string | null
+          validated_at?: string | null
+          notes?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          generation_id?: string | null
+          prompt_version_id?: string | null
+          weights_version_id?: string | null
+          ai_scores?: Json
+          human_scores?: Json | null
+          score_diff?: number | null
+          validation_status?: 'pending' | 'approved' | 'rejected'
+          validated_by?: string | null
+          validated_at?: string | null
+          notes?: string | null
+          created_at?: string
         }
       }
     }

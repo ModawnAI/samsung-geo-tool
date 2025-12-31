@@ -240,8 +240,17 @@ export interface GEOv2GenerateResponse {
     product: string[]
     generic: string[]
     densityScore: number
+    questionScore?: number
+    structureScore?: number
+    lengthScore?: number
+    preliminaryTotal?: number
   }
   hashtags: string[]
+  hashtagCategories?: {
+    brand: string[]
+    features: string[]
+    industry: string[]
+  }
   finalScore: GEOv2Score
   groundingMetadata?: GroundingMetadata
   progress?: PipelineProgress[]

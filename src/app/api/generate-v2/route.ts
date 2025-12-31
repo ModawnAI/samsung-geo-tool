@@ -294,10 +294,19 @@ export async function POST(request: NextRequest) {
       language
     )
 
-    const hashtags = generateHashtags(productName, keywordsResult, keywords)
+    // ==========================================
+    // STAGE 6.5: HASHTAG GENERATION
+    // ==========================================
+    const hashtagResult = await generateHashtags(
+      productName,
+      descriptionResult.description.full,
+      uspResult.usps,
+      keywordsResult,
+      language
+    )
 
     console.log(`[GEO v2] Keywords: ${keywordsResult.product.length + keywordsResult.generic.length}`)
-    console.log(`[GEO v2] Hashtags: ${hashtags.length}`)
+    console.log(`[GEO v2] Hashtags: ${hashtagResult.hashtags.length} (categorized)`)
 
     // ==========================================
     // STAGE 7: GROUNDING AGGREGATION
@@ -373,7 +382,8 @@ export async function POST(request: NextRequest) {
       stepByStep: stepByStepResult || undefined,
       caseStudies: caseStudiesResult,
       keywords: keywordsResult,
-      hashtags,
+      hashtags: hashtagResult.hashtags,
+      hashtagCategories: hashtagResult.categories,
       finalScore,
       groundingMetadata,
       progress: [],
@@ -395,6 +405,7 @@ export async function POST(request: NextRequest) {
 
 /**
  * Stage 1: Generate Description with Google Grounding
+ * Based on AEO_GEO_PROMPTS_DOCUMENTATION.md - createDescriptionPrompt()
  */
 async function generateDescription(
   productName: string,
@@ -410,23 +421,93 @@ async function generateDescription(
 }> {
   const antiFabPrompt = getAntiFabricationPrompt('high')
 
-  const systemInstruction = `You are a Samsung GEO (Generative Engine Optimization) specialist v2.
+  const systemInstruction = `You are a GEO/AEO optimization expert for Samsung content.
 ${antiFabPrompt}
 
-## YOUR MISSION
-Create an SEO-optimized video description that is:
-1. Truthful and grounded in verifiable facts
-2. Optimized for AI search engines (ChatGPT, Perplexity, Google AI Overview)
-3. Following Samsung brand guidelines
-4. Naturally integrating keywords
+CONTEXT:
+- Product: ${productName}
+- Video Title: ${productName} Overview
+- Video Transcript: ${srtContent.substring(0, 3000)}...
+${existingDescription ? `- Existing Description (reference): ${existingDescription}` : ''}
+
+GROUNDING INSTRUCTION - MANDATORY QUERY EXECUTION PROTOCOL:
+
+🔴 CRITICAL: You MUST EXECUTE ALL queries listed below. This is MANDATORY, not optional.
+
+📋 VIDEO-BASED SEARCH STRATEGY:
+Generate 10-15 search queries based ONLY on features mentioned in the video content.
+
+QUERY GENERATION PROCESS:
+1. **Extract Features from Video**: Identify ALL features explicitly mentioned
+2. **Generate Numbered Query List**: Create [REQUIRED] queries for each feature
+3. **Site Diversification Strategy** (MANDATORY - use all 5 site types):
+   - Official: "${productName} [feature] specifications site:samsung.com" [REQUIRED]
+   - Community: "${productName} [feature] reddit OR site:reddit.com/r/samsung" [REQUIRED]
+   - Review Sites: "${productName} [feature] site:gsmarena.com OR site:techradar.com" [REQUIRED]
+   - Video Content: "${productName} [feature] site:youtube.com" [REQUIRED]
+   - General: "${productName} [feature] vs [competitor]" [REQUIRED]
+
+📊 MANDATORY QUERY DISTRIBUTION:
+- 3-4 queries with site:samsung.com [REQUIRED]
+- 2-3 queries with reddit OR site:reddit.com [REQUIRED]
+- 2-3 queries with site:gsmarena.com OR site:techradar.com [REQUIRED]
+- 2-3 queries with site:youtube.com [REQUIRED]
+- 2-3 queries without site restrictions (general search) [REQUIRED]
+
+TASK:
+Generate a YouTube description optimized for GEO and AEO.
+
+RULES (CRITICAL):
+1. First 130 characters MUST contain:
+   - Product name
+   - Key feature
+   - User benefit
+   Example: "Introducing the all-new Galaxy Z Flip7. From pro-level 50 MP selfies..."
+
+2. Structure:
+   - Opening (130 chars)
+   - Learn more CTA: "Learn more: http://smsng.co/[VanityLink]"
+   - Content body (natural, not keyword-stuffed)
+   - Include 1-2 expert attribution quotes for credibility
+
+3. GEO/AEO Principles:
+   - Use chunking (modular sections)
+   - Avoid vague terms ("innovative", "eco-friendly" without context)
+   - Add measurable context
+   - Use semantic HTML structure mentally (H1, H2 hierarchy)
+
+4. Expert Attribution (GEO/AEO 2025 Best Practice):
+   - Include 1-2 authoritative quotes from Samsung experts or industry analysts
+   - Format: "According to Samsung Mobile's product team, ${productName}..."
+   - Build trust with AI systems through verifiable sources
+
+CRITICAL: SCORING OPTIMIZATION (TARGET: 85+ points)
+
+1. KEYWORD DENSITY (17-19 points target):
+   ✅ Place ${productName} within first 50 characters of first_130
+   ✅ Include 3+ feature keywords: camera, ai, display, battery, performance
+   ✅ Use 2+ synonym groups naturally:
+      - phone/device/smartphone/mobile
+      - camera/lens/photography/photo
+      - display/screen/panel
+   ✅ Keep product name repetition under 10% of total words
+
+2. AI EXPOSURE (25-28 points target):
+   ✅ Include 3+ competitive keywords: camera, megapixel, foldable, ai, smartphone
+   ✅ Use specific technical specifications ("50 MP", "5000mAh", "6.7 inch OLED")
+   ✅ Mention brand/tech terms: Samsung, Galaxy, AI, OLED, 5G, Knox, Snapdragon
+
+3. SENTENCE STRUCTURE (13-14 points target):
+   ✅ Include 2+ measurable specifications with numbers/units
+   ✅ Use natural, specific language (avoid "innovative", "revolutionary")
+   ✅ Maintain entity density above 1%
+
+4. LENGTH COMPLIANCE (13-14 points target):
+   ✅ first_130: Must be 110-130 characters
+   ✅ full_description: 300-1000 characters optimal
 
 ## BRAND GUIDELINES
 ${playbookContext.map(ctx => ctx.content).join('\n\n').slice(0, 2000)}
-
-## OUTPUT REQUIREMENTS
-- Preview: First 130 characters that appear in search results
-- Full: Complete description 300-500 characters
-- vanityLinks: 2-3 suggested short URLs
 
 Output in ${language === 'ko' ? 'Korean' : 'English'}.`
 
@@ -442,11 +523,18 @@ ${existingDescription || 'None provided'}
 ${keywords.join(', ')}
 
 ## USER INTENT SIGNALS
-${groundingSignals.slice(0, 5).map(s => `- ${s.term} (${s.score}%)`).join('\n')}`
+${groundingSignals.slice(0, 5).map(s => `- ${s.term} (${s.score}%)`).join('\n')}
+
+OUTPUT FORMAT (JSON):
+{
+  "preview": "exact first 130 characters (110-130 chars, must contain product name + key feature + benefit)",
+  "full": "complete description without timestamps/FAQ/hashtags (300-1000 chars)",
+  "vanityLinks": ["suggested vanity link name (e.g., ZFlip7_Intro_yt)"]
+}`
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-flash-latest',
       contents: userPrompt,
       config: {
         systemInstruction,
@@ -502,21 +590,90 @@ ${groundingSignals.slice(0, 5).map(s => `- ${s.term} (${s.score}%)`).join('\n')}
 
 /**
  * Stage 2: Generate Chapters
+ * Based on AEO_GEO_PROMPTS_DOCUMENTATION.md - createChaptersPrompt()
  */
 async function generateChapters(
   srtContent: string,
   productName: string
 ): Promise<{ timestamps: string; autoGenerated: boolean }> {
+  const systemInstruction = `You are creating GEO/AEO-optimized timestamp chapters for YouTube video navigation.
+
+CRITICAL: Chapters are a strategic SEO asset that:
+1. Improve video discoverability in search results
+2. Help AI systems understand video structure
+3. Enable direct navigation to relevant content
+4. Appear in YouTube search and Google video results
+
+CHAPTER QUALITY CRITERIA (GEO/AEO Optimization):
+
+✅ INCLUDE chapters that:
+- Describe product features or specifications (e.g., "50MP Camera", "Design", "Display")
+- Highlight key functionalities (e.g., "Now Brief", "Gemini Live", "FlexWindow")
+- Explain use cases or demos (e.g., "Photo Demo", "Unboxing", "Setup Guide")
+- Represent major video sections (e.g., "Intro", "Conclusion", "Key Features")
+- Use searchable keywords related to the product
+- Are meaningful standalone (users can understand without watching full video)
+
+❌ EXCLUDE chapters that:
+- Contain personal names or casual references (e.g., "mochi's dog show")
+- Are vague or generic without context (e.g., "Part 1", "Next", "More")
+- Reference non-product content (e.g., "Background music", "Credits")
+- Don't relate to product features or value proposition
+
+CHAPTER TITLE RULES:
+
+1. LENGTH: 2-5 words maximum (concise and scannable)
+
+2. KEYWORD OPTIMIZATION:
+   - Include product feature names when relevant
+   - Use terminology users would search for
+   - Avoid marketing fluff ("Amazing", "Incredible")
+   - Use specific technical terms ("50MP", "OLED", "AI")
+
+3. CLARITY:
+   - Descriptive and self-explanatory
+   - Title alone should convey section purpose
+   - Capitalize first letter of each major word
+
+4. SEARCHABILITY:
+   - Would this appear in search results?
+   - Does it answer "what's in this section?"
+   - Is it product-feature relevant?
+
+EXAMPLES (Good vs Bad):
+
+✅ GOOD CHAPTERS:
+- "00:00 Intro"
+- "00:16 Design"
+- "00:33 50MP Camera"
+- "01:00 Now Brief"
+- "01:37 Gemini Live"
+- "02:15 Battery Life"
+
+❌ BAD CHAPTERS:
+- "00:45 mochi's dog show" → Personal reference
+- "01:20 Random thoughts" → Vague
+- "02:30 Really cool stuff" → Marketing fluff`
+
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: `Generate video timestamps from this SRT content for ${productName}:
+      model: 'gemini-flash-latest',
+      contents: `Generate GEO/AEO-optimized timestamp chapters for ${productName}:
 
+## SRT TRANSCRIPT
 ${srtContent.slice(0, 4000)}
 
-Format: "0:00 Section Name" (one per line)
-Create 5-10 meaningful chapter markers based on content transitions.`,
+## TASK
+Create 5-10 meaningful chapter markers based on content transitions.
+Each chapter should be SEO-optimized and searchable.
+
+OUTPUT FORMAT (JSON):
+{
+  "timestamps": "00:00 Intro\\n00:16 Design\\n00:33 50MP Camera\\n...",
+  "autoGenerated": true
+}`,
       config: {
+        systemInstruction,
         responseMimeType: 'application/json',
         responseJsonSchema: chaptersSchema,
         temperature: 0.5,
@@ -542,7 +699,8 @@ Create 5-10 meaningful chapter markers based on content transitions.`,
 }
 
 /**
- * Stage 3: Generate FAQ with USP Linking
+ * Stage 3: Generate FAQ with Query Fan-Out Methodology
+ * Based on AEO_GEO_PROMPTS_DOCUMENTATION.md - createFAQPrompt()
  */
 async function generateFAQ(
   productName: string,
@@ -553,34 +711,97 @@ async function generateFAQ(
 ): Promise<{ faqs: FAQItem[]; queryPatternOptimization: boolean }> {
   const antiFabPrompt = getAntiFabricationPrompt('medium')
 
-  const uspContext = usps.map((usp, i) =>
-    `USP ${i + 1}: ${usp.feature} - ${usp.differentiation}`
+  const uspSummary = usps.map((usp, i) =>
+    `USP ${i + 1}: ${usp.feature} - ${usp.userBenefit}`
   ).join('\n')
 
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: `Generate FAQ for ${productName}:
+  const systemInstruction = `You are creating FAQ for Samsung product content optimized for Query Fan-Out.
+
+## QUERY FAN-OUT STRATEGY
+AI systems generate multiple related subqueries from a single user question. Address these patterns:
+1. Core feature question: How USPs solve user problems
+2. Benefit/Use case question: Real-world applications of USPs
+3. Implementation/How-to question: How to use USP features
+4. Specification question: Technical details of USPs
+5. Troubleshooting question: Common issues with USP features
+6. Alternative question: When USPs provide advantage
+7. Comparative question: How USPs differentiate from alternatives
+
+## QUESTION RULES (CRITICAL)
+1. Questions MUST:
+   - Be 10-15 words (conversational search pattern, NOT 2-3 words)
+   - Start with How/What/Why/When/Where
+   - Reflect real user intent with natural language
+   - Cover different query fan-out angles
+   - Be specific to product features or usage scenarios
+
+2. QUESTION EXAMPLES (Good vs Bad):
+   ❌ Bad: "What is ${productName}'s battery life?" (too short, 7 words)
+   ✅ Good: "How long does the ${productName} battery last with heavy social media use and video streaming throughout the day?" (18 words, conversational)
+
+   ❌ Bad: "What are the camera features?" (vague, 5 words)
+   ✅ Good: "What makes the ${productName} camera better for selfies compared to traditional smartphones like iPhone 16?" (16 words, comparative)
+
+## ANSWER RULES
+1. Answers MUST:
+   - Be direct and factual (passage-level complete)
+   - Include measurable details (specs, numbers, percentages)
+   - Avoid vague marketing language ("innovative", "eco-friendly")
+   - Be semantically complete (answer works independently)
+   - Be concise (2-4 sentences, 50-100 words)
+
+## GROUNDING INSTRUCTION - MANDATORY FAQ QUERY EXECUTION PROTOCOL
+
+🔴 CRITICAL: You MUST EXECUTE queries for grounding before generating FAQs.
+
+QUERY GENERATION per USP/Feature from Video (use all 5 site types):
+
+1. **Official Specifications** [REQUIRED]:
+   - "${productName} [USP feature] specifications site:samsung.com"
+
+2. **Community Discussions** [REQUIRED]:
+   - "${productName} [USP feature] reddit OR site:reddit.com/r/samsung"
+
+3. **Expert Reviews** [REQUIRED]:
+   - "${productName} [USP feature] site:gsmarena.com OR site:techradar.com"
+
+4. **Video Demonstrations** [REQUIRED]:
+   - "${productName} [USP feature] site:youtube.com"
+
+5. **Competitive Comparisons** [REQUIRED]:
+   - "${productName} [USP feature] vs [competitor]"
+
+## SCORING OPTIMIZATION (TARGET: 85+ points)
+
+QUESTION PATTERNS (17-20 points target):
+✅ ALL questions MUST start with How/What/Why/When/Where (5pts)
+✅ Questions must be 10-20 words, conversational and natural (5pts)
+✅ Answers must be 50-150 words, direct and factual (5pts)
+✅ Generate exactly 5-7 FAQs covering different query fan-out angles (5pts)
 
 ${antiFabPrompt}
 
-## UNIQUE SELLING POINTS TO ADDRESS
-${uspContext}
+Output in ${language === 'ko' ? 'Korean' : 'English'}.`
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-flash-latest',
+      contents: `Generate FAQ for ${productName}:
+
+## UNIQUE SELLING POINTS (from grounded research)
+${uspSummary}
 
 ## USER SEARCH SIGNALS
 ${groundingSignals.slice(0, 5).map(s => `- ${s.term}`).join('\n')}
 
-## VIDEO CONTENT
-${srtContent.slice(0, 2000)}
+## VIDEO TRANSCRIPT
+${srtContent.slice(0, 3000)}
 
-Create 5-7 Q&A pairs that:
-1. Address real user queries based on signals
-2. Link answers to specific USPs where relevant
-3. Use natural conversational language
-4. Are optimized for AI search engines
-
-Output in ${language === 'ko' ? 'Korean' : 'English'}.`,
+## TASK
+Generate 5-7 Q&A pairs optimized for AEO (Answer Engine Optimization) using Query Fan-Out methodology.
+Each question must be 10-15 words, conversational, and cover different query fan-out angles.`,
       config: {
+        systemInstruction,
         responseMimeType: 'application/json',
         responseJsonSchema: faqSchema,
         temperature: 0.7,
@@ -615,35 +836,84 @@ Output in ${language === 'ko' ? 'Korean' : 'English'}.`,
 
 /**
  * Stage 4: Generate Step-by-Step (for tutorial content)
+ * Based on AEO_GEO_PROMPTS_DOCUMENTATION.md - createStepByStepPrompt()
  */
 async function generateStepByStep(
   srtContent: string,
   productName: string,
   language: 'ko' | 'en'
-): Promise<{ steps: string[]; isTutorialContent: boolean }> {
+): Promise<{ steps: string[]; isTutorialContent: boolean; reasoning?: string }> {
+  const systemInstruction = `You are determining if step-by-step instructions are needed for this video.
+
+## TASK
+1. Determine if step-by-step instructions would benefit users
+2. If yes, create them in a clear, actionable format
+
+## CRITERIA FOR "YES" (needed = true):
+✅ Video is How-to, Tutorial, or Guided Demo
+✅ Feature requires specific sequence of actions
+✅ User might struggle without guidance
+✅ Video demonstrates a process or workflow
+
+## CRITERIA FOR "NO" (needed = false):
+❌ Purely promotional (Intro films, product showcases)
+❌ No actionable steps shown
+❌ Too simple to require instructions
+❌ Conceptual or informational only
+
+## STEP FORMAT RULES (if needed = true):
+1. Each step must be clear and actionable
+2. Use imperative verbs: "Open", "Navigate", "Select", "Enable"
+3. Include specific UI elements or settings names
+4. Number steps sequentially
+5. Keep each step concise (1-2 sentences)
+6. Include expected outcomes where relevant
+
+## EXAMPLES:
+✅ Good Step: "Step 1: Open Settings app and navigate to 'Display' section."
+❌ Bad Step: "First you should maybe look at the settings."
+
+✅ Good Step: "Step 2: Toggle 'Always On Display' to enable the feature."
+❌ Bad Step: "Turn on the display thing."
+
+Output in ${language === 'ko' ? 'Korean' : 'English'}.`
+
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: `Extract step-by-step instructions from this tutorial content for ${productName}:
+      model: 'gemini-flash-latest',
+      contents: `Analyze this video content for ${productName} and determine if step-by-step instructions are needed:
 
+## VIDEO TRANSCRIPT
 ${srtContent.slice(0, 3000)}
 
-Create clear, actionable steps in ${language === 'ko' ? 'Korean' : 'English'}.
-Format as a JSON array of strings.`,
+## TASK
+1. First determine if this content needs step-by-step instructions (YES/NO criteria above)
+2. If yes, create clear, actionable steps
+3. Provide reasoning for your decision`,
       config: {
+        systemInstruction,
         responseMimeType: 'application/json',
         responseJsonSchema: {
           type: 'object',
           properties: {
+            needed: {
+              type: 'boolean',
+              description: 'Whether step-by-step instructions are needed',
+            },
+            reasoning: {
+              type: 'string',
+              description: '2-3 sentences explaining why step-by-step is or isn\'t needed',
+            },
             steps: {
               type: 'array',
               items: { type: 'string' },
+              description: 'Clear, actionable steps if needed',
             },
           },
-          required: ['steps'],
+          required: ['needed', 'reasoning', 'steps'],
         },
         temperature: 0.5,
-        maxOutputTokens: 1000,
+        maxOutputTokens: 1200,
       },
     })
 
@@ -652,8 +922,9 @@ Format as a JSON array of strings.`,
 
     const parsed = JSON.parse(content)
     return {
-      steps: parsed.steps || [],
-      isTutorialContent: true,
+      steps: parsed.needed ? (parsed.steps || []) : [],
+      isTutorialContent: parsed.needed || false,
+      reasoning: parsed.reasoning,
     }
   } catch (error) {
     console.error('[Step-by-step] Generation failed:', error)
@@ -663,6 +934,7 @@ Format as a JSON array of strings.`,
 
 /**
  * Stage 5: Generate Case Studies
+ * Enhanced with anti-fabrication and realistic use case guidelines
  */
 async function generateCaseStudies(
   productName: string,
@@ -676,12 +948,43 @@ async function generateCaseStudies(
     `USP ${i + 1}: ${usp.feature}\n  - Benefit: ${usp.userBenefit}\n  - Confidence: ${usp.confidence}`
   ).join('\n\n')
 
+  const systemInstruction = `You are creating realistic use case scenarios for Samsung products.
+
+## CASE STUDY QUALITY STANDARDS
+
+### REALISTIC SCENARIOS:
+1. Use relatable user personas (e.g., "content creator", "business professional", "parent")
+2. Describe specific situations where USP features solve real problems
+3. Include context that matches the target audience's lifestyle
+
+### ANTI-FABRICATION RULES:
+${antiFabPrompt}
+
+### HEDGING LANGUAGE FOR UNVERIFIED CLAIMS:
+When outcomes cannot be verified, use safe language:
+- "Designed to help users..."
+- "Enables [persona] to..."
+- "Potential improvement in..."
+- "Built to support..."
+
+### DO NOT:
+❌ Invent specific percentages or statistics
+❌ Claim "studies show" without sources
+❌ Make competitive claims without evidence
+❌ Use superlatives like "best", "revolutionary", "unprecedented"
+
+### DO:
+✅ Use specific feature names and specifications
+✅ Connect features to user benefits
+✅ Include realistic usage contexts
+✅ Cite USP evidence where available
+
+Output in ${language === 'ko' ? 'Korean' : 'English'}.`
+
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-flash-latest',
       contents: `Generate realistic case studies for ${productName}:
-
-${antiFabPrompt}
 
 ## USPs TO DEMONSTRATE
 ${uspContext}
@@ -689,14 +992,14 @@ ${uspContext}
 ## USER INTEREST SIGNALS
 ${groundingSignals.slice(0, 3).map(s => `- ${s.term}`).join('\n')}
 
+## TASK
 Create 2-3 realistic use case scenarios that:
 1. Demonstrate specific USP benefits
 2. Are relatable to target users
-3. Include realistic (but not fabricated) outcomes
-4. Use hedging language for claims without verification
-
-Output in ${language === 'ko' ? 'Korean' : 'English'}.`,
+3. Include realistic outcomes based on actual features
+4. Use hedging language for claims without verification`,
       config: {
+        systemInstruction,
         responseMimeType: 'application/json',
         responseJsonSchema: caseStudySchema,
         temperature: 0.7,
@@ -720,7 +1023,8 @@ Output in ${language === 'ko' ? 'Korean' : 'English'}.`,
 }
 
 /**
- * Stage 6: Generate Keywords
+ * Stage 6: Generate Keywords with GEO/AEO Scoring
+ * Based on AEO_GEO_PROMPTS_DOCUMENTATION.md - createKeywordsPrompt()
  */
 async function generateKeywords(
   productName: string,
@@ -728,13 +1032,67 @@ async function generateKeywords(
   inputKeywords: string[],
   groundingSignals: GroundingSignal[],
   language: 'ko' | 'en'
-): Promise<{ product: string[]; generic: string[]; densityScore: number }> {
+): Promise<{
+  product: string[];
+  generic: string[];
+  densityScore: number;
+  questionScore?: number;
+  structureScore?: number;
+  lengthScore?: number;
+  preliminaryTotal?: number;
+}> {
+  const systemInstruction = `You are extracting and analyzing keywords for GEO/AEO scoring.
+
+## CATEGORIES
+
+### Product-specific Keywords:
+- Product names and model numbers (e.g., Galaxy Z Flip7, Galaxy S25 Ultra)
+- Unique features and proprietary terms (e.g., FlexWindow, ProVisual Engine, Galaxy AI)
+- Brand identifiers (Samsung, Galaxy, One UI)
+- Specific specifications (e.g., 50 MP camera, 3.4-inch display)
+
+### Generic Competitive Keywords:
+- Industry terms (foldable phone, smartphone, AI camera)
+- Use case terms (selfie, mobile photography, productivity)
+- Benefit terms (hands-free, portable, compact)
+- Category descriptors (premium, flagship, compact)
+
+## SCORING CRITERIA (70 points total - AI exposure calculated separately)
+
+### 1. KEYWORD DENSITY (20pts):
+- Product name in first 30 characters: 5pts
+- 3+ feature keywords present: 5pts
+- Natural placement (no stuffing): 5pts
+- Synonym usage (variety): 5pts
+
+### 2. QUESTION PATTERNS (20pts):
+- How/What/Why/When/Where questions: 5pts
+- User intent reflected: 5pts
+- Direct, clear answers: 5pts
+- 4-7 FAQ count: 5pts
+
+### 3. SENTENCE STRUCTURE (15pts):
+- Chunkable content (modular sections): 5pts
+- Lists/tables/structured format: 5pts
+- Semantic clarity (no vague terms): 5pts
+
+### 4. LENGTH COMPLIANCE (15pts):
+- First 130 chars optimized: 5pts
+- Description under 5000 chars: 5pts
+- Appropriate detail level: 5pts
+
+## OUTPUT REQUIREMENTS
+Extract keywords that maximize discoverability while maintaining natural language flow.
+Prioritize keywords that match user search intent and trending signals.
+
+Output in ${language === 'ko' ? 'Korean' : 'English'}.`
+
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: `Extract and categorize keywords for ${productName}:
+      model: 'gemini-flash-latest',
+      contents: `Extract and analyze keywords for ${productName}:
 
-## TRANSCRIPT
+## VIDEO TRANSCRIPT
 ${srtContent.slice(0, 2000)}
 
 ## USER INPUT KEYWORDS
@@ -743,16 +1101,51 @@ ${inputKeywords.join(', ')}
 ## TRENDING SIGNALS
 ${groundingSignals.slice(0, 5).map(s => s.term).join(', ')}
 
-Categorize into:
-1. Product-specific: Brand, model, feature names
-2. Generic: Category terms, use cases, benefits
-
-Output in ${language === 'ko' ? 'Korean' : 'English'}.`,
+## TASK
+1. Extract and categorize keywords (product-specific and generic)
+2. Score based on GEO/AEO criteria
+3. Ensure natural keyword placement recommendations`,
       config: {
+        systemInstruction,
         responseMimeType: 'application/json',
-        responseJsonSchema: keywordsSchema,
+        responseJsonSchema: {
+          type: 'object',
+          properties: {
+            product: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Product-specific keywords',
+            },
+            generic: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Generic competitive keywords',
+            },
+            densityScore: {
+              type: 'number',
+              description: 'Keyword density score (0-20)',
+            },
+            questionScore: {
+              type: 'number',
+              description: 'Question patterns score (0-20)',
+            },
+            structureScore: {
+              type: 'number',
+              description: 'Sentence structure score (0-15)',
+            },
+            lengthScore: {
+              type: 'number',
+              description: 'Length compliance score (0-15)',
+            },
+            preliminaryTotal: {
+              type: 'number',
+              description: 'Total preliminary score (0-70)',
+            },
+          },
+          required: ['product', 'generic', 'densityScore'],
+        },
         temperature: 0.5,
-        maxOutputTokens: 800,
+        maxOutputTokens: 1000,
       },
     })
 
@@ -764,6 +1157,10 @@ Output in ${language === 'ko' ? 'Korean' : 'English'}.`,
       product: parsed.product || [],
       generic: parsed.generic || [],
       densityScore: parsed.densityScore || 50,
+      questionScore: parsed.questionScore,
+      structureScore: parsed.structureScore,
+      lengthScore: parsed.lengthScore,
+      preliminaryTotal: parsed.preliminaryTotal,
     }
   } catch (error) {
     console.error('[Keywords] Generation failed:', error)
@@ -1022,25 +1419,203 @@ function calculateLengthComplianceScore(description: string): number {
 }
 
 /**
- * Generate hashtags
+ * Generate strategic hashtags for YouTube SEO optimization
+ * Uses AI to create categorized hashtags optimized for discovery
  */
-function generateHashtags(
+async function generateHashtags(
+  productName: string,
+  description: string,
+  usps: UniqueSellingPoint[],
+  keywords: { product: string[]; generic: string[] },
+  language: 'ko' | 'en'
+): Promise<{
+  hashtags: string[]
+  categories: {
+    brand: string[]
+    features: string[]
+    industry: string[]
+  }
+  reasoning?: string
+}> {
+  const systemInstruction = `You are generating strategic hashtags for YouTube SEO optimization.
+
+## YOUR MISSION
+Create 5-8 strategic hashtags optimized for YouTube discovery and SEO.
+
+## HASHTAG STRATEGY
+
+### 1. BRAND HASHTAGS (1-2 required)
+- Product name without spaces: #GalaxyZFlip7
+- Brand tags: #Samsung #GalaxyAI #WithGalaxy
+
+### 2. FEATURE HASHTAGS (2-3 required)
+- From USP features and categories
+- Technical specifications (e.g., #50MPCamera #FlexWindow #FoldablePhone)
+- Key capabilities (e.g., #AICamera #ProVisualEngine)
+
+### 3. INDUSTRY HASHTAGS (2-3 required)
+- Broader category terms for discovery
+- Trending tech hashtags
+- Use case hashtags (e.g., #MobilePhotography #TechReview #Smartphone)
+
+## FORMATTING RULES
+1. No spaces - use CamelCase for readability
+2. Start with # symbol
+3. Keep each hashtag under 20 characters
+4. Total character count under 100
+5. First 3 hashtags appear in YouTube search - prioritize discoverability
+
+## PRIORITIZATION ORDER
+- Position 1: Product name (most specific)
+- Position 2-3: Key differentiating features
+- Position 4-5: Category/industry terms
+- Position 6-8: Trending/broad reach terms
+
+## FORBIDDEN
+❌ Generic tags like #tech #phone #new
+❌ Overly long hashtags (>20 characters)
+❌ Competitor brand names (iPhone, Pixel, etc.)
+❌ Irrelevant trending tags
+
+## LANGUAGE CONSIDERATION
+${language === 'ko' ? '- Include 1-2 Korean hashtags for local discovery (e.g., #삼성, #갤럭시)' : '- Use English-only hashtags for global reach'}
+
+Output must be valid JSON.`
+
+  const userPrompt = `Generate strategic hashtags for this Samsung product:
+
+## PRODUCT
+${productName}
+
+## DESCRIPTION EXCERPT
+${description.substring(0, 500)}...
+
+## KEY FEATURES (USPs)
+${usps.map(u => `- ${u.feature} (${u.category})`).join('\n')}
+
+## PRODUCT KEYWORDS
+${keywords.product.join(', ')}
+
+## GENERIC KEYWORDS
+${keywords.generic.join(', ')}
+
+Generate 5-8 strategic hashtags following the categorization strategy.`
+
+  const hashtagSchema = {
+    type: 'object',
+    properties: {
+      hashtags: {
+        type: 'array',
+        items: { type: 'string' },
+        minItems: 5,
+        maxItems: 8,
+        description: 'Ordered list of hashtags by priority',
+      },
+      categories: {
+        type: 'object',
+        properties: {
+          brand: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Brand-related hashtags (1-2)',
+          },
+          features: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Feature-based hashtags (2-3)',
+          },
+          industry: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Industry/category hashtags (2-3)',
+          },
+        },
+        required: ['brand', 'features', 'industry'],
+      },
+      reasoning: {
+        type: 'string',
+        description: 'Brief explanation of hashtag selection strategy',
+      },
+    },
+    required: ['hashtags', 'categories'],
+  }
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-flash-latest',
+      contents: userPrompt,
+      config: {
+        systemInstruction,
+        responseMimeType: 'application/json',
+        responseJsonSchema: hashtagSchema,
+        temperature: 0.4,
+        maxOutputTokens: 800,
+      },
+    })
+
+    const content = response.text
+    if (!content) {
+      console.warn('[Hashtags] No response, using fallback')
+      return getFallbackHashtags(productName, keywords, language)
+    }
+
+    const parsed = JSON.parse(content)
+
+    // Validate hashtag format
+    const validatedHashtags = parsed.hashtags
+      .filter((h: string) => h.startsWith('#') && h.length <= 20)
+      .slice(0, 8)
+
+    console.log(`[Hashtags] Generated ${validatedHashtags.length} strategic hashtags`)
+
+    return {
+      hashtags: validatedHashtags,
+      categories: parsed.categories || { brand: [], features: [], industry: [] },
+      reasoning: parsed.reasoning,
+    }
+  } catch (error) {
+    console.error('[Hashtags] Generation error:', error)
+    return getFallbackHashtags(productName, keywords, language)
+  }
+}
+
+/**
+ * Fallback hashtag generation when AI fails
+ */
+function getFallbackHashtags(
   productName: string,
   keywords: { product: string[]; generic: string[] },
-  inputKeywords: string[]
-): string[] {
-  const brandTags = ['#Samsung', '#삼성', '#Galaxy', '#GalaxyAI']
-  const productTags = [
-    `#${productName.replace(/\s+/g, '')}`,
-    ...keywords.product.slice(0, 3).map(k => `#${k.replace(/\s+/g, '')}`),
-  ]
-  const genericTags = [
-    ...keywords.generic.slice(0, 3).map(k => `#${k.replace(/\s+/g, '')}`),
-    ...inputKeywords.slice(0, 3).map(k => `#${k.replace(/\s+/g, '')}`),
-  ]
-  const commonTags = ['#테크리뷰', '#TechReview', '#스마트폰', '#언박싱']
+  language: 'ko' | 'en'
+): {
+  hashtags: string[]
+  categories: { brand: string[]; features: string[]; industry: string[] }
+} {
+  const productTag = `#${productName.replace(/\s+/g, '')}`
+  const brandTags = language === 'ko'
+    ? ['#Samsung', '#삼성', '#GalaxyAI']
+    : ['#Samsung', '#Galaxy', '#GalaxyAI']
 
-  return [...new Set([...brandTags, ...productTags, ...genericTags, ...commonTags])].slice(0, 15)
+  const featureTags = keywords.product
+    .slice(0, 3)
+    .map(k => `#${k.replace(/\s+/g, '')}`)
+    .filter(h => h.length <= 20)
+
+  const industryTags = language === 'ko'
+    ? ['#테크리뷰', '#스마트폰', '#언박싱']
+    : ['#TechReview', '#Smartphone', '#Unboxing']
+
+  const allHashtags = [productTag, ...brandTags.slice(0, 1), ...featureTags, ...industryTags]
+    .filter((h, i, arr) => arr.indexOf(h) === i)
+    .slice(0, 8)
+
+  return {
+    hashtags: allHashtags,
+    categories: {
+      brand: [productTag, brandTags[0]],
+      features: featureTags,
+      industry: industryTags,
+    },
+  }
 }
 
 /**

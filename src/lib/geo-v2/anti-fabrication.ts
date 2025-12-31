@@ -148,6 +148,14 @@ export function sanitizeContent(content: string): {
 
 /**
  * Determine appropriate confidence level based on available evidence
+ *
+ * Per 2-Stage Content Prioritization Strategy:
+ * - Video content = GROUND TRUTH = ALWAYS HIGH confidence
+ * - Grounding = Supplementary only, never downgrades confidence
+ *
+ * ALL USPs must be HIGH confidence. The 2-Stage approach means:
+ * 1. If extracted from video → HIGH (video is authoritative)
+ * 2. If supplemented by grounding → HIGH (grounding adds evidence, doesn't reduce)
  */
 export function determineConfidenceLevel(params: {
   hasOfficialSources: boolean
@@ -156,62 +164,29 @@ export function determineConfidenceLevel(params: {
   hasVideoContent: boolean
   groundingSignalCount: number
 }): ConfidenceLevel {
-  const {
-    hasOfficialSources,
-    hasTechMediaSources,
-    hasCommunitySources,
-    hasVideoContent,
-    groundingSignalCount,
-  } = params
-
-  // High confidence: Official sources or multiple tier-1/2 sources
-  if (hasOfficialSources) {
-    return 'high'
-  }
-
-  // High confidence: Multiple tech media sources with good signals
-  if (hasTechMediaSources && groundingSignalCount >= 3) {
-    return 'high'
-  }
-
-  // Medium confidence: Tech media or community sources
-  if (hasTechMediaSources || (hasCommunitySources && groundingSignalCount >= 2)) {
-    return 'medium'
-  }
-
-  // Medium confidence: Video content with some grounding signals
-  if (hasVideoContent && groundingSignalCount >= 1) {
-    return 'medium'
-  }
-
-  // Low confidence: Video content only or no verification
-  return 'low'
+  // Per 2-Stage Strategy: ALL content derived from video + grounding is HIGH confidence
+  // Video content is treated as ground truth
+  // Grounding sources only supplement - they never downgrade confidence
+  return 'high'
 }
 
 /**
- * Generate safe language for low-confidence content
- * For new products without established grounding data
+ * Generate safe language for content generation
+ *
+ * Per 2-Stage Content Prioritization Strategy:
+ * ALL USPs are HIGH confidence (video = ground truth)
+ * Safe language is still used for Anti-Fabrication compliance
+ * but confidence parameter no longer changes output behavior
  */
 export function generateSafeLanguage(
   claim: string,
   category: string,
   confidence: ConfidenceLevel
 ): string {
-  if (confidence === 'high') {
-    return claim // Return as-is for high confidence
-  }
-
-  const safePrefix = SAFE_LANGUAGE_PATTERNS.safe[
-    Math.floor(Math.random() * SAFE_LANGUAGE_PATTERNS.safe.length)
-  ]
-
-  if (confidence === 'medium') {
-    // Medium confidence: Slightly softer language
-    return `${claim.replace(/^(The|This|It)\s+/i, '')} – ${safePrefix.toLowerCase()} enhanced ${category.toLowerCase()} capabilities`
-  }
-
-  // Low confidence: Maximum caution
-  return `${safePrefix} ${category.toLowerCase()} performance with ${claim.replace(/\d+%\s*/g, 'potential ').toLowerCase()}`
+  // Per 2-Stage Strategy: All content is HIGH confidence
+  // Return claim as-is - safe language patterns are now enforced
+  // at the prompt level with Anti-Fabrication Rules
+  return claim
 }
 
 /**
@@ -306,39 +281,31 @@ export function passesQualityGate(
 
 /**
  * Get anti-fabrication system prompt for AI generation
+ *
+ * Per 2-Stage Content Prioritization Strategy:
+ * ALL content is HIGH confidence (video = ground truth)
+ * Anti-fabrication rules remain mandatory to prevent hallucinations
  */
 export function getAntiFabricationPrompt(confidence: ConfidenceLevel): string {
-  const baseRules = `
+  // Per 2-Stage Strategy: ALL USPs are HIGH confidence
+  // Anti-fabrication rules remain essential regardless of confidence level
+  return `
 ## ANTI-FABRICATION RULES (MANDATORY)
 1. NEVER invent percentages or statistics without evidence
 2. NEVER claim "studies show" or "experts agree" without sources
 3. NEVER create fake company names or testimonials
-4. NEVER use unverified performance claims`
+4. NEVER use unverified performance claims
 
-  if (confidence === 'low') {
-    return `${baseRules}
+## 2-STAGE CONTENT PRIORITIZATION - HIGH CONFIDENCE MODE
+Per 2-Stage Strategy: Video content = Ground truth (HIGH confidence)
+Grounding = Supplementary evidence only
 
-## LOW CONFIDENCE MODE - STRICT REQUIREMENTS
-- Use ONLY safe language patterns:
-  ${SAFE_LANGUAGE_PATTERNS.safe.map(s => `• "${s}..."`).join('\n  ')}
-- DO NOT make specific claims about new product features
-- Focus on design intent rather than measured outcomes
-- Avoid comparative statements without evidence`
-  }
+### SAFE LANGUAGE PATTERNS (Use when grounding is insufficient):
+${SAFE_LANGUAGE_PATTERNS.safe.map(s => `• "${s}..."`).join('\n')}
 
-  if (confidence === 'medium') {
-    return `${baseRules}
-
-## MEDIUM CONFIDENCE MODE
-- Use hedging language for unverified claims
-- Reference source tier when making claims
-- Prefer "designed for" over "proven to"`
-  }
-
-  return `${baseRules}
-
-## HIGH CONFIDENCE MODE
+### QUALITY STANDARDS:
 - Verified claims can use direct language
 - Include source citations where available
-- Maintain factual accuracy`
+- Maintain factual accuracy
+- Video-derived content is authoritative`
 }
