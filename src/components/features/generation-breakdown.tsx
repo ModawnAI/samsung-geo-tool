@@ -37,6 +37,7 @@ import {
 } from '@phosphor-icons/react'
 import type { GenerationBreakdown as BreakdownType, TuningMetadata, ScoreBreakdownItem } from '@/store/generation-store'
 import { useState, useCallback } from 'react'
+import { DEFAULT_WEIGHTS, WEIGHT_LABELS, type WeightValues } from '@/types/tuning'
 import {
   Tooltip,
   TooltipContent,
@@ -340,6 +341,15 @@ export function GenerationBreakdown({
                     onAction={onAction}
                     isRegenerating={isRegenerating}
                   />
+                )}
+
+                {/* Weight Transparency Section */}
+                {tuningMetadata.scoreBreakdown && tuningMetadata.scoreBreakdown.length > 0 && (
+                  <div className="mt-4 pt-3 border-t">
+                    <WeightTransparencySection
+                      scoreBreakdown={tuningMetadata.scoreBreakdown}
+                    />
+                  </div>
                 )}
               </div>
             </motion.div>
@@ -873,5 +883,202 @@ function ScoreBreakdownSection({ scoreBreakdown, onAction, isRegenerating }: Sco
         </div>
       )}
     </div>
+  )
+}
+
+// Weight color mapping for visual distinction
+const WEIGHT_COLORS: Record<keyof WeightValues, { bg: string; text: string; bar: string }> = {
+  usp_coverage: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300', bar: 'bg-blue-500' },
+  grounding_score: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-300', bar: 'bg-green-500' },
+  semantic_similarity: { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-300', bar: 'bg-purple-500' },
+  anti_fabrication: { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-300', bar: 'bg-amber-500' },
+  keyword_density: { bg: 'bg-pink-100 dark:bg-pink-900/30', text: 'text-pink-700 dark:text-pink-300', bar: 'bg-pink-500' },
+  structure_quality: { bg: 'bg-slate-100 dark:bg-slate-800/50', text: 'text-slate-700 dark:text-slate-300', bar: 'bg-slate-500' },
+}
+
+interface WeightTransparencySectionProps {
+  scoreBreakdown?: ScoreBreakdownItem[]
+  weightsUsed?: WeightValues
+}
+
+export function WeightTransparencySection({ scoreBreakdown, weightsUsed }: WeightTransparencySectionProps) {
+  const [isExpanded, setIsExpanded] = useState(false)
+
+  // Use provided weights or defaults
+  const weights = weightsUsed || DEFAULT_WEIGHTS
+
+  // Calculate total score if we have breakdown
+  const totalScore = scoreBreakdown?.reduce((sum, item) => sum + (item.weightedScore || 0), 0) || 0
+
+  // Sort weights by value descending
+  const sortedWeights = Object.entries(weights)
+    .sort(([, a], [, b]) => b - a) as [keyof WeightValues, number][]
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-3"
+    >
+      {/* Header - clickable to expand */}
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full flex items-center justify-between p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <Gear className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-medium">How Your Score is Calculated</span>
+          <Badge variant="outline" className="text-[10px]">
+            {Object.keys(weights).length} factors
+          </Badge>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">
+            Click to {isExpanded ? 'collapse' : 'expand'}
+          </span>
+          {isExpanded ? (
+            <CaretUp className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <CaretDown className="h-4 w-4 text-muted-foreground" />
+          )}
+        </div>
+      </button>
+
+      {isExpanded && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          className="space-y-4"
+        >
+          {/* Formula explanation */}
+          <div className="p-3 rounded-lg bg-muted/30 border border-dashed">
+            <div className="flex items-start gap-2 mb-2">
+              <Info className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+              <div className="text-xs text-muted-foreground">
+                <p className="font-medium mb-1">Scoring Formula:</p>
+                <code className="text-[10px] bg-muted px-1.5 py-0.5 rounded block w-fit">
+                  Final Score = Σ (Metric Score × Weight)
+                </code>
+              </div>
+            </div>
+          </div>
+
+          {/* Weight distribution visualization */}
+          <div className="space-y-2">
+            <div className="text-xs font-medium text-muted-foreground mb-1">
+              Weight Distribution
+            </div>
+
+            {/* Stacked bar visualization */}
+            <div className="h-4 rounded-full overflow-hidden flex bg-muted">
+              {sortedWeights.map(([key, value]) => (
+                <Tooltip key={key}>
+                  <TooltipTrigger asChild>
+                    <div
+                      className={`h-full ${WEIGHT_COLORS[key].bar} transition-all cursor-help`}
+                      style={{ width: `${value * 100}%` }}
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    <p className="text-xs font-medium">{WEIGHT_LABELS[key].label}</p>
+                    <p className="text-[10px] text-muted-foreground">{(value * 100).toFixed(0)}% of total score</p>
+                  </TooltipContent>
+                </Tooltip>
+              ))}
+            </div>
+
+            {/* Individual weight items */}
+            <div className="grid grid-cols-2 gap-2 mt-3">
+              {sortedWeights.map(([key, value]) => {
+                const config = WEIGHT_LABELS[key]
+                const colors = WEIGHT_COLORS[key]
+                const scoreItem = scoreBreakdown?.find(s => s.metric === key)
+
+                return (
+                  <Tooltip key={key}>
+                    <TooltipTrigger asChild>
+                      <div className={`p-2 rounded-lg ${colors.bg} cursor-help transition-all hover:scale-[1.02]`}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className={`text-xs font-medium ${colors.text}`}>
+                            {config.label}
+                          </span>
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
+                            {(value * 100).toFixed(0)}%
+                          </Badge>
+                        </div>
+                        {scoreItem && (
+                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                            <span>Score: {Math.round(scoreItem.score)}</span>
+                            <span>×</span>
+                            <span>{(value * 100).toFixed(0)}%</span>
+                            <span>=</span>
+                            <span className="font-medium">{(scoreItem.weightedScore || 0).toFixed(1)}</span>
+                          </div>
+                        )}
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs">
+                      <p className="text-xs font-medium mb-1">{config.label}</p>
+                      <p className="text-[10px] text-muted-foreground">{config.description}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Calculation breakdown table */}
+          {scoreBreakdown && scoreBreakdown.length > 0 && (
+            <div className="space-y-2 pt-2 border-t">
+              <div className="text-xs font-medium text-muted-foreground">
+                Score Calculation
+              </div>
+              <div className="rounded-lg border overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="text-left px-2 py-1.5 font-medium">Metric</th>
+                      <th className="text-right px-2 py-1.5 font-medium">Score</th>
+                      <th className="text-right px-2 py-1.5 font-medium">Weight</th>
+                      <th className="text-right px-2 py-1.5 font-medium">Contribution</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {scoreBreakdown.map((item) => (
+                      <tr key={item.metric} className="border-t">
+                        <td className="px-2 py-1.5">{item.label}</td>
+                        <td className="px-2 py-1.5 text-right font-mono">{Math.round(item.score)}</td>
+                        <td className="px-2 py-1.5 text-right font-mono">{(item.weight * 100).toFixed(0)}%</td>
+                        <td className="px-2 py-1.5 text-right font-mono font-medium">
+                          {(item.weightedScore || 0).toFixed(1)}
+                        </td>
+                      </tr>
+                    ))}
+                    <tr className="border-t bg-muted/30 font-medium">
+                      <td className="px-2 py-1.5" colSpan={3}>Total Score</td>
+                      <td className="px-2 py-1.5 text-right font-mono">{totalScore.toFixed(1)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Improvement tip */}
+          <div className="flex items-start gap-2 p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+            <Lightbulb className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+            <div className="text-xs text-blue-700 dark:text-blue-300">
+              <p className="font-medium">Tip:</p>
+              <p>
+                Focus on improving metrics with higher weights for maximum impact.
+                USP Coverage ({(weights.usp_coverage * 100).toFixed(0)}%) and Grounding Score ({(weights.grounding_score * 100).toFixed(0)}%)
+                have the biggest influence on your final score.
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </motion.div>
   )
 }
