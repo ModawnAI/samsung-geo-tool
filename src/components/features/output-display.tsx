@@ -36,6 +36,8 @@ import {
   ArrowsClockwise,
   Sparkle,
   Lightning,
+  ShareNetwork,
+  Link as LinkIcon,
 } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
@@ -125,6 +127,10 @@ export function OutputDisplay() {
 
   // Track regeneration focus area for UX feedback
   const [regenerationFocus, setRegenerationFocus] = useState<string | null>(null)
+
+  // Share functionality state
+  const [isSharing, setIsSharing] = useState(false)
+  const [shareToken, setShareToken] = useState<string | null>(null)
 
   // Cleanup on unmount
   useEffect(() => {
@@ -333,6 +339,42 @@ export function OutputDisplay() {
     URL.revokeObjectURL(url)
     toast.success('Exported as Markdown')
   }
+
+  // Handle sharing generation with a unique link
+  const handleShare = useCallback(async () => {
+    // Must save first before sharing
+    if (!generationId) {
+      toast.error('Please save the generation first before sharing')
+      return
+    }
+
+    setIsSharing(true)
+    try {
+      const response = await fetch('/api/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ generationId }),
+      })
+
+      const data = await response.json()
+
+      if (data.error) {
+        throw new Error(data.error)
+      }
+
+      const shareUrl = `${window.location.origin}/share/${data.shareToken}`
+      setShareToken(data.shareToken)
+
+      // Copy to clipboard
+      await navigator.clipboard.writeText(shareUrl)
+      toast.success('Share link copied to clipboard!')
+    } catch (error) {
+      console.error('Share error:', error)
+      toast.error('Failed to generate share link')
+    } finally {
+      setIsSharing(false)
+    }
+  }, [generationId])
 
   // Handler for breakdown actions (regeneration with specific fixes)
   const handleBreakdownAction = useCallback(async (action: ActionPayload) => {
@@ -764,6 +806,25 @@ export function OutputDisplay() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* Share Button */}
+          <Button
+            variant="outline"
+            className="gap-2 w-full sm:w-auto min-h-[44px]"
+            onClick={handleShare}
+            disabled={isSharing || !generationId}
+            title={!generationId ? 'Save the generation first to share' : 'Share this generation'}
+          >
+            {isSharing ? (
+              <SpinnerGap className="h-4 w-4 animate-spin" />
+            ) : shareToken ? (
+              <LinkIcon className="h-4 w-4" />
+            ) : (
+              <ShareNetwork className="h-4 w-4" />
+            )}
+            <span className="hidden xs:inline">{shareToken ? 'Copy Link' : 'Share'}</span>
+            <span className="xs:hidden">{shareToken ? 'Link' : 'Share'}</span>
+          </Button>
 
           {/* A/B Compare (only show if generation has been saved) */}
           {generationId && (
