@@ -63,11 +63,83 @@ interface RetryOptions {
   baseDelayMs?: number
   maxDelayMs?: number
   context?: string
+  /** If true, will not retry even on retryable errors */
+  noRetry?: boolean
+}
+
+interface ErrorClassification {
+  isRetryable: boolean
+  isRateLimit: boolean
+  isServerError: boolean
+  isNetworkError: boolean
+  suggestedDelayMultiplier: number
+}
+
+/**
+ * Classify errors for smarter retry behavior
+ */
+function classifyError(error: Error, rawError: unknown): ErrorClassification {
+  const errorMessage = error.message.toLowerCase()
+  const errorCode = (rawError as { code?: string })?.code?.toLowerCase() || ''
+  const statusCode = (rawError as { status?: number })?.status
+
+  // Rate limit detection (429 or Gemini quota errors)
+  const isRateLimit =
+    statusCode === 429 ||
+    errorMessage.includes('rate limit') ||
+    errorMessage.includes('quota') ||
+    errorMessage.includes('resource exhausted') ||
+    errorMessage.includes('too many requests')
+
+  // Server errors (5xx)
+  const isServerError =
+    (statusCode && statusCode >= 500 && statusCode < 600) ||
+    errorMessage.includes('internal server error') ||
+    errorMessage.includes('service unavailable') ||
+    errorMessage.includes('bad gateway')
+
+  // Network/connection errors
+  const isNetworkError =
+    errorCode === 'econnreset' ||
+    errorCode === 'etimedout' ||
+    errorCode === 'econnrefused' ||
+    errorCode === 'enotfound' ||
+    errorMessage.includes('aborted') ||
+    errorMessage.includes('timeout') ||
+    errorMessage.includes('network') ||
+    errorMessage.includes('socket') ||
+    errorMessage.includes('connection') ||
+    errorMessage.includes('fetch failed')
+
+  // Determine if retryable
+  const isRetryable = isRateLimit || isServerError || isNetworkError
+
+  // Suggest delay multiplier based on error type
+  let suggestedDelayMultiplier = 1
+  if (isRateLimit) {
+    suggestedDelayMultiplier = 3 // Much longer wait for rate limits
+  } else if (isServerError) {
+    suggestedDelayMultiplier = 2 // Moderate wait for server issues
+  }
+
+  return {
+    isRetryable,
+    isRateLimit,
+    isServerError,
+    isNetworkError,
+    suggestedDelayMultiplier
+  }
 }
 
 /**
  * Retry wrapper with exponential backoff for Gemini API calls
- * Handles ECONNRESET, timeout, and other transient failures
+ * Handles ECONNRESET, timeout, rate limits, and other transient failures
+ *
+ * Tuned for less aggressive retry behavior:
+ * - Longer base delay (1500ms) to avoid hammering API
+ * - Proportional jitter (10-30% of delay)
+ * - Special handling for rate limits with longer backoff
+ * - Maximum 3 retries with exponential backoff
  */
 async function withRetry<T>(
   fn: () => Promise<T>,
@@ -75,44 +147,69 @@ async function withRetry<T>(
 ): Promise<T> {
   const {
     maxRetries = 3,
-    baseDelayMs = 1000,
-    maxDelayMs = 10000,
-    context = 'API call'
+    baseDelayMs = 1500, // Increased from 1000 for less aggressive retry
+    maxDelayMs = 15000, // Increased from 10000
+    context = 'API call',
+    noRetry = false
   } = options
 
   let lastError: Error | null = null
+  let consecutiveRateLimits = 0
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      return await fn()
+      const result = await fn()
+      // Reset rate limit counter on success
+      consecutiveRateLimits = 0
+      return result
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error))
+      const classification = classifyError(lastError, error)
 
-      // Check if it's a retryable error
-      const errorMessage = lastError.message.toLowerCase()
-      const errorCode = (error as { code?: string })?.code?.toLowerCase() || ''
-
-      const isRetryable =
-        errorCode === 'econnreset' ||
-        errorCode === 'etimedout' ||
-        errorCode === 'econnrefused' ||
-        errorMessage.includes('aborted') ||
-        errorMessage.includes('timeout') ||
-        errorMessage.includes('network') ||
-        errorMessage.includes('socket') ||
-        errorMessage.includes('connection')
-
-      if (!isRetryable || attempt === maxRetries) {
-        console.error(`[${context}] Non-retryable error or max retries reached:`, lastError.message)
+      // Don't retry if explicitly disabled or not retryable
+      if (noRetry || !classification.isRetryable || attempt === maxRetries) {
+        const reason = noRetry
+          ? 'retry disabled'
+          : !classification.isRetryable
+            ? 'non-retryable error'
+            : 'max retries reached'
+        console.error(`[${context}] ${reason}:`, lastError.message)
         throw lastError
       }
 
-      // Calculate delay with exponential backoff + jitter
-      const exponentialDelay = Math.min(baseDelayMs * Math.pow(2, attempt - 1), maxDelayMs)
-      const jitter = Math.random() * 500
-      const delay = exponentialDelay + jitter
+      // Track consecutive rate limits for circuit-breaker behavior
+      if (classification.isRateLimit) {
+        consecutiveRateLimits++
+        // If we hit multiple rate limits, use even longer delays
+        if (consecutiveRateLimits >= 2) {
+          console.warn(`[${context}] Multiple rate limits detected, backing off significantly`)
+        }
+      }
 
-      console.warn(`[${context}] Attempt ${attempt}/${maxRetries} failed (${errorCode || errorMessage}), retrying in ${Math.round(delay)}ms...`)
+      // Calculate delay with exponential backoff
+      const backoffFactor = Math.pow(2, attempt - 1)
+      const rateMultiplier = classification.suggestedDelayMultiplier
+      const consecutiveMultiplier = consecutiveRateLimits >= 2 ? 2 : 1
+
+      const baseExponentialDelay = baseDelayMs * backoffFactor * rateMultiplier * consecutiveMultiplier
+      const cappedDelay = Math.min(baseExponentialDelay, maxDelayMs)
+
+      // Proportional jitter (10-30% of delay) for better distribution
+      const jitterPercent = 0.1 + Math.random() * 0.2
+      const jitter = cappedDelay * jitterPercent
+      const delay = cappedDelay + jitter
+
+      const errorType = classification.isRateLimit
+        ? 'rate-limit'
+        : classification.isServerError
+          ? 'server-error'
+          : 'network-error'
+
+      console.warn(
+        `[${context}] Attempt ${attempt}/${maxRetries} failed ` +
+        `(${errorType}: ${lastError.message.substring(0, 100)}), ` +
+        `retrying in ${Math.round(delay)}ms...`
+      )
 
       await new Promise(resolve => setTimeout(resolve, delay))
     }
