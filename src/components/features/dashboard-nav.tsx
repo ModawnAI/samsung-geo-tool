@@ -22,6 +22,7 @@ import {
   CaretDown,
   Sliders,
   ListBullets,
+  ChartLineUp,
 } from '@phosphor-icons/react'
 import type { User } from '@supabase/supabase-js'
 import { cn } from '@/lib/utils'
@@ -35,6 +36,7 @@ const navItems = [
   { href: '/generate', label: 'Generate', icon: Sparkle },
   { href: '/history', label: 'History', icon: ClockCounterClockwise },
   { href: '/briefs', label: 'Briefs', icon: FileText },
+  { href: '/analytics', label: 'Analytics', icon: ChartLineUp },
   { href: '/tuning', label: 'Tuning', icon: Sliders },
   { href: '/activity-logs', label: 'Activity Logs', icon: ListBullets },
 ]
