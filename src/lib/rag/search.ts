@@ -132,6 +132,17 @@ export async function searchPlaybook(
 }
 
 /**
+ * Minimum relevance score thresholds for filtering
+ */
+const RELEVANCE_THRESHOLDS = {
+  default: 0.3,    // Default minimum rerank score
+  strict: 0.5,     // Strict filtering for high-quality results
+  lenient: 0.15,   // Lenient filtering for broad coverage
+} as const
+
+type RelevanceMode = keyof typeof RELEVANCE_THRESHOLDS
+
+/**
  * Perform multi-query search for comprehensive RAG context
  * This is used by the GEO optimization system to align with playbook content
  */
@@ -143,6 +154,8 @@ export async function multiQuerySearch(
     topKPerQuery?: number
     finalTopN?: number
     deduplicateByContent?: boolean
+    minRelevanceScore?: number
+    relevanceMode?: RelevanceMode
   } = {}
 ): Promise<RAGContext> {
   const startTime = Date.now()
@@ -153,7 +166,12 @@ export async function multiQuerySearch(
     topKPerQuery = 5,
     finalTopN = 10,
     deduplicateByContent = true,
+    minRelevanceScore,
+    relevanceMode = 'default',
   } = options
+
+  // Determine effective minimum relevance score
+  const effectiveMinScore = minRelevanceScore ?? RELEVANCE_THRESHOLDS[relevanceMode]
 
   // Execute all queries in parallel
   const searchPromises = queries.map((query) =>
@@ -194,13 +212,26 @@ export async function multiQuerySearch(
   const combinedQuery = queries.join(' ')
   const rerankedResults = await rerankResults(combinedQuery, allResults, finalTopN)
 
+  // Filter by relevance score
+  const filteredResults = rerankedResults.filter(result => {
+    const score = result.rerankScore ?? result.score ?? 0
+    return score >= effectiveMinScore
+  })
+
   const processingTimeMs = Date.now() - startTime
+
+  console.log(`[RAG] Filtered ${rerankedResults.length} → ${filteredResults.length} results (min score: ${effectiveMinScore})`)
 
   return {
     query: combinedQuery,
-    results: rerankedResults,
-    totalResults: rerankedResults.length,
+    results: filteredResults,
+    totalResults: filteredResults.length,
     processingTimeMs,
+    filterStats: {
+      beforeFilter: rerankedResults.length,
+      afterFilter: filteredResults.length,
+      minScoreUsed: effectiveMinScore,
+    },
   }
 }
 

@@ -207,6 +207,11 @@ export interface RAGContext {
   results: PlaybookSearchResult[]
   totalResults: number
   processingTimeMs: number
+  filterStats?: {
+    beforeFilter: number
+    afterFilter: number
+    minScoreUsed: number
+  }
 }
 
 // Playbook document record in Supabase
