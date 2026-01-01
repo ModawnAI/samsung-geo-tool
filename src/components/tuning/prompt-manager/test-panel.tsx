@@ -10,9 +10,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
-import type { Engine } from './prompt-editor'
+import type { Engine } from '@/types/tuning'
 
-interface TestVariables {
+export interface TestVariables {
   product_name: string
   category: string
   usps: string
@@ -21,7 +21,7 @@ interface TestVariables {
   language: string
 }
 
-interface TestResult {
+export interface TestResult {
   output: string
   tokens: {
     input: number
@@ -33,7 +33,7 @@ interface TestResult {
   error?: string
 }
 
-interface TestPanelProps {
+export interface TestPanelProps {
   systemPrompt: string
   engine: Engine
   onTest: (prompt: string, variables: TestVariables) => Promise<TestResult>
@@ -232,5 +232,3 @@ export function TestPanel({ systemPrompt, engine, onTest, className }: TestPanel
     </Card>
   )
 }
-
-export type { TestVariables, TestResult, TestPanelProps }

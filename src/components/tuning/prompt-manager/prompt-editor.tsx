@@ -16,31 +16,18 @@ import {
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import type { PromptVersion, Engine, PromptFormData } from '@/types/tuning'
+import { TEMPLATE_VARIABLES } from '@/types/tuning'
 
-type Engine = 'gemini' | 'perplexity' | 'cohere'
-
-interface PromptVersion {
-  id: string
-  name: string
-  version: string
-  engine: Engine
-  system_prompt: string
-  description?: string
-  is_active: boolean
-  created_at: string
-  updated_at?: string
-  created_by?: string
-}
-
-interface PromptEditorProps {
+export interface PromptEditorProps {
   prompt?: PromptVersion | null
-  onSave: (data: Omit<PromptVersion, 'id' | 'created_at' | 'updated_at' | 'created_by'>) => Promise<void>
+  onSave: (data: PromptFormData & { is_active?: boolean }) => Promise<void>
   onCancel?: () => void
   isSaving?: boolean
   className?: string
 }
 
-const ENGINE_CONFIG: Record<Engine, { label: string; description: string; color: string }> = {
+const ENGINE_DISPLAY: Record<Engine, { label: string; description: string; color: string }> = {
   gemini: {
     label: 'Google Gemini',
     description: 'Best for structured content generation',
@@ -57,15 +44,6 @@ const ENGINE_CONFIG: Record<Engine, { label: string; description: string; color:
     color: 'bg-green-500',
   },
 }
-
-const TEMPLATE_VARIABLES = [
-  { name: '{{product_name}}', description: 'Product name' },
-  { name: '{{category}}', description: 'Product category' },
-  { name: '{{usps}}', description: 'Unique selling points' },
-  { name: '{{keywords}}', description: 'Target keywords' },
-  { name: '{{competitor}}', description: 'Competitor name' },
-  { name: '{{language}}', description: 'Target language' },
-]
 
 export function PromptEditor({
   prompt,
@@ -184,7 +162,7 @@ export function PromptEditor({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(ENGINE_CONFIG).map(([key, config]) => (
+              {Object.entries(ENGINE_DISPLAY).map(([key, config]) => (
                 <SelectItem key={key} value={key}>
                   <div className="flex items-center gap-2">
                     <span className={cn('h-2 w-2 rounded-full', config.color)} />
@@ -255,7 +233,7 @@ export function PromptEditor({
           <div>
             <h4 className="font-medium">Active Status</h4>
             <p className="text-sm text-muted-foreground">
-              Set this prompt as the active version for {ENGINE_CONFIG[engine].label}
+              Set this prompt as the active version for {ENGINE_DISPLAY[engine].label}
             </p>
           </div>
           <Button
@@ -297,5 +275,3 @@ export function PromptEditor({
     </Card>
   )
 }
-
-export type { Engine, PromptVersion, PromptEditorProps }

@@ -6,14 +6,11 @@ export {
   ProgressTracker,
 } from './bulk-upload'
 export type {
-  UploadType,
-  UploadFormat,
   UploaderProps,
   PreviewRecord,
   PreviewTableProps,
   FieldMapping,
   MappingDialogProps,
-  UploadProgress,
   ProgressTrackerProps,
 } from './bulk-upload'
 
@@ -24,8 +21,6 @@ export {
   TestPanel,
 } from './prompt-manager'
 export type {
-  Engine,
-  PromptVersion,
   PromptEditorProps,
   VersionHistoryProps,
   TestVariables,
@@ -35,18 +30,44 @@ export type {
 
 // Weight Controller
 export { WeightController } from './weight-controller'
-export type {
-  WeightConfig,
-  WeightCategory,
-  WeightItem,
-  WeightControllerProps,
-} from './weight-controller'
+export type { WeightControllerProps } from './weight-controller'
 
 // Batch Runner
 export { BatchRunner } from './batch-runner'
 export type {
-  BatchStatus,
+  UIBatchStatus,
+  UIBatchItemStatus,
   BatchItem,
   BatchConfig,
   BatchRunnerProps,
 } from './batch-runner'
+
+// Re-export shared types from @/types/tuning for convenience
+export type {
+  Engine,
+  PromptVersion,
+  PromptFormData,
+  ScoringWeight,
+  WeightValues,
+  WeightFormData,
+  BatchJob,
+  BatchJobItem,
+  BatchJobStatus,
+  BatchJobItemStatus,
+  UploadType,
+  UploadFormat,
+  UploadResult,
+  UploadProgress,
+  PromptTestRequest,
+  PromptTestResponse,
+} from '@/types/tuning'
+
+export {
+  WEIGHT_LABELS,
+  DEFAULT_WEIGHTS,
+  ENGINE_CONFIG,
+  TEMPLATE_VARIABLES,
+  parseWeightValues,
+  validateWeightTotal,
+  normalizeWeights,
+} from '@/types/tuning'

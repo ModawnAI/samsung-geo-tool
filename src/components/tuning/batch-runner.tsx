@@ -16,13 +16,22 @@ import {
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
+import type { BatchJobStatus, BatchJobItemStatus } from '@/types/tuning'
 
-type BatchStatus = 'idle' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled'
+// UI-only states extend database states
+// Database BatchJobStatus: 'pending' | 'running' | 'paused' | 'completed' | 'failed'
+// UI adds: 'idle' (before start), 'cancelled' (user action)
+type UIBatchStatus = BatchJobStatus | 'idle' | 'cancelled'
+
+// UI-only item states extend database states
+// Database BatchJobItemStatus: 'pending' | 'processing' | 'completed' | 'failed'
+// UI adds: 'skipped' (for unselected items)
+type UIBatchItemStatus = BatchJobItemStatus | 'skipped'
 
 interface BatchItem {
   id: string
   name: string
-  status: 'pending' | 'processing' | 'completed' | 'failed' | 'skipped'
+  status: UIBatchItemStatus
   progress: number
   result?: unknown
   error?: string
@@ -64,7 +73,7 @@ export function BatchRunner({
   className,
 }: BatchRunnerProps) {
   const [config, setConfig] = useState<BatchConfig>({ ...DEFAULT_CONFIG, ...defaultConfig })
-  const [batchStatus, setBatchStatus] = useState<BatchStatus>('idle')
+  const [batchStatus, setBatchStatus] = useState<UIBatchStatus>('idle')
   const [batchItems, setBatchItems] = useState<BatchItem[]>(() =>
     items.map((item) => ({
       id: item.id,
@@ -503,4 +512,4 @@ function StatusBadge({ status }: { status: BatchItem['status'] }) {
   )
 }
 
-export type { BatchStatus, BatchItem, BatchConfig, BatchRunnerProps }
+export type { UIBatchStatus, UIBatchItemStatus, BatchItem, BatchConfig, BatchRunnerProps }

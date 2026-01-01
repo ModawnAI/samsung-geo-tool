@@ -13,9 +13,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
-import type { PromptVersion, Engine } from './prompt-editor'
+import type { PromptVersion, Engine } from '@/types/tuning'
 
-interface VersionHistoryProps {
+export interface VersionHistoryProps {
   versions: PromptVersion[]
   currentVersionId?: string
   onSelect: (version: PromptVersion) => void
@@ -249,5 +249,3 @@ export function VersionHistory({
     </Card>
   )
 }
-
-export type { VersionHistoryProps }

@@ -7,28 +7,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
+import type { ScoringWeight, WeightValues, WeightFormData } from '@/types/tuning'
+import { WEIGHT_LABELS, DEFAULT_WEIGHTS, parseWeightValues, validateWeightTotal, normalizeWeights } from '@/types/tuning'
 
-interface WeightConfig {
-  id: string
-  name: string
-  description?: string
-  weights: Record<string, number>
-  is_active: boolean
-  created_at: string
-  updated_at?: string
-}
-
-interface WeightCategory {
-  id: string
-  name: string
-  description: string
-  weights: WeightItem[]
-}
-
+// Weight item configuration for UI display
 interface WeightItem {
-  id: string
+  id: keyof WeightValues
   name: string
   description: string
   defaultValue: number
@@ -37,256 +22,129 @@ interface WeightItem {
   step: number
 }
 
-interface WeightControllerProps {
-  config?: WeightConfig | null
-  categories: WeightCategory[]
-  onSave: (weights: Record<string, number>, name: string) => Promise<void>
+export interface WeightControllerProps {
+  config?: ScoringWeight | null
+  onSave: (data: WeightFormData & { is_active?: boolean }) => Promise<void>
   onReset?: () => void
   isSaving?: boolean
   className?: string
 }
 
-const DEFAULT_CATEGORIES: WeightCategory[] = [
+// Single category with all scoring weights aligned with database
+const SCORING_WEIGHTS: WeightItem[] = [
   {
-    id: 'content',
-    name: 'Content Quality',
-    description: 'Weights for content quality scoring',
-    weights: [
-      {
-        id: 'relevance',
-        name: 'Relevance',
-        description: 'How well content addresses the query',
-        defaultValue: 0.25,
-        min: 0,
-        max: 1,
-        step: 0.01,
-      },
-      {
-        id: 'accuracy',
-        name: 'Accuracy',
-        description: 'Factual correctness of information',
-        defaultValue: 0.25,
-        min: 0,
-        max: 1,
-        step: 0.01,
-      },
-      {
-        id: 'completeness',
-        name: 'Completeness',
-        description: 'Coverage of topic aspects',
-        defaultValue: 0.2,
-        min: 0,
-        max: 1,
-        step: 0.01,
-      },
-      {
-        id: 'clarity',
-        name: 'Clarity',
-        description: 'Readability and structure',
-        defaultValue: 0.15,
-        min: 0,
-        max: 1,
-        step: 0.01,
-      },
-      {
-        id: 'engagement',
-        name: 'Engagement',
-        description: 'User engagement potential',
-        defaultValue: 0.15,
-        min: 0,
-        max: 1,
-        step: 0.01,
-      },
-    ],
+    id: 'usp_coverage',
+    name: WEIGHT_LABELS.usp_coverage.label,
+    description: WEIGHT_LABELS.usp_coverage.description,
+    defaultValue: DEFAULT_WEIGHTS.usp_coverage,
+    min: 0,
+    max: 1,
+    step: 0.01,
   },
   {
-    id: 'seo',
-    name: 'SEO Factors',
-    description: 'Search engine optimization weights',
-    weights: [
-      {
-        id: 'keyword_density',
-        name: 'Keyword Density',
-        description: 'Optimal keyword usage',
-        defaultValue: 0.2,
-        min: 0,
-        max: 1,
-        step: 0.01,
-      },
-      {
-        id: 'semantic_relevance',
-        name: 'Semantic Relevance',
-        description: 'Topic and entity relevance',
-        defaultValue: 0.25,
-        min: 0,
-        max: 1,
-        step: 0.01,
-      },
-      {
-        id: 'structure',
-        name: 'Structure',
-        description: 'Heading hierarchy and formatting',
-        defaultValue: 0.2,
-        min: 0,
-        max: 1,
-        step: 0.01,
-      },
-      {
-        id: 'readability',
-        name: 'Readability',
-        description: 'Reading level appropriateness',
-        defaultValue: 0.15,
-        min: 0,
-        max: 1,
-        step: 0.01,
-      },
-      {
-        id: 'freshness',
-        name: 'Freshness',
-        description: 'Content recency signals',
-        defaultValue: 0.2,
-        min: 0,
-        max: 1,
-        step: 0.01,
-      },
-    ],
+    id: 'grounding_score',
+    name: WEIGHT_LABELS.grounding_score.label,
+    description: WEIGHT_LABELS.grounding_score.description,
+    defaultValue: DEFAULT_WEIGHTS.grounding_score,
+    min: 0,
+    max: 1,
+    step: 0.01,
   },
   {
-    id: 'brand',
-    name: 'Brand Alignment',
-    description: 'Brand consistency weights',
-    weights: [
-      {
-        id: 'tone',
-        name: 'Tone',
-        description: 'Voice and tone consistency',
-        defaultValue: 0.3,
-        min: 0,
-        max: 1,
-        step: 0.01,
-      },
-      {
-        id: 'messaging',
-        name: 'Messaging',
-        description: 'Key message incorporation',
-        defaultValue: 0.3,
-        min: 0,
-        max: 1,
-        step: 0.01,
-      },
-      {
-        id: 'differentiation',
-        name: 'Differentiation',
-        description: 'Competitive differentiation',
-        defaultValue: 0.25,
-        min: 0,
-        max: 1,
-        step: 0.01,
-      },
-      {
-        id: 'values',
-        name: 'Values',
-        description: 'Brand values alignment',
-        defaultValue: 0.15,
-        min: 0,
-        max: 1,
-        step: 0.01,
-      },
-    ],
+    id: 'semantic_similarity',
+    name: WEIGHT_LABELS.semantic_similarity.label,
+    description: WEIGHT_LABELS.semantic_similarity.description,
+    defaultValue: DEFAULT_WEIGHTS.semantic_similarity,
+    min: 0,
+    max: 1,
+    step: 0.01,
+  },
+  {
+    id: 'anti_fabrication',
+    name: WEIGHT_LABELS.anti_fabrication.label,
+    description: WEIGHT_LABELS.anti_fabrication.description,
+    defaultValue: DEFAULT_WEIGHTS.anti_fabrication,
+    min: 0,
+    max: 1,
+    step: 0.01,
+  },
+  {
+    id: 'keyword_density',
+    name: WEIGHT_LABELS.keyword_density.label,
+    description: WEIGHT_LABELS.keyword_density.description,
+    defaultValue: DEFAULT_WEIGHTS.keyword_density,
+    min: 0,
+    max: 1,
+    step: 0.01,
+  },
+  {
+    id: 'structure_quality',
+    name: WEIGHT_LABELS.structure_quality.label,
+    description: WEIGHT_LABELS.structure_quality.description,
+    defaultValue: DEFAULT_WEIGHTS.structure_quality,
+    min: 0,
+    max: 1,
+    step: 0.01,
   },
 ]
 
 export function WeightController({
   config,
-  categories = DEFAULT_CATEGORIES,
   onSave,
   onReset,
   isSaving = false,
   className,
 }: WeightControllerProps) {
   const [configName, setConfigName] = useState(config?.name || 'Default Configuration')
-  const [weights, setWeights] = useState<Record<string, number>>(() => {
-    if (config?.weights) return config.weights
-    const defaultWeights: Record<string, number> = {}
-    categories.forEach((category) => {
-      category.weights.forEach((weight) => {
-        defaultWeights[weight.id] = weight.defaultValue
-      })
-    })
-    return defaultWeights
+  const [configVersion, setConfigVersion] = useState(config?.version || '1.0.0')
+  const [isActive, setIsActive] = useState(config?.is_active || false)
+  const [weights, setWeights] = useState<WeightValues>(() => {
+    if (config?.weights) {
+      return parseWeightValues(config.weights)
+    }
+    return { ...DEFAULT_WEIGHTS }
   })
-  const [activeCategory, setActiveCategory] = useState(categories[0]?.id || '')
 
-  const updateWeight = useCallback((id: string, value: number) => {
+  const updateWeight = useCallback((id: keyof WeightValues, value: number) => {
     setWeights((prev) => ({ ...prev, [id]: value }))
   }, [])
 
   const resetToDefaults = useCallback(() => {
-    const defaultWeights: Record<string, number> = {}
-    categories.forEach((category) => {
-      category.weights.forEach((weight) => {
-        defaultWeights[weight.id] = weight.defaultValue
-      })
-    })
-    setWeights(defaultWeights)
+    setWeights({ ...DEFAULT_WEIGHTS })
     onReset?.()
-  }, [categories, onReset])
+  }, [onReset])
 
   const handleSave = useCallback(async () => {
-    await onSave(weights, configName)
-  }, [weights, configName, onSave])
-
-  // Calculate category totals
-  const categoryTotals = useMemo(() => {
-    const totals: Record<string, number> = {}
-    categories.forEach((category) => {
-      totals[category.id] = category.weights.reduce(
-        (sum, weight) => sum + (weights[weight.id] || 0),
-        0
-      )
+    await onSave({
+      name: configName.trim(),
+      version: configVersion.trim(),
+      weights,
+      is_active: isActive,
     })
-    return totals
-  }, [categories, weights])
+  }, [weights, configName, configVersion, isActive, onSave])
 
-  // Check if weights are normalized (sum to 1)
-  const normalizationStatus = useMemo(() => {
-    const status: Record<string, 'valid' | 'warning' | 'error'> = {}
-    categories.forEach((category) => {
-      const total = categoryTotals[category.id]
-      if (Math.abs(total - 1) < 0.01) {
-        status[category.id] = 'valid'
-      } else if (Math.abs(total - 1) < 0.1) {
-        status[category.id] = 'warning'
-      } else {
-        status[category.id] = 'error'
-      }
-    })
-    return status
-  }, [categories, categoryTotals])
-
-  const normalizeWeights = useCallback(
-    (categoryId: string) => {
-      const category = categories.find((c) => c.id === categoryId)
-      if (!category) return
-
-      const total = categoryTotals[categoryId]
-      if (total === 0) return
-
-      const newWeights = { ...weights }
-      category.weights.forEach((weight) => {
-        newWeights[weight.id] = (weights[weight.id] || 0) / total
-      })
-      setWeights(newWeights)
-    },
-    [categories, categoryTotals, weights]
+  // Validate weight total
+  const { valid: isValidTotal, total: weightTotal } = useMemo(
+    () => validateWeightTotal(weights),
+    [weights]
   )
+
+  const normalizationStatus = useMemo(() => {
+    if (isValidTotal) return 'valid'
+    if (Math.abs(weightTotal - 1) < 0.1) return 'warning'
+    return 'error'
+  }, [isValidTotal, weightTotal])
+
+  const handleNormalize = useCallback(() => {
+    setWeights(normalizeWeights(weights))
+  }, [weights])
 
   return (
     <Card className={className}>
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Weight Configuration</CardTitle>
+            <CardTitle>{config ? 'Edit Weight Configuration' : 'Create Weight Configuration'}</CardTitle>
             <CardDescription>
               Adjust scoring weights for content optimization
             </CardDescription>
@@ -297,111 +155,118 @@ export function WeightController({
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Config name */}
-        <div className="space-y-2">
-          <Label htmlFor="config-name">Configuration Name</Label>
-          <Input
-            id="config-name"
-            value={configName}
-            onChange={(e) => setConfigName(e.target.value)}
-            placeholder="Enter configuration name"
-          />
+        {/* Config name and version */}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="config-name">Configuration Name</Label>
+            <Input
+              id="config-name"
+              value={configName}
+              onChange={(e) => setConfigName(e.target.value)}
+              placeholder="Enter configuration name"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="config-version">Version</Label>
+            <Input
+              id="config-version"
+              value={configVersion}
+              onChange={(e) => setConfigVersion(e.target.value)}
+              placeholder="1.0.0"
+            />
+          </div>
         </div>
 
-        {/* Weight categories */}
-        <Tabs value={activeCategory} onValueChange={setActiveCategory}>
-          <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${categories.length}, 1fr)` }}>
-            {categories.map((category) => (
-              <TabsTrigger key={category.id} value={category.id} className="relative">
-                {category.name}
-                <span
-                  className={cn(
-                    'absolute -right-1 -top-1 h-2 w-2 rounded-full',
-                    normalizationStatus[category.id] === 'valid' && 'bg-green-500',
-                    normalizationStatus[category.id] === 'warning' && 'bg-yellow-500',
-                    normalizationStatus[category.id] === 'error' && 'bg-red-500'
-                  )}
-                />
-              </TabsTrigger>
-            ))}
-          </TabsList>
-
-          {categories.map((category) => (
-            <TabsContent key={category.id} value={category.id} className="mt-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">{category.description}</p>
-                <div className="flex items-center gap-2">
-                  <span
-                    className={cn(
-                      'text-sm font-medium',
-                      normalizationStatus[category.id] === 'valid' && 'text-green-600',
-                      normalizationStatus[category.id] === 'warning' && 'text-yellow-600',
-                      normalizationStatus[category.id] === 'error' && 'text-red-600'
-                    )}
-                  >
-                    Total: {categoryTotals[category.id].toFixed(2)}
-                  </span>
-                  {normalizationStatus[category.id] !== 'valid' && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => normalizeWeights(category.id)}
-                    >
-                      Normalize
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                {category.weights.map((weight) => (
-                  <WeightSlider
-                    key={weight.id}
-                    weight={weight}
-                    value={weights[weight.id] ?? weight.defaultValue}
-                    onChange={(value) => updateWeight(weight.id, value)}
-                  />
-                ))}
-              </div>
-            </TabsContent>
-          ))}
-        </Tabs>
-
-        {/* Summary */}
-        <div className="rounded-lg bg-muted/50 p-4">
-          <h4 className="mb-3 text-sm font-medium">Weight Summary</h4>
-          <div className="grid gap-2 sm:grid-cols-3">
-            {categories.map((category) => (
-              <div key={category.id} className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">{category.name}</span>
-                  <Badge
-                    variant={
-                      normalizationStatus[category.id] === 'valid'
-                        ? 'default'
-                        : normalizationStatus[category.id] === 'warning'
-                          ? 'secondary'
-                          : 'destructive'
-                    }
-                    className="text-xs"
-                  >
-                    {categoryTotals[category.id].toFixed(2)}
-                  </Badge>
-                </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className={cn(
-                      'h-full transition-all',
-                      normalizationStatus[category.id] === 'valid' && 'bg-green-500',
-                      normalizationStatus[category.id] === 'warning' && 'bg-yellow-500',
-                      normalizationStatus[category.id] === 'error' && 'bg-red-500'
-                    )}
-                    style={{ width: `${Math.min(categoryTotals[category.id] * 100, 100)}%` }}
-                  />
-                </div>
-              </div>
-            ))}
+        {/* Weight sliders */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label>Scoring Weights</Label>
+            <div className="flex items-center gap-2">
+              <span
+                className={cn(
+                  'text-sm font-medium',
+                  normalizationStatus === 'valid' && 'text-green-600',
+                  normalizationStatus === 'warning' && 'text-yellow-600',
+                  normalizationStatus === 'error' && 'text-red-600'
+                )}
+              >
+                Total: {weightTotal.toFixed(2)}
+              </span>
+              {normalizationStatus !== 'valid' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleNormalize}
+                >
+                  Normalize
+                </Button>
+              )}
+            </div>
           </div>
+          <p className="text-xs text-muted-foreground">
+            Weights should sum to 1.0 for proper scoring
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          {SCORING_WEIGHTS.map((weight) => (
+            <WeightSlider
+              key={weight.id}
+              weight={weight}
+              value={weights[weight.id]}
+              onChange={(value) => updateWeight(weight.id, value)}
+            />
+          ))}
+        </div>
+
+        {/* Summary bar */}
+        <div className="rounded-lg bg-muted/50 p-4">
+          <h4 className="mb-3 text-sm font-medium">Weight Distribution</h4>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Total Weight</span>
+              <Badge
+                variant={
+                  normalizationStatus === 'valid'
+                    ? 'default'
+                    : normalizationStatus === 'warning'
+                      ? 'secondary'
+                      : 'destructive'
+                }
+                className="text-xs"
+              >
+                {weightTotal.toFixed(2)}
+              </Badge>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-muted">
+              <div
+                className={cn(
+                  'h-full transition-all',
+                  normalizationStatus === 'valid' && 'bg-green-500',
+                  normalizationStatus === 'warning' && 'bg-yellow-500',
+                  normalizationStatus === 'error' && 'bg-red-500'
+                )}
+                style={{ width: `${Math.min(weightTotal * 100, 100)}%` }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Active status toggle */}
+        <div className="flex items-center justify-between rounded-lg border p-4">
+          <div>
+            <h4 className="font-medium">Active Status</h4>
+            <p className="text-sm text-muted-foreground">
+              Set this as the active weight configuration
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant={isActive ? 'default' : 'outline'}
+            onClick={() => setIsActive(!isActive)}
+          >
+            {isActive ? 'Active' : 'Inactive'}
+          </Button>
         </div>
 
         {/* Metadata */}
@@ -410,9 +275,6 @@ export function WeightController({
             <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
               <span>ID: {config.id}</span>
               <span>Created: {new Date(config.created_at).toLocaleString()}</span>
-              {config.updated_at && (
-                <span>Updated: {new Date(config.updated_at).toLocaleString()}</span>
-              )}
             </div>
           </div>
         )}
@@ -422,7 +284,7 @@ export function WeightController({
           <Button type="button" variant="outline" onClick={resetToDefaults} disabled={isSaving}>
             Reset to Defaults
           </Button>
-          <Button onClick={handleSave} disabled={isSaving}>
+          <Button onClick={handleSave} disabled={isSaving || !isValidTotal}>
             {isSaving ? 'Saving...' : config ? 'Update Configuration' : 'Save Configuration'}
           </Button>
         </div>
@@ -491,5 +353,3 @@ function WeightSlider({ weight, value, onChange }: WeightSliderProps) {
     </div>
   )
 }
-
-export type { WeightConfig, WeightCategory, WeightItem, WeightControllerProps }
