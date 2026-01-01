@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { GenerationBreakdown, type ActionPayload } from './generation-breakdown'
+import { ABCompare } from './ab-compare'
 import {
   Copy,
   Check,
@@ -709,6 +710,11 @@ export function OutputDisplay() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* A/B Compare (only show if generation has been saved) */}
+          {generationId && (
+            <ABCompare generationId={generationId} />
+          )}
         </div>
       </motion.div>
     </motion.div>
