@@ -118,6 +118,23 @@ async function withRetry<T>(
 // V2 REQUEST/RESPONSE TYPES
 // ==========================================
 
+interface RegenerationConfig {
+  focusArea?: string
+  metric?: string
+  enhanceUSPs?: boolean
+  prioritizePlaybook?: boolean
+  enhanceGrounding?: boolean
+  deeperWebSearch?: boolean
+  strictBrandAlignment?: boolean
+  playbookEnforcement?: boolean
+  verifyClaims?: boolean
+  factChecking?: boolean
+  enhanceKeywordDensity?: boolean
+  improveStructure?: boolean
+  optimizeReadability?: boolean
+  fullRegeneration?: boolean
+}
+
 interface GEOv2GenerateRequest {
   productName: string
   youtubeUrl: string
@@ -129,6 +146,7 @@ interface GEOv2GenerateRequest {
   launchDate?: string
   pipelineConfig?: 'full' | 'quick' | 'grounded'
   language?: 'ko' | 'en'
+  regenerationConfig?: RegenerationConfig
 }
 
 interface GroundingSignal {
@@ -294,6 +312,7 @@ export async function POST(request: NextRequest) {
       launchDate,
       pipelineConfig = 'full',
       language = 'ko',
+      regenerationConfig,
     } = body
 
     // Validation
@@ -304,7 +323,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log(`[GEO v2] Starting pipeline: ${pipelineConfig}`)
+    // Check if this is a regeneration request
+    const isRegeneration = !!regenerationConfig
+    const regenerationFocus = regenerationConfig?.focusArea || null
+
+    console.log(`[GEO v2] Starting pipeline: ${pipelineConfig}${isRegeneration ? ` (regeneration: ${regenerationFocus})` : ''}`)
     console.log(`[GEO v2] Product: ${productName}, Keywords: ${keywords.length}`)
 
     // ==========================================
@@ -325,15 +348,22 @@ export async function POST(request: NextRequest) {
     // ==========================================
     // STAGE 0: PARALLEL DATA FETCHING
     // ==========================================
+    // Enhanced grounding when regenerating with focus on grounding
+    const enhancedGrounding = regenerationConfig?.enhanceGrounding || regenerationConfig?.deeperWebSearch
+    const enhancedUSP = regenerationConfig?.enhanceUSPs || regenerationConfig?.prioritizePlaybook
+
     const [groundingSignals, playbookContext] = await Promise.all([
-      fetchGroundingSignals(productName, keywords, launchDate),
+      fetchGroundingSignals(productName, keywords, launchDate, enhancedGrounding),
       (usePlaybook && isPineconeConfigured())
-        ? fetchPlaybookContext(productName, keywords, productCategory)
+        ? fetchPlaybookContext(productName, keywords, productCategory, enhancedUSP)
         : Promise.resolve([]),
     ])
 
     console.log(`[GEO v2] Data fetched in ${Date.now() - startTime}ms`)
     console.log(`[GEO v2] Grounding signals: ${groundingSignals.length}, Playbook chunks: ${playbookContext.length}`)
+    if (isRegeneration) {
+      console.log(`[GEO v2] Regeneration mode: enhancedGrounding=${enhancedGrounding}, enhancedUSP=${enhancedUSP}`)
+    }
 
     if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json(getMockV2Response(productName, keywords))
@@ -547,9 +577,9 @@ export async function POST(request: NextRequest) {
         scoreBreakdown: geoScoreResult.breakdown.map(b => ({
           metric: b.metric,
           label: b.label,
-          score: b.score,
+          score: Math.round(b.score * 100), // Convert 0-1 to 0-100 for UI
           weight: b.weight,
-          weightedScore: b.weightedScore,
+          weightedScore: Math.round(b.weightedScore * 100), // Also scale weighted score
           contribution: b.contribution,
         })),
       },
@@ -1670,17 +1700,24 @@ async function fetchPerplexityGroundingSignals(
 
 /**
  * Fetch grounding signals from multiple sources (Google + Perplexity)
+ * @param enhanced - When true, performs deeper search with more queries for regeneration
  */
 async function fetchGroundingSignals(
   productName: string,
   keywords: string[],
-  launchDate?: string
+  launchDate?: string,
+  enhanced?: boolean
 ): Promise<GroundingSignal[]> {
   try {
+    // Enhanced mode: use more keywords and additional search variations
+    const searchKeywords = enhanced
+      ? [...keywords, `${productName} specifications`, `${productName} features`, `${productName} review`]
+      : keywords
+
     // Fetch from both sources in parallel
     const [googleResults, perplexityResults] = await Promise.all([
-      fetchGoogleGroundingSignals(productName, keywords),
-      fetchPerplexityGroundingSignals(productName, keywords),
+      fetchGoogleGroundingSignals(productName, searchKeywords),
+      fetchPerplexityGroundingSignals(productName, searchKeywords),
     ])
 
     const allResults = [...googleResults, ...perplexityResults]
@@ -1690,7 +1727,7 @@ async function fetchGroundingSignals(
       return generateFallbackSignals(productName, keywords)
     }
 
-    console.log(`[Grounding] Combined ${allResults.length} results from Google (${googleResults.length}) + Perplexity (${perplexityResults.length})`)
+    console.log(`[Grounding] Combined ${allResults.length} results from Google (${googleResults.length}) + Perplexity (${perplexityResults.length})${enhanced ? ' [ENHANCED]' : ''}`)
     return extractSignalsFromResults(allResults, keywords)
   } catch (error) {
     console.error('[Grounding] Failed:', error)
@@ -1765,22 +1802,38 @@ function generateFallbackSignals(productName: string, keywords: string[]): Groun
 async function fetchPlaybookContext(
   productName: string,
   keywords: string[],
-  productCategory?: ProductCategory | 'all'
+  productCategory?: ProductCategory | 'all',
+  enhanced?: boolean
 ): Promise<PlaybookSearchResult[]> {
   try {
-    const queries = [
+    // Enhanced mode: use more queries and more results for better USP coverage
+    const baseQueries = [
       `Samsung brand guidelines ${productName}`,
       `GEO optimization AI search content`,
       `Samsung tone of voice writing style`,
       ...keywords.slice(0, 2).map(k => `Samsung ${k} marketing`),
     ]
 
+    const queries = enhanced
+      ? [
+          ...baseQueries,
+          `${productName} unique selling points USP`,
+          `${productName} key features benefits`,
+          `Samsung ${productName} product positioning`,
+          ...keywords.slice(2, 5).map(k => `Samsung ${k} ${productName}`),
+        ]
+      : baseQueries
+
     const ragContext = await multiQuerySearch(queries, {
       productCategory,
-      topKPerQuery: 3,
-      finalTopN: 8,
+      topKPerQuery: enhanced ? 5 : 3,
+      finalTopN: enhanced ? 15 : 8,
       deduplicateByContent: true,
     })
+
+    if (enhanced) {
+      console.log(`[Playbook] Enhanced mode: fetched ${ragContext.results.length} chunks`)
+    }
 
     return ragContext.results
   } catch (error) {
