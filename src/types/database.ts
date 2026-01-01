@@ -634,6 +634,95 @@ export interface Database {
           created_at?: string
         }
       }
+      generation_versions: {
+        Row: {
+          id: string
+          generation_id: string
+          user_id: string
+          product_id: string
+          version_number: number
+          version_label: string | null
+          description: string | null
+          timestamps: string | null
+          hashtags: string[]
+          faq: Json | null
+          usps: Json | null
+          case_studies: Json | null
+          keywords: Json | null
+          chapters: Json | null
+          srt_content_hash: string | null
+          selected_keywords: string[]
+          campaign_tag: string | null
+          geo_score_v2: Json | null
+          quality_scores: Json | null
+          final_score: number | null
+          prompt_version_id: string | null
+          weights_version_id: string | null
+          generation_config: Json | null
+          change_summary: string | null
+          is_current: boolean
+          is_starred: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          generation_id: string
+          user_id: string
+          product_id: string
+          version_number?: number
+          version_label?: string | null
+          description?: string | null
+          timestamps?: string | null
+          hashtags?: string[]
+          faq?: Json | null
+          usps?: Json | null
+          case_studies?: Json | null
+          keywords?: Json | null
+          chapters?: Json | null
+          srt_content_hash?: string | null
+          selected_keywords?: string[]
+          campaign_tag?: string | null
+          geo_score_v2?: Json | null
+          quality_scores?: Json | null
+          final_score?: number | null
+          prompt_version_id?: string | null
+          weights_version_id?: string | null
+          generation_config?: Json | null
+          change_summary?: string | null
+          is_current?: boolean
+          is_starred?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          generation_id?: string
+          user_id?: string
+          product_id?: string
+          version_number?: number
+          version_label?: string | null
+          description?: string | null
+          timestamps?: string | null
+          hashtags?: string[]
+          faq?: Json | null
+          usps?: Json | null
+          case_studies?: Json | null
+          keywords?: Json | null
+          chapters?: Json | null
+          srt_content_hash?: string | null
+          selected_keywords?: string[]
+          campaign_tag?: string | null
+          geo_score_v2?: Json | null
+          quality_scores?: Json | null
+          final_score?: number | null
+          prompt_version_id?: string | null
+          weights_version_id?: string | null
+          generation_config?: Json | null
+          change_summary?: string | null
+          is_current?: boolean
+          is_starred?: boolean
+          created_at?: string
+        }
+      }
       generation_event_logs: {
         Row: {
           id: string

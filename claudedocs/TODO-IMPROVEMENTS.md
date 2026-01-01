@@ -145,12 +145,19 @@ const lengthCompliance = 12 // /15
 **Expected improvement**: ~30-40% faster generation
 
 ### 2.4 Generation Version History
-**Status**: ⏳ PENDING
+**Status**: ✅ COMPLETED (2026-01-01)
 **Priority**: 🟡 MEDIUM
-**Files to modify**:
-- Create: `src/lib/history/version-manager.ts`
-- Update Supabase schema for versions
-**Description**: Store multiple generation versions per product, allow rollback
+**Files created/modified**:
+- Created: `supabase/migrations/004_generation_versions.sql`
+- Created: `src/lib/history/version-manager.ts`
+- Created: `src/lib/history/index.ts`
+- Modified: `src/types/database.ts`
+**Changes**:
+- Added `generation_versions` table with full content snapshots
+- SQL functions for version management: `get_next_version_number()`, `set_current_version()`
+- VersionManager class with: saveVersion, listVersions, getVersion, restoreVersion, compareVersions
+- Support for starring versions, version labels, and change summaries
+- RLS policies for secure access
 
 ---
 
@@ -185,8 +192,8 @@ const lengthCompliance = 12 // /15
 
 | ID | Issue | Location | Priority | Status |
 |----|-------|----------|----------|--------|
-| UI-1 | Progress visibility during generation | generate/page.tsx | 🔴 HIGH | ⏳ |
-| UI-2 | Score breakdown lacks context | output-display.tsx | 🔴 HIGH | ⏳ |
+| UI-1 | Progress visibility during generation | generate/page.tsx | 🔴 HIGH | ✅ Phase 1.4 |
+| UI-2 | Score breakdown lacks context | output-display.tsx | 🔴 HIGH | ✅ Phase 1.1 |
 | UI-3 | Grounding results not actionable | keyword-selector.tsx | 🔴 HIGH | ⏳ |
 | UI-4 | Template system hidden | product-selector.tsx | 🟡 MED | ⏳ |
 | UI-5 | SRT validation too lenient | srt-input.tsx | 🟡 MED | ⏳ |
@@ -199,7 +206,7 @@ const lengthCompliance = 12 // /15
 | ID | Issue | Location | Priority | Status |
 |----|-------|----------|----------|--------|
 | UJ-1 | Step dependencies not clear | generate/page.tsx | 🔴 HIGH | ⏳ |
-| UJ-2 | No way to save draft | generation-store.ts | 🔴 HIGH | ⏳ |
+| UJ-2 | No way to save draft | generation-store.ts | 🔴 HIGH | ✅ Phase 1.2 |
 | UJ-3 | Regeneration loop unclear | output-display.tsx | 🔴 HIGH | ⏳ |
 | UJ-4 | Brief loading silent failure | product-selector.tsx | 🟡 MED | ⏳ |
 | UJ-5 | Campaign tag purpose unclear | product-selector.tsx | 🟡 MED | ⏳ |
@@ -210,8 +217,8 @@ const lengthCompliance = 12 // /15
 
 | ID | Issue | Location | Priority | Status |
 |----|-------|----------|----------|--------|
-| SC-1 | Semantic similarity hardcoded | route.ts:522 | 🔴 HIGH | ⏳ |
-| SC-2 | Anti-fabrication hardcoded | route.ts:523 | 🔴 HIGH | ⏳ |
+| SC-1 | Semantic similarity hardcoded | route.ts:522 | 🔴 HIGH | ✅ Phase 2.1 |
+| SC-2 | Anti-fabrication hardcoded | route.ts:523 | 🔴 HIGH | ✅ Phase 2.2 |
 | SC-3 | Grounding tier detection limited | grounding-scorer.ts | 🔴 HIGH | ⏳ |
 | SC-4 | Weight system not transparent | weights-loader.ts | 🟡 MED | ⏳ |
 | SC-5 | Keyword density simplistic | route.ts | 🟡 MED | ⏳ |
@@ -223,7 +230,7 @@ const lengthCompliance = 12 // /15
 | ID | Issue | Location | Priority | Status |
 |----|-------|----------|----------|--------|
 | PP-1 | No caching for repeated generations | route.ts | 🔴 HIGH | ⏳ |
-| PP-2 | Sequential LLM calls | route.ts | 🔴 HIGH | ⏳ |
+| PP-2 | Sequential LLM calls | route.ts | 🔴 HIGH | ✅ Phase 2.3 |
 | PP-3 | Playbook search not filtered | route.ts | 🔴 HIGH | ⏳ |
 | PP-4 | No streaming response | route.ts | 🟡 MED | ⏳ |
 | PP-5 | Retry logic too aggressive | route.ts | 🟡 MED | ⏳ |
@@ -235,7 +242,7 @@ const lengthCompliance = 12 // /15
 | ID | Issue | Priority | Status |
 |----|-------|----------|--------|
 | FG-1 | No A/B testing for outputs | 🔴 HIGH | ⏳ |
-| FG-2 | No version history | 🔴 HIGH | ⏳ |
+| FG-2 | No version history | 🔴 HIGH | ✅ Phase 2.4 |
 | FG-3 | No export options | 🔴 HIGH | ⏳ |
 | FG-4 | No collaboration features | 🟡 MED | ⏳ |
 | FG-5 | No analytics dashboard | 🟡 MED | ⏳ |
@@ -261,6 +268,11 @@ UI Components:
 ├── src/components/features/product-selector.tsx
 ├── src/components/features/srt-input.tsx
 └── src/components/features/generation-breakdown.tsx
+
+Version History (Phase 2.4):
+├── src/lib/history/version-manager.ts        # VersionManager class
+├── src/lib/history/index.ts                  # Barrel exports
+└── supabase/migrations/004_generation_versions.sql
 ```
 
 ---
@@ -284,4 +296,7 @@ UI Components:
 
 | Date | Change | Author |
 |------|--------|--------|
+| 2026-01-01 | Phase 2.4 completed: Generation Version History | Claude |
+| 2026-01-01 | Phase 2.1-2.3 completed: Scoring & Parallel Execution | Claude |
+| 2026-01-01 | Phase 1.1-1.4 completed: Quick Wins | Claude |
 | 2026-01-01 | Initial documentation created from comprehensive analysis | Claude |
