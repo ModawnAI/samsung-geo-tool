@@ -34,6 +34,12 @@ import {
 } from '@/lib/tuning/integration'
 import { logGenerationFlow, createApiLoggerContext, finalizeApiLog } from '@/lib/logging'
 import { createClient } from '@/lib/supabase/server'
+import {
+  createGenerationCacheKey,
+  getCachedGeneration,
+  cacheGeneration,
+  getGenerationCacheStats,
+} from '@/lib/cache/generation-cache'
 import type {
   GEOv2GenerateResponse,
   PipelineProgress,
@@ -327,6 +333,34 @@ export async function POST(request: NextRequest) {
     // Check if this is a regeneration request
     const isRegeneration = !!regenerationConfig
     const regenerationFocus = regenerationConfig?.focusArea || null
+
+    // ==========================================
+    // CACHE CHECK (skip for regeneration)
+    // ==========================================
+    const cacheKey = createGenerationCacheKey({
+      productName,
+      srtContent,
+      keywords,
+      language,
+      pipelineConfig,
+    })
+
+    if (!isRegeneration) {
+      const cachedResult = getCachedGeneration<GEOv2GenerateResponse>(cacheKey)
+      if (cachedResult) {
+        const cacheStats = getGenerationCacheStats()
+        console.log(`[GEO v2] Cache HIT (${cacheStats.hitRate} rate, ${cacheStats.size}/${cacheStats.maxSize} entries)`)
+        return NextResponse.json({
+          ...cachedResult,
+          cached: true,
+          cacheStats: {
+            hitRate: cacheStats.hitRate,
+            cacheSize: cacheStats.size,
+          },
+        })
+      }
+      console.log(`[GEO v2] Cache MISS - generating fresh content`)
+    }
 
     console.log(`[GEO v2] Starting pipeline: ${pipelineConfig}${isRegeneration ? ` (regeneration: ${regenerationFocus})` : ''}`)
     console.log(`[GEO v2] Product: ${productName}, Keywords: ${keywords.length}`)
@@ -631,6 +665,14 @@ export async function POST(request: NextRequest) {
         traceId: loggerContext.traceId,
       },
     })
+
+    // ==========================================
+    // CACHE STORAGE (only for non-regeneration)
+    // ==========================================
+    if (!isRegeneration) {
+      cacheGeneration(cacheKey, response)
+      console.log(`[GEO v2] Result cached for future requests`)
+    }
 
     return NextResponse.json(response)
   } catch (error) {
