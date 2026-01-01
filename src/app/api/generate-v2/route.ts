@@ -528,14 +528,7 @@ export async function POST(request: NextRequest) {
       citedContentLength: groundingMetadata.totalCitations * 200,
     })
 
-    // Calculate legacy component scores for backward compatibility
-    const keywordDensityScore = Math.min(15, Math.round(keywordsResult.densityScore / 100 * 15))
-    const aiExposureScore = Math.min(25, Math.round((uspResult.groundingQuality / 100) * 25))
-    const questionPatternsScore = Math.min(20, Math.round((faqResult.faqs.length / 7) * 20))
-    const sentenceStructureScore = 12 // Would be calculated from actual content analysis
-    const lengthComplianceScore = calculateLengthComplianceScore(descriptionResult.description.full)
-
-    // Calculate content quality scores (semantic similarity and anti-fabrication)
+    // Calculate content quality scores (semantic similarity, anti-fabrication, and keyword density)
     const contentQualityScores = calculateContentQualityScores({
       srtContent,
       generatedDescription: descriptionResult.description.full,
@@ -543,7 +536,25 @@ export async function POST(request: NextRequest) {
       caseStudies: caseStudiesResult.caseStudies.map(cs => `${cs.scenario} ${cs.solution}`),
       usps: uspResult.usps.map(u => `${u.feature}: ${u.differentiation} - ${u.userBenefit}`),
       groundingData: groundingSignals.map(s => s.term).filter(Boolean),
+      keywords, // Use input keywords for density calculation
     })
+
+    // Calculate legacy component scores for backward compatibility
+    // Use programmatic keyword density if available, otherwise fallback to AI-estimated
+    const keywordDensityScore = contentQualityScores.keywordDensity
+      ? Math.min(15, Math.round(contentQualityScores.keywordDensity.score * 15))
+      : Math.min(15, Math.round(keywordsResult.densityScore / 100 * 15))
+    const aiExposureScore = Math.min(25, Math.round((uspResult.groundingQuality / 100) * 25))
+    const questionPatternsScore = Math.min(20, Math.round((faqResult.faqs.length / 7) * 20))
+    const sentenceStructureScore = 12 // Would be calculated from actual content analysis
+    const lengthComplianceScore = calculateLengthComplianceScore(descriptionResult.description.full)
+
+    // Log keyword density details
+    if (contentQualityScores.keywordDensity) {
+      const kd = contentQualityScores.keywordDensity
+      console.log(`[GEO v2] Keyword density - Score: ${kd.score.toFixed(2)}, Density: ${kd.densityPercentage.toFixed(2)}%, Occurrences: ${kd.totalKeywordOccurrences}/${kd.totalWordCount} words`)
+      console.log(`[GEO v2] Keyword breakdown: ${kd.keywordBreakdown.map(k => `${k.keyword}(${k.occurrences})`).join(', ')}`)
+    }
 
     console.log(`[GEO v2] Content quality - Semantic similarity: ${contentQualityScores.semanticSimilarity.score.toFixed(2)}, Anti-fabrication: ${contentQualityScores.antiFabrication.score.toFixed(2)} (${contentQualityScores.antiFabrication.violationCount} violations)`)
 
@@ -603,6 +614,15 @@ export async function POST(request: NextRequest) {
       hashtagCategories: hashtagResult.categories,
       finalScore,
       groundingMetadata,
+      // Include programmatic keyword density breakdown for transparency
+      keywordDensityDetails: contentQualityScores.keywordDensity ? {
+        score: contentQualityScores.keywordDensity.score,
+        densityPercentage: contentQualityScores.keywordDensity.densityPercentage,
+        totalKeywordOccurrences: contentQualityScores.keywordDensity.totalKeywordOccurrences,
+        totalWordCount: contentQualityScores.keywordDensity.totalWordCount,
+        keywordBreakdown: contentQualityScores.keywordDensity.keywordBreakdown,
+        distribution: contentQualityScores.keywordDensity.distribution,
+      } : undefined,
       progress: [],
       // Tuning metadata for tracking and analysis
       tuningMetadata: {

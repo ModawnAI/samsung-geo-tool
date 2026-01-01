@@ -299,6 +299,24 @@ export const STAGE_PROGRESS_MAP: Record<PipelineStage, { percentage: number; mes
 // Enhanced Generation Response
 // ==========================================
 
+export interface KeywordDensityDetails {
+  score: number // 0-1 scale
+  densityPercentage: number // Actual density as percentage
+  totalKeywordOccurrences: number
+  totalWordCount: number
+  keywordBreakdown: Array<{
+    keyword: string
+    occurrences: number
+    variants: string[]
+  }>
+  distribution: {
+    description: number
+    faq: number
+    caseStudies: number
+    usps: number
+  }
+}
+
 export interface GEOv2GenerateResponse {
   description: {
     preview: string        // First 130 characters
@@ -333,6 +351,7 @@ export interface GEOv2GenerateResponse {
   }
   finalScore: GEOv2Score
   groundingMetadata?: GroundingMetadata
+  keywordDensityDetails?: KeywordDensityDetails // Programmatic keyword density breakdown
   progress?: PipelineProgress[]
   tuningMetadata?: {
     configSource: 'database' | 'default' | 'mixed'

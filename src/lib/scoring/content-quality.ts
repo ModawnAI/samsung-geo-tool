@@ -33,6 +33,25 @@ export interface AntiFabricationResult {
 export interface ContentQualityScores {
   semanticSimilarity: SemanticSimilarityResult
   antiFabrication: AntiFabricationResult
+  keywordDensity?: KeywordDensityResult
+}
+
+export interface KeywordDensityResult {
+  score: number // 0-1 scale
+  densityPercentage: number // Actual density as percentage
+  totalKeywordOccurrences: number
+  totalWordCount: number
+  keywordBreakdown: {
+    keyword: string
+    occurrences: number
+    variants: string[]
+  }[]
+  distribution: {
+    description: number
+    faq: number
+    caseStudies: number
+    usps: number
+  }
 }
 
 // ==========================================
@@ -290,6 +309,210 @@ export function calculateAntiFabricationScore(
 }
 
 // ==========================================
+// KEYWORD DENSITY CALCULATION
+// ==========================================
+
+/**
+ * Generate keyword variants for matching
+ * Includes plural forms, common suffixes, and case variations
+ */
+function generateKeywordVariants(keyword: string): string[] {
+  const base = keyword.toLowerCase().trim()
+  const variants = [base]
+
+  // Handle multi-word keywords
+  const words = base.split(/\s+/)
+  if (words.length > 1) {
+    // Add the phrase as-is
+    variants.push(words.join(' '))
+  }
+
+  // Generate variants for each word
+  for (const word of words) {
+    // Plural forms
+    if (!word.endsWith('s')) {
+      variants.push(word + 's')
+      variants.push(word + 'es')
+    }
+    // Remove trailing 's' for singular
+    if (word.endsWith('s') && word.length > 2) {
+      variants.push(word.slice(0, -1))
+    }
+    if (word.endsWith('es') && word.length > 3) {
+      variants.push(word.slice(0, -2))
+    }
+    // Common suffixes
+    if (word.endsWith('ing')) {
+      variants.push(word.slice(0, -3))
+      variants.push(word.slice(0, -3) + 'e')
+    }
+    if (word.endsWith('ed')) {
+      variants.push(word.slice(0, -2))
+      variants.push(word.slice(0, -1))
+    }
+    if (word.endsWith('tion')) {
+      variants.push(word.slice(0, -4) + 'te')
+    }
+  }
+
+  // Remove duplicates
+  return [...new Set(variants)].filter(v => v.length > 1)
+}
+
+/**
+ * Count keyword occurrences in text, including variants
+ */
+function countKeywordOccurrences(
+  text: string,
+  keyword: string
+): { count: number; matchedVariants: string[] } {
+  const lowerText = text.toLowerCase()
+  const variants = generateKeywordVariants(keyword)
+  let totalCount = 0
+  const matchedVariants: string[] = []
+
+  for (const variant of variants) {
+    // Use word boundary matching
+    const regex = new RegExp(`\\b${variant.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi')
+    const matches = lowerText.match(regex)
+    if (matches && matches.length > 0) {
+      totalCount += matches.length
+      if (!matchedVariants.includes(variant)) {
+        matchedVariants.push(variant)
+      }
+    }
+  }
+
+  return { count: totalCount, matchedVariants }
+}
+
+/**
+ * Count total words in text
+ */
+function countWords(text: string): number {
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s]/g, ' ')
+    .split(/\s+/)
+    .filter(word => word.length > 0)
+    .length
+}
+
+/**
+ * Calculate keyword density score based on actual occurrences
+ * Optimal density is typically 1-3% for SEO content
+ */
+export function calculateKeywordDensity(
+  keywords: string[],
+  descriptionContent: string,
+  faqContent: string[],
+  caseStudyContent: string[],
+  uspContent: string[]
+): KeywordDensityResult {
+  // Combine all content
+  const allFaqContent = faqContent.join(' ')
+  const allCaseStudyContent = caseStudyContent.join(' ')
+  const allUspContent = uspContent.join(' ')
+  const allContent = [
+    descriptionContent,
+    allFaqContent,
+    allCaseStudyContent,
+    allUspContent,
+  ].join(' ')
+
+  // Count total words
+  const totalWordCount = countWords(allContent)
+
+  // Count occurrences per keyword
+  const keywordBreakdown: KeywordDensityResult['keywordBreakdown'] = []
+  let totalKeywordOccurrences = 0
+
+  for (const keyword of keywords) {
+    const { count, matchedVariants } = countKeywordOccurrences(allContent, keyword)
+    keywordBreakdown.push({
+      keyword,
+      occurrences: count,
+      variants: matchedVariants,
+    })
+    totalKeywordOccurrences += count
+  }
+
+  // Calculate distribution across content sections
+  const distribution = {
+    description: keywords.reduce((sum, kw) =>
+      sum + countKeywordOccurrences(descriptionContent, kw).count, 0),
+    faq: keywords.reduce((sum, kw) =>
+      sum + countKeywordOccurrences(allFaqContent, kw).count, 0),
+    caseStudies: keywords.reduce((sum, kw) =>
+      sum + countKeywordOccurrences(allCaseStudyContent, kw).count, 0),
+    usps: keywords.reduce((sum, kw) =>
+      sum + countKeywordOccurrences(allUspContent, kw).count, 0),
+  }
+
+  // Calculate density percentage
+  const densityPercentage = totalWordCount > 0
+    ? (totalKeywordOccurrences / totalWordCount) * 100
+    : 0
+
+  // Calculate score based on optimal density range
+  // Optimal: 1-3% density, with diminishing returns above 3%
+  // Score formula:
+  // - 0% density = 0.2 (minimum)
+  // - 0.5% density = 0.5
+  // - 1% density = 0.7
+  // - 2% density = 0.9
+  // - 3% density = 1.0
+  // - >3% density = starts decreasing (keyword stuffing penalty)
+  let score: number
+  if (densityPercentage <= 0) {
+    score = 0.2
+  } else if (densityPercentage <= 1) {
+    // 0-1%: linear from 0.4 to 0.7
+    score = 0.4 + (densityPercentage * 0.3)
+  } else if (densityPercentage <= 2) {
+    // 1-2%: linear from 0.7 to 0.9
+    score = 0.7 + ((densityPercentage - 1) * 0.2)
+  } else if (densityPercentage <= 3) {
+    // 2-3%: linear from 0.9 to 1.0
+    score = 0.9 + ((densityPercentage - 2) * 0.1)
+  } else if (densityPercentage <= 5) {
+    // 3-5%: slight penalty, decreasing from 1.0 to 0.8
+    score = 1.0 - ((densityPercentage - 3) * 0.1)
+  } else {
+    // >5%: keyword stuffing penalty
+    score = Math.max(0.5, 0.8 - ((densityPercentage - 5) * 0.1))
+  }
+
+  // Bonus for even distribution across sections
+  const sectionCount = [
+    distribution.description > 0,
+    distribution.faq > 0,
+    distribution.caseStudies > 0,
+    distribution.usps > 0,
+  ].filter(Boolean).length
+
+  // Distribution bonus: up to 10% extra for appearing in all 4 sections
+  const distributionBonus = (sectionCount / 4) * 0.1
+  score = Math.min(1.0, score + distributionBonus)
+
+  // Bonus for using multiple keywords (if provided)
+  const keywordsWithOccurrences = keywordBreakdown.filter(k => k.occurrences > 0).length
+  const keywordCoverageBonus = keywords.length > 0
+    ? (keywordsWithOccurrences / keywords.length) * 0.1
+    : 0
+  score = Math.min(1.0, score + keywordCoverageBonus)
+
+  return {
+    score: Math.round(score * 100) / 100,
+    densityPercentage: Math.round(densityPercentage * 100) / 100,
+    totalKeywordOccurrences,
+    totalWordCount,
+    keywordBreakdown,
+    distribution,
+  }
+}
+
+// ==========================================
 // COMBINED QUALITY SCORING
 // ==========================================
 
@@ -303,6 +526,7 @@ export function calculateContentQualityScores(params: {
   caseStudies: string[]
   usps: string[]
   groundingData?: string[]
+  keywords?: string[]
 }): ContentQualityScores {
   const {
     srtContent,
@@ -311,6 +535,7 @@ export function calculateContentQualityScores(params: {
     caseStudies,
     usps,
     groundingData,
+    keywords,
   } = params
 
   // Calculate semantic similarity
@@ -335,8 +560,20 @@ export function calculateContentQualityScores(params: {
     usps
   )
 
+  // Calculate keyword density if keywords provided
+  const keywordDensity = keywords && keywords.length > 0
+    ? calculateKeywordDensity(
+        keywords,
+        generatedDescription,
+        faqAnswers,
+        caseStudies,
+        usps
+      )
+    : undefined
+
   return {
     semanticSimilarity,
     antiFabrication,
+    keywordDensity,
   }
 }
