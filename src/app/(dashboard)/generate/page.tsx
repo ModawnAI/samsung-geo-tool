@@ -129,17 +129,29 @@ export default function GeneratePage() {
 
     setIsGenerating(true)
     try {
-      const { productName, srtContent, selectedKeywords, briefUsps } =
-        useGenerationStore.getState()
+      const {
+        productName,
+        srtContent,
+        selectedKeywords,
+        videoUrl,
+        categoryId,
+        launchDate,
+      } = useGenerationStore.getState()
 
-      const response = await fetch('/api/generate', {
+      // Use v2 API with full GEO pipeline (RAG, Perplexity grounding, tuning)
+      const response = await fetch('/api/generate-v2', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           productName,
+          youtubeUrl: videoUrl || '',
           srtContent,
           keywords: selectedKeywords,
-          briefUsps,
+          productCategory: categoryId || 'all',
+          usePlaybook: true,
+          launchDate: launchDate?.toISOString(),
+          pipelineConfig: 'full',
+          language: 'ko',
         }),
         signal: abortControllerRef.current.signal,
       })
@@ -150,11 +162,59 @@ export default function GeneratePage() {
         throw new Error(data.error)
       }
 
+      // Map v2 response to store format
+      // V2 returns: description.full, chapters.timestamps, hashtags[], faq.faqs
+      const description = typeof data.description === 'object'
+        ? data.description.full
+        : data.description || ''
+
+      const timestamps = typeof data.chapters === 'object'
+        ? data.chapters.timestamps
+        : data.timestamps || ''
+
+      const faqContent = data.faq?.faqs
+        ? data.faq.faqs.map((f: { question: string; answer: string }) =>
+            `Q: ${f.question}\nA: ${f.answer}`
+          ).join('\n\n')
+        : data.faq || ''
+
+      // Build breakdown from v2 grounding metadata and USP result
+      const breakdown = data.groundingMetadata ? {
+        playbookInfluence: {
+          sectionsUsed: data.groundingMetadata.sources
+            ?.filter((s: { tier: string }) => s.tier === 'official')
+            .map((s: { title: string }) => s.title)
+            .slice(0, 5) || [],
+          guidelinesApplied: data.groundingMetadata.sources?.length || 0,
+          confidence: data.finalScore?.groundingQuality?.sourceAuthority || 70,
+        },
+        groundingInfluence: {
+          topSignals: data.groundingMetadata.webSearchQueries?.slice(0, 5).map(
+            (q: string, i: number) => ({ term: q, score: 100 - i * 15 })
+          ) || [],
+          signalsApplied: data.groundingMetadata.totalCitations || 0,
+        },
+        userInputInfluence: {
+          keywordsIntegrated: selectedKeywords,
+          timestampsGenerated: timestamps.split('\n').filter(Boolean).length,
+        },
+        qualityScores: data.finalScore ? {
+          overall: Math.round(data.finalScore.total || 0),
+          brandVoice: Math.round((data.finalScore.sentenceStructure || 0) * 7),
+          keywordIntegration: Math.round((data.finalScore.keywordDensity || 0) * 5),
+          geoOptimization: Math.round((data.finalScore.aiExposure || 0) * 4),
+          faqQuality: Math.round((data.finalScore.questionPatterns || 0) * 5),
+          refined: false,
+        } : undefined,
+      } : undefined
+
       setOutput({
-        description: data.description || '',
-        timestamps: data.timestamps || '',
+        description,
+        timestamps,
         hashtags: data.hashtags || [],
-        faq: data.faq || '',
+        faq: faqContent,
+        breakdown,
+        tuningMetadata: data.tuningMetadata,
       })
 
       setStep('output')

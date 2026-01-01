@@ -6,6 +6,19 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+// Activity logging types
+export type ActivityCategory = 'auth' | 'generation' | 'navigation' | 'configuration' | 'data' | 'system'
+
+export type GenerationEventType =
+  | 'generation_started'
+  | 'generation_completed'
+  | 'generation_failed'
+  | 'regeneration_requested'
+  | 'content_refined'
+  | 'content_saved'
+  | 'content_confirmed'
+  | 'content_exported'
+
 export interface Database {
   public: {
     Tables: {
@@ -352,6 +365,7 @@ export interface Database {
           status: 'pending' | 'running' | 'paused' | 'completed' | 'failed'
           total_items: number
           processed_items: number
+          successful_items: number
           failed_items: number
           config: Json | null
           results: Json | null
@@ -370,6 +384,7 @@ export interface Database {
           status?: 'pending' | 'running' | 'paused' | 'completed' | 'failed'
           total_items: number
           processed_items?: number
+          successful_items?: number
           failed_items?: number
           config?: Json | null
           results?: Json | null
@@ -388,6 +403,7 @@ export interface Database {
           status?: 'pending' | 'running' | 'paused' | 'completed' | 'failed'
           total_items?: number
           processed_items?: number
+          successful_items?: number
           failed_items?: number
           config?: Json | null
           results?: Json | null
@@ -482,6 +498,234 @@ export interface Database {
           created_at?: string
         }
       }
+      activity_logs: {
+        Row: {
+          id: string
+          user_id: string | null
+          user_email: string | null
+          session_id: string | null
+          action_type: string
+          action_category: ActivityCategory
+          action_description: string | null
+          resource_type: string | null
+          resource_id: string | null
+          resource_name: string | null
+          ip_address: string | null
+          user_agent: string | null
+          request_path: string | null
+          request_method: string | null
+          metadata: Json
+          status: 'success' | 'failure' | 'pending'
+          error_message: string | null
+          duration_ms: number | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          user_email?: string | null
+          session_id?: string | null
+          action_type: string
+          action_category: ActivityCategory
+          action_description?: string | null
+          resource_type?: string | null
+          resource_id?: string | null
+          resource_name?: string | null
+          ip_address?: string | null
+          user_agent?: string | null
+          request_path?: string | null
+          request_method?: string | null
+          metadata?: Json
+          status?: 'success' | 'failure' | 'pending'
+          error_message?: string | null
+          duration_ms?: number | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          user_email?: string | null
+          session_id?: string | null
+          action_type?: string
+          action_category?: ActivityCategory
+          action_description?: string | null
+          resource_type?: string | null
+          resource_id?: string | null
+          resource_name?: string | null
+          ip_address?: string | null
+          user_agent?: string | null
+          request_path?: string | null
+          request_method?: string | null
+          metadata?: Json
+          status?: 'success' | 'failure' | 'pending'
+          error_message?: string | null
+          duration_ms?: number | null
+          created_at?: string
+        }
+      }
+      api_call_logs: {
+        Row: {
+          id: string
+          user_id: string | null
+          user_email: string | null
+          endpoint: string
+          method: string
+          request_body: Json | null
+          request_headers: Json | null
+          query_params: Json | null
+          response_status: number | null
+          response_body: Json | null
+          response_size_bytes: number | null
+          duration_ms: number | null
+          external_apis_called: Json
+          error_type: string | null
+          error_message: string | null
+          error_stack: string | null
+          trace_id: string | null
+          parent_trace_id: string | null
+          estimated_cost: number | null
+          tokens_used: Json | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          user_email?: string | null
+          endpoint: string
+          method: string
+          request_body?: Json | null
+          request_headers?: Json | null
+          query_params?: Json | null
+          response_status?: number | null
+          response_body?: Json | null
+          response_size_bytes?: number | null
+          duration_ms?: number | null
+          external_apis_called?: Json
+          error_type?: string | null
+          error_message?: string | null
+          error_stack?: string | null
+          trace_id?: string | null
+          parent_trace_id?: string | null
+          estimated_cost?: number | null
+          tokens_used?: Json | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          user_email?: string | null
+          endpoint?: string
+          method?: string
+          request_body?: Json | null
+          request_headers?: Json | null
+          query_params?: Json | null
+          response_status?: number | null
+          response_body?: Json | null
+          response_size_bytes?: number | null
+          duration_ms?: number | null
+          external_apis_called?: Json
+          error_type?: string | null
+          error_message?: string | null
+          error_stack?: string | null
+          trace_id?: string | null
+          parent_trace_id?: string | null
+          estimated_cost?: number | null
+          tokens_used?: Json | null
+          created_at?: string
+        }
+      }
+      generation_event_logs: {
+        Row: {
+          id: string
+          activity_log_id: string | null
+          api_call_log_id: string | null
+          generation_id: string | null
+          user_id: string | null
+          event_type: GenerationEventType
+          product_id: string | null
+          product_name: string | null
+          keywords_used: string[] | null
+          srt_length: number | null
+          video_url: string | null
+          pipeline_config: Json | null
+          prompt_version_id: string | null
+          weights_version_id: string | null
+          description_length: number | null
+          timestamps_count: number | null
+          hashtags_count: number | null
+          faq_count: number | null
+          quality_scores: Json | null
+          final_score: number | null
+          grounding_sources_count: number | null
+          grounding_citations_count: number | null
+          total_duration_ms: number | null
+          stage_durations: Json | null
+          is_refined: boolean
+          refinement_focus: string | null
+          refinement_iteration: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          activity_log_id?: string | null
+          api_call_log_id?: string | null
+          generation_id?: string | null
+          user_id?: string | null
+          event_type: GenerationEventType
+          product_id?: string | null
+          product_name?: string | null
+          keywords_used?: string[] | null
+          srt_length?: number | null
+          video_url?: string | null
+          pipeline_config?: Json | null
+          prompt_version_id?: string | null
+          weights_version_id?: string | null
+          description_length?: number | null
+          timestamps_count?: number | null
+          hashtags_count?: number | null
+          faq_count?: number | null
+          quality_scores?: Json | null
+          final_score?: number | null
+          grounding_sources_count?: number | null
+          grounding_citations_count?: number | null
+          total_duration_ms?: number | null
+          stage_durations?: Json | null
+          is_refined?: boolean
+          refinement_focus?: string | null
+          refinement_iteration?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          activity_log_id?: string | null
+          api_call_log_id?: string | null
+          generation_id?: string | null
+          user_id?: string | null
+          event_type?: GenerationEventType
+          product_id?: string | null
+          product_name?: string | null
+          keywords_used?: string[] | null
+          srt_length?: number | null
+          video_url?: string | null
+          pipeline_config?: Json | null
+          prompt_version_id?: string | null
+          weights_version_id?: string | null
+          description_length?: number | null
+          timestamps_count?: number | null
+          hashtags_count?: number | null
+          faq_count?: number | null
+          quality_scores?: Json | null
+          final_score?: number | null
+          grounding_sources_count?: number | null
+          grounding_citations_count?: number | null
+          total_duration_ms?: number | null
+          stage_durations?: Json | null
+          is_refined?: boolean
+          refinement_focus?: string | null
+          refinement_iteration?: number
+          created_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
@@ -490,6 +734,14 @@ export interface Database {
       increment_cache_hit: {
         Args: { row_cache_key: string }
         Returns: void
+      }
+      get_user_activity_summary: {
+        Args: { p_user_id: string; p_days: number }
+        Returns: Json[]
+      }
+      get_recent_api_errors: {
+        Args: { p_user_id: string | null; p_limit: number }
+        Returns: Json[]
       }
     }
     Enums: {

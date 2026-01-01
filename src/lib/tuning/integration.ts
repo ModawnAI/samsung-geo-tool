@@ -1,0 +1,444 @@
+/**
+ * Tuning Integration Service
+ * Bridges tuning console configuration with generate-v2 pipeline
+ * Connects prompts, weights, and tracking across the system
+ */
+
+import { createClient } from '@/lib/supabase/server'
+import {
+  loadActivePrompt,
+  loadActivePrompts,
+  interpolatePrompt,
+  composeStagePrompt,
+  getDefaultPrompt,
+  type LoadedPrompt,
+  type PromptLoaderResult,
+  type StagePromptConfig,
+} from './prompt-loader'
+import {
+  loadActiveWeights,
+  calculateWeightedScore,
+  calculateScoreBreakdown,
+  getDefaultWeights,
+  type LoadedWeights,
+  type WeightsLoaderResult,
+  type ScoreBreakdown,
+} from './weights-loader'
+import type { Engine, WeightValues } from '@/types/tuning'
+
+// ==========================================
+// CONFIGURATION TYPES
+// ==========================================
+
+export interface TuningConfig {
+  prompts: Record<Engine, PromptLoaderResult>
+  weights: WeightsLoaderResult
+  loadedAt: string
+  source: 'database' | 'default' | 'mixed'
+}
+
+export interface GenerationContext {
+  config: TuningConfig
+  generationId?: string
+  trackPromptVersion: boolean
+}
+
+export interface StageResult {
+  stage: string
+  promptVersionId: string | null
+  weightsVersionId: string | null
+  executionTimeMs: number
+  success: boolean
+  error?: string
+}
+
+export interface GEOScoreResult {
+  scores: Partial<Record<keyof WeightValues, number>>
+  breakdown: ScoreBreakdown[]
+  finalScore: number
+  weightsVersionId: string | null
+  weightsSource: 'database' | 'default'
+}
+
+// ==========================================
+// CONFIGURATION LOADING
+// ==========================================
+
+/**
+ * Load complete tuning configuration for a generation run
+ * Fetches active prompts for all engines and active weights
+ */
+export async function loadTuningConfig(): Promise<TuningConfig> {
+  const [prompts, weights] = await Promise.all([
+    loadActivePrompts(['gemini', 'perplexity', 'cohere']),
+    loadActiveWeights(),
+  ])
+
+  // Determine overall source
+  const promptSources = Object.values(prompts).map(p => p.source)
+  const allDatabase = promptSources.every(s => s === 'database') && weights.source === 'database'
+  const allDefault = promptSources.every(s => s === 'default') && weights.source === 'default'
+  const source = allDatabase ? 'database' : allDefault ? 'default' : 'mixed'
+
+  return {
+    prompts,
+    weights,
+    loadedAt: new Date().toISOString(),
+    source,
+  }
+}
+
+/**
+ * Load tuning configuration for specific engines only
+ * Use when you only need a subset of engines
+ */
+export async function loadTuningConfigForEngines(
+  engines: Engine[]
+): Promise<TuningConfig> {
+  const [prompts, weights] = await Promise.all([
+    loadActivePrompts(engines),
+    loadActiveWeights(),
+  ])
+
+  const promptSources = Object.values(prompts).map(p => p.source)
+  const allDatabase = promptSources.every(s => s === 'database') && weights.source === 'database'
+  const allDefault = promptSources.every(s => s === 'default') && weights.source === 'default'
+
+  return {
+    prompts,
+    weights,
+    loadedAt: new Date().toISOString(),
+    source: allDatabase ? 'database' : allDefault ? 'default' : 'mixed',
+  }
+}
+
+// ==========================================
+// PROMPT COMPOSITION
+// ==========================================
+
+export type PipelineStage =
+  | 'description'
+  | 'usp'
+  | 'faq'
+  | 'chapters'
+  | 'case_studies'
+  | 'keywords'
+  | 'hashtags'
+
+interface StagePromptOptions {
+  stage: PipelineStage
+  engine: Engine
+  language: 'ko' | 'en'
+  antiFabricationLevel?: 'low' | 'medium' | 'high'
+  variables?: Record<string, string | string[]>
+}
+
+/**
+ * Get composed prompt for a specific pipeline stage
+ * Combines base prompt from database with stage-specific instructions
+ */
+export function getStagePrompt(
+  config: TuningConfig,
+  options: StagePromptOptions
+): {
+  prompt: string
+  promptVersionId: string | null
+  source: 'database' | 'default'
+} {
+  const { stage, engine, language, antiFabricationLevel = 'medium', variables } = options
+
+  const promptResult = config.prompts[engine]
+  const basePrompt = promptResult.prompt?.systemPrompt || getDefaultPrompt(engine)
+
+  // Compose with stage-specific instructions
+  const composed = composeStagePrompt({
+    stage,
+    basePrompt,
+    antiFabricationLevel,
+    language,
+  })
+
+  // Interpolate variables if provided
+  const finalPrompt = variables
+    ? interpolatePrompt(composed, variables)
+    : composed
+
+  return {
+    prompt: finalPrompt,
+    promptVersionId: promptResult.source === 'database' ? promptResult.prompt?.id || null : null,
+    source: promptResult.source,
+  }
+}
+
+/**
+ * Get base prompt for an engine without stage composition
+ * Use for custom stage logic
+ */
+export function getBasePrompt(
+  config: TuningConfig,
+  engine: Engine
+): {
+  prompt: string
+  promptVersionId: string | null
+  source: 'database' | 'default'
+} {
+  const promptResult = config.prompts[engine]
+
+  return {
+    prompt: promptResult.prompt?.systemPrompt || getDefaultPrompt(engine),
+    promptVersionId: promptResult.source === 'database' ? promptResult.prompt?.id || null : null,
+    source: promptResult.source,
+  }
+}
+
+// ==========================================
+// SCORE CALCULATION
+// ==========================================
+
+/**
+ * Map generate-v2 scores to weight metric names
+ * Bridges the scoring system with tuning weights
+ */
+export interface RawGenerationScores {
+  keywordDensity: number        // maps to keyword_density
+  aiExposure: number            // maps to grounding_score
+  questionPatterns: number      // contributes to structure_quality
+  sentenceStructure: number     // contributes to structure_quality
+  lengthCompliance: number      // contributes to structure_quality
+  groundingQuality: number      // maps to grounding_score
+  uspCoverage?: number          // maps to usp_coverage
+  semanticSimilarity?: number   // maps to semantic_similarity
+  antiFabrication?: number      // maps to anti_fabrication
+}
+
+/**
+ * Calculate final GEO score using loaded weights
+ * Normalizes raw generation scores to weight metrics
+ */
+export function calculateGEOScore(
+  rawScores: RawGenerationScores,
+  config: TuningConfig
+): GEOScoreResult {
+  const weights = config.weights.weights?.weights || getDefaultWeights()
+
+  // Normalize raw scores to 0-1 scale and map to weight metrics
+  // Current scoring is out of various maxes, normalize to 0-1
+  const normalizedScores: Partial<Record<keyof WeightValues, number>> = {
+    // Keyword density: 0-20 points -> 0-1
+    keyword_density: Math.min(1, (rawScores.keywordDensity || 0) / 20),
+
+    // Grounding: combine aiExposure (0-30) and groundingQuality (0-20)
+    grounding_score: Math.min(1,
+      ((rawScores.aiExposure || 0) / 30 + (rawScores.groundingQuality || 0) / 20) / 2
+    ),
+
+    // Structure quality: combine question, sentence, length (each 0-15/20)
+    structure_quality: Math.min(1,
+      ((rawScores.questionPatterns || 0) / 20 +
+       (rawScores.sentenceStructure || 0) / 15 +
+       (rawScores.lengthCompliance || 0) / 15) / 3
+    ),
+
+    // USP coverage: direct if available, estimate from content otherwise
+    usp_coverage: rawScores.uspCoverage !== undefined
+      ? Math.min(1, rawScores.uspCoverage)
+      : 0.7, // default estimate
+
+    // Semantic similarity: direct if available
+    semantic_similarity: rawScores.semanticSimilarity !== undefined
+      ? Math.min(1, rawScores.semanticSimilarity)
+      : 0.75, // default estimate
+
+    // Anti-fabrication: direct if available
+    anti_fabrication: rawScores.antiFabrication !== undefined
+      ? Math.min(1, rawScores.antiFabrication)
+      : 0.8, // default estimate (high because of guardrails)
+  }
+
+  const { breakdown, finalScore } = calculateScoreBreakdown(normalizedScores, weights)
+
+  return {
+    scores: normalizedScores,
+    breakdown,
+    finalScore: Math.round(finalScore * 100), // Convert to 0-100 scale
+    weightsVersionId: config.weights.weights?.id || null,
+    weightsSource: config.weights.source,
+  }
+}
+
+/**
+ * Calculate enhanced GEO score with all metrics
+ * Use when you have complete scoring data
+ */
+export function calculateEnhancedGEOScore(
+  scores: Partial<Record<keyof WeightValues, number>>,
+  config: TuningConfig
+): GEOScoreResult {
+  const weights = config.weights.weights?.weights || getDefaultWeights()
+  const { breakdown, finalScore } = calculateScoreBreakdown(scores, weights)
+
+  return {
+    scores,
+    breakdown,
+    finalScore: Math.round(finalScore * 100),
+    weightsVersionId: config.weights.weights?.id || null,
+    weightsSource: config.weights.source,
+  }
+}
+
+// ==========================================
+// GENERATION TRACKING
+// ==========================================
+
+/**
+ * Record which prompt version was used for a generation
+ * Creates audit trail for A/B testing and analysis
+ */
+export async function recordGenerationPromptVersion(
+  generationId: string,
+  promptVersionId: string | null
+): Promise<{ success: boolean; error?: string }> {
+  if (!promptVersionId) {
+    return { success: true } // No tracking needed for default prompts
+  }
+
+  try {
+    const supabase = await createClient()
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any)
+      .from('generations')
+      .update({ created_with_prompt_version: promptVersionId })
+      .eq('id', generationId)
+
+    if (error) throw error
+
+    return { success: true }
+  } catch (error) {
+    console.error('[Integration] Failed to record prompt version:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }
+  }
+}
+
+/**
+ * Create validation result record for comparing AI vs human scores
+ * Used by ValidationService for quality analysis
+ */
+export async function createValidationRecord(params: {
+  generationId: string
+  promptVersionId: string | null
+  weightsVersionId: string | null
+  aiScores: Record<string, number>
+}): Promise<{ id: string | null; error?: string }> {
+  try {
+    const supabase = await createClient()
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any)
+      .from('validation_results')
+      .insert({
+        generation_id: params.generationId,
+        prompt_version_id: params.promptVersionId,
+        weights_version_id: params.weightsVersionId,
+        ai_scores: params.aiScores,
+        validation_status: 'pending',
+      })
+      .select('id')
+      .single()
+
+    if (error) throw error
+
+    const row = data as { id: string } | null
+    return { id: row?.id || null }
+  } catch (error) {
+    console.error('[Integration] Failed to create validation record:', error)
+    return {
+      id: null,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }
+  }
+}
+
+// ==========================================
+// CONFIGURATION SUMMARY
+// ==========================================
+
+/**
+ * Get summary of current tuning configuration
+ * Useful for debugging and status display
+ */
+export function getTuningConfigSummary(config: TuningConfig): {
+  promptsLoaded: number
+  promptsSources: Record<Engine, 'database' | 'default'>
+  weightsSource: 'database' | 'default'
+  weightsName: string
+  loadedAt: string
+} {
+  const promptsSources = {} as Record<Engine, 'database' | 'default'>
+  let promptsLoaded = 0
+
+  for (const [engine, result] of Object.entries(config.prompts) as [Engine, PromptLoaderResult][]) {
+    promptsSources[engine] = result.source
+    if (result.source === 'database') promptsLoaded++
+  }
+
+  return {
+    promptsLoaded,
+    promptsSources,
+    weightsSource: config.weights.source,
+    weightsName: config.weights.weights?.name || 'Default Weights',
+    loadedAt: config.loadedAt,
+  }
+}
+
+/**
+ * Check if configuration is fully from database (production ready)
+ */
+export function isProductionConfig(config: TuningConfig): boolean {
+  return config.source === 'database'
+}
+
+/**
+ * Check if any configuration failed to load
+ */
+export function hasConfigErrors(config: TuningConfig): {
+  hasErrors: boolean
+  errors: string[]
+} {
+  const errors: string[] = []
+
+  for (const [engine, result] of Object.entries(config.prompts)) {
+    if (result.error) {
+      errors.push(`${engine} prompt: ${result.error}`)
+    }
+  }
+
+  if (config.weights.error) {
+    errors.push(`weights: ${config.weights.error}`)
+  }
+
+  return {
+    hasErrors: errors.length > 0,
+    errors,
+  }
+}
+
+// ==========================================
+// EXPORTS FOR GENERATE-V2
+// ==========================================
+
+export {
+  loadActivePrompt,
+  loadActivePrompts,
+  loadActiveWeights,
+  interpolatePrompt,
+  getDefaultPrompt,
+  getDefaultWeights,
+  type LoadedPrompt,
+  type LoadedWeights,
+  type WeightValues,
+  type Engine,
+}

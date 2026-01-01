@@ -24,6 +24,24 @@ export interface QualityScores {
   refined: boolean // Whether content was refined
 }
 
+export interface ScoreBreakdownItem {
+  metric: string
+  label: string
+  score: number
+  weight: number
+  weightedScore: number
+  contribution: number
+}
+
+export interface TuningMetadata {
+  configSource: 'database' | 'defaults'
+  promptVersionId: string | null
+  weightsVersionId: string | null
+  weightsName: string | null
+  loadedAt: string
+  scoreBreakdown: ScoreBreakdownItem[]
+}
+
 export interface GenerationBreakdown {
   playbookInfluence: {
     sectionsUsed: string[]
@@ -68,6 +86,7 @@ interface GenerationState {
   hashtags: string[]
   faq: string
   breakdown: GenerationBreakdown | null
+  tuningMetadata: TuningMetadata | null
   isGenerating: boolean
 
   // Saved generation tracking
@@ -94,6 +113,7 @@ interface GenerationState {
     hashtags: string[]
     faq: string
     breakdown?: GenerationBreakdown
+    tuningMetadata?: TuningMetadata
   }) => void
   setIsGenerating: (generating: boolean) => void
   setGenerationId: (id: string | null) => void
@@ -135,6 +155,7 @@ const initialState = {
   hashtags: [],
   faq: '',
   breakdown: null as GenerationBreakdown | null,
+  tuningMetadata: null as TuningMetadata | null,
   isGenerating: false,
   generationId: null,
   generationStatus: 'unsaved' as const,
@@ -181,6 +202,7 @@ export const useGenerationStore = create<GenerationState>((set, get) => ({
     hashtags: output.hashtags,
     faq: output.faq,
     breakdown: output.breakdown || null,
+    tuningMetadata: output.tuningMetadata || null,
   }),
 
   setIsGenerating: (isGenerating) => set({ isGenerating }),

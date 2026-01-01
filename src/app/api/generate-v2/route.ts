@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenAI } from '@google/genai'
 import { multiQuerySearch, getSectionContext } from '@/lib/rag/search'
 import { isPineconeConfigured } from '@/lib/pinecone/client'
+import { safeJsonParse } from '@/lib/utils'
 import {
   executeGEOv2Pipeline,
   extractUSPs,
@@ -20,6 +21,19 @@ import {
   PIPELINE_CONFIGS,
   type PipelineInput,
 } from '@/lib/geo-v2'
+import {
+  loadTuningConfig,
+  getStagePrompt,
+  getBasePrompt,
+  calculateGEOScore,
+  recordGenerationPromptVersion,
+  getTuningConfigSummary,
+  type TuningConfig,
+  type RawGenerationScores,
+  type PipelineStage,
+} from '@/lib/tuning/integration'
+import { logGenerationFlow, createApiLoggerContext, finalizeApiLog } from '@/lib/logging'
+import { createClient } from '@/lib/supabase/server'
 import type {
   GEOv2GenerateResponse,
   PipelineProgress,
@@ -32,6 +46,73 @@ import type {
 import type { ProductCategory, PlaybookSearchResult, PlaybookSection } from '@/types/playbook'
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+
+// ==========================================
+// RETRY HELPER FOR TRANSIENT FAILURES
+// ==========================================
+
+interface RetryOptions {
+  maxRetries?: number
+  baseDelayMs?: number
+  maxDelayMs?: number
+  context?: string
+}
+
+/**
+ * Retry wrapper with exponential backoff for Gemini API calls
+ * Handles ECONNRESET, timeout, and other transient failures
+ */
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  options: RetryOptions = {}
+): Promise<T> {
+  const {
+    maxRetries = 3,
+    baseDelayMs = 1000,
+    maxDelayMs = 10000,
+    context = 'API call'
+  } = options
+
+  let lastError: Error | null = null
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn()
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error))
+
+      // Check if it's a retryable error
+      const errorMessage = lastError.message.toLowerCase()
+      const errorCode = (error as { code?: string })?.code?.toLowerCase() || ''
+
+      const isRetryable =
+        errorCode === 'econnreset' ||
+        errorCode === 'etimedout' ||
+        errorCode === 'econnrefused' ||
+        errorMessage.includes('aborted') ||
+        errorMessage.includes('timeout') ||
+        errorMessage.includes('network') ||
+        errorMessage.includes('socket') ||
+        errorMessage.includes('connection')
+
+      if (!isRetryable || attempt === maxRetries) {
+        console.error(`[${context}] Non-retryable error or max retries reached:`, lastError.message)
+        throw lastError
+      }
+
+      // Calculate delay with exponential backoff + jitter
+      const exponentialDelay = Math.min(baseDelayMs * Math.pow(2, attempt - 1), maxDelayMs)
+      const jitter = Math.random() * 500
+      const delay = exponentialDelay + jitter
+
+      console.warn(`[${context}] Attempt ${attempt}/${maxRetries} failed (${errorCode || errorMessage}), retrying in ${Math.round(delay)}ms...`)
+
+      await new Promise(resolve => setTimeout(resolve, delay))
+    }
+  }
+
+  throw lastError || new Error(`${context} failed after ${maxRetries} attempts`)
+}
 
 // ==========================================
 // V2 REQUEST/RESPONSE TYPES
@@ -180,9 +261,28 @@ const keywordsSchema = {
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now()
+  const loggerContext = createApiLoggerContext(request)
+
+  // Track external API calls for logging
+  const externalApisCalled: Array<{ name: string; durationMs: number; status: number | string }> = []
+
+  // Declare body outside try block so it's accessible in catch block for logging
+  let body: GEOv2GenerateRequest | undefined
+
+  // Get authenticated user for logging
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      loggerContext.userId = user.id
+      loggerContext.userEmail = user.email
+    }
+  } catch {
+    // Continue without user context - logging still works
+  }
 
   try {
-    const body: GEOv2GenerateRequest = await request.json()
+    body = await request.json() as GEOv2GenerateRequest
     const {
       productName,
       youtubeUrl,
@@ -206,6 +306,21 @@ export async function POST(request: NextRequest) {
 
     console.log(`[GEO v2] Starting pipeline: ${pipelineConfig}`)
     console.log(`[GEO v2] Product: ${productName}, Keywords: ${keywords.length}`)
+
+    // ==========================================
+    // LOAD TUNING CONFIGURATION
+    // ==========================================
+    const tuningConfig = await loadTuningConfig()
+    const tuningConfigSummary = getTuningConfigSummary(tuningConfig)
+    console.log(`[GEO v2] Tuning config loaded: ${tuningConfig.source}`)
+    console.log(`[GEO v2] Prompts: ${tuningConfigSummary.promptsLoaded} from DB, Weights: ${tuningConfigSummary.weightsSource}`)
+
+    // Track which prompt version was used for this generation
+    let activePromptVersionId: string | null = null
+    const geminiPromptResult = tuningConfig.prompts.gemini
+    if (geminiPromptResult.source === 'database' && geminiPromptResult.prompt) {
+      activePromptVersionId = geminiPromptResult.prompt.id
+    }
 
     // ==========================================
     // STAGE 0: PARALLEL DATA FETCHING
@@ -234,13 +349,21 @@ export async function POST(request: NextRequest) {
       keywords,
       groundingSignals,
       playbookContext,
-      language
+      language,
+      tuningConfig
     )
 
     // Extract grounding sources from description generation
     const descriptionGroundingSources = extractSourcesFromGrounding(descriptionResult.groundingChunks)
 
-    console.log(`[GEO v2] Description generated with ${descriptionGroundingSources.length} sources`)
+    // Fallback: Convert grounding signals to sources if Gemini native grounding is not available
+    // This ensures USP enrichment can still work with Google/Perplexity search results
+    const signalBasedSources = convertSignalsToSources(groundingSignals)
+    const combinedGroundingSources = descriptionGroundingSources.length > 0
+      ? descriptionGroundingSources
+      : signalBasedSources
+
+    console.log(`[GEO v2] Description generated with ${descriptionGroundingSources.length} Gemini sources, ${signalBasedSources.length} signal-based sources`)
 
     // ==========================================
     // STAGE 1.5: USP EXTRACTION
@@ -250,7 +373,7 @@ export async function POST(request: NextRequest) {
       srtContent,
       keywords,
       groundingSignals,
-      groundingSources: descriptionGroundingSources,
+      groundingSources: combinedGroundingSources,
     })
 
     console.log(`[GEO v2] USPs extracted: ${uspResult.usps.length}, Method: ${uspResult.extractionMethod}`)
@@ -259,8 +382,8 @@ export async function POST(request: NextRequest) {
     // STAGE 2 & 3: PARALLEL - CHAPTERS + FAQ
     // ==========================================
     const [chaptersResult, faqResult] = await Promise.all([
-      generateChapters(srtContent, productName),
-      generateFAQ(productName, srtContent, uspResult.usps, groundingSignals, language),
+      generateChapters(srtContent, productName, tuningConfig),
+      generateFAQ(productName, srtContent, uspResult.usps, groundingSignals, language, tuningConfig),
     ])
 
     console.log(`[GEO v2] Chapters: ${chaptersResult.timestamps.split('\n').length} entries`)
@@ -273,9 +396,9 @@ export async function POST(request: NextRequest) {
 
     const [stepByStepResult, caseStudiesResult] = await Promise.all([
       isTutorialContent
-        ? generateStepByStep(srtContent, productName, language)
+        ? generateStepByStep(srtContent, productName, language, tuningConfig)
         : Promise.resolve(null),
-      generateCaseStudies(productName, uspResult.usps, groundingSignals, language),
+      generateCaseStudies(productName, uspResult.usps, groundingSignals, language, tuningConfig),
     ])
 
     if (stepByStepResult) {
@@ -291,7 +414,8 @@ export async function POST(request: NextRequest) {
       srtContent,
       keywords,
       groundingSignals,
-      language
+      language,
+      tuningConfig
     )
 
     // ==========================================
@@ -302,7 +426,8 @@ export async function POST(request: NextRequest) {
       descriptionResult.description.full,
       uspResult.usps,
       keywordsResult,
-      language
+      language,
+      tuningConfig
     )
 
     console.log(`[GEO v2] Keywords: ${keywordsResult.product.length + keywordsResult.generic.length}`)
@@ -337,7 +462,7 @@ export async function POST(request: NextRequest) {
     const groundingMetadata = aggregateGroundingMetadata(stageGroundingData)
 
     // ==========================================
-    // FINAL SCORE CALCULATION
+    // FINAL SCORE CALCULATION (Using Tuning Weights)
     // ==========================================
     const groundingQuality = calculateGroundingQualityScore({
       sources: groundingMetadata.sources,
@@ -348,13 +473,29 @@ export async function POST(request: NextRequest) {
       citedContentLength: groundingMetadata.totalCitations * 200,
     })
 
-    // Calculate component scores
+    // Calculate legacy component scores for backward compatibility
     const keywordDensityScore = Math.min(15, Math.round(keywordsResult.densityScore / 100 * 15))
     const aiExposureScore = Math.min(25, Math.round((uspResult.groundingQuality / 100) * 25))
     const questionPatternsScore = Math.min(20, Math.round((faqResult.faqs.length / 7) * 20))
     const sentenceStructureScore = 12 // Would be calculated from actual content analysis
     const lengthComplianceScore = calculateLengthComplianceScore(descriptionResult.description.full)
 
+    // Calculate GEO score using tuning weights
+    const rawGenerationScores: RawGenerationScores = {
+      keywordDensity: keywordDensityScore,
+      aiExposure: aiExposureScore,
+      questionPatterns: questionPatternsScore,
+      sentenceStructure: sentenceStructureScore,
+      lengthCompliance: lengthComplianceScore,
+      groundingQuality: groundingQuality.total,
+      uspCoverage: uspResult.usps.length > 0 ? uspResult.groundingQuality / 100 : 0.5,
+      semanticSimilarity: 0.75, // TODO: Calculate from content similarity analysis
+      antiFabrication: 0.85, // High default due to anti-fabrication guardrails
+    }
+
+    const geoScoreResult = calculateGEOScore(rawGenerationScores, tuningConfig)
+
+    // Combine legacy format with weighted GEO score
     const finalScore = {
       keywordDensity: keywordDensityScore,
       aiExposure: aiExposureScore,
@@ -362,13 +503,22 @@ export async function POST(request: NextRequest) {
       sentenceStructure: sentenceStructureScore,
       lengthCompliance: lengthComplianceScore,
       groundingQuality,
-      total: Math.round(
-        (keywordDensityScore + aiExposureScore + questionPatternsScore +
-          sentenceStructureScore + lengthComplianceScore + groundingQuality.total) * 100
-      ) / 100,
+      // New weighted scoring breakdown
+      geoScore: geoScoreResult.finalScore,
+      geoBreakdown: geoScoreResult.breakdown,
+      weightsSource: geoScoreResult.weightsSource,
+      weightsVersionId: geoScoreResult.weightsVersionId,
+      // Total uses weighted GEO score when weights are from database, otherwise legacy
+      total: geoScoreResult.weightsSource === 'database'
+        ? geoScoreResult.finalScore
+        : Math.round(
+            (keywordDensityScore + aiExposureScore + questionPatternsScore +
+              sentenceStructureScore + lengthComplianceScore + groundingQuality.total) * 100
+          ) / 100,
     }
 
-    console.log(`[GEO v2] Final score: ${finalScore.total}/100`)
+    console.log(`[GEO v2] Final score: ${finalScore.total}/100 (${geoScoreResult.weightsSource} weights)`)
+    console.log(`[GEO v2] GEO breakdown: ${geoScoreResult.breakdown.map(b => `${b.label}: ${b.weightedScore.toFixed(2)}`).join(', ')}`)
     console.log(`[GEO v2] Pipeline completed in ${Date.now() - startTime}ms`)
 
     // ==========================================
@@ -387,11 +537,98 @@ export async function POST(request: NextRequest) {
       finalScore,
       groundingMetadata,
       progress: [],
+      // Tuning metadata for tracking and analysis
+      tuningMetadata: {
+        configSource: tuningConfig.source,
+        promptVersionId: activePromptVersionId,
+        weightsVersionId: geoScoreResult.weightsVersionId,
+        weightsName: tuningConfigSummary.weightsName,
+        loadedAt: tuningConfig.loadedAt,
+        scoreBreakdown: geoScoreResult.breakdown.map(b => ({
+          metric: b.metric,
+          label: b.label,
+          score: b.score,
+          weight: b.weight,
+          weightedScore: b.weightedScore,
+          contribution: b.contribution,
+        })),
+      },
     }
+
+    // Log successful generation
+    const totalDurationMs = Date.now() - startTime
+    await logGenerationFlow({
+      userId: loggerContext.userId,
+      userEmail: loggerContext.userEmail,
+      productName: body!.productName,
+      keywordsUsed: body!.keywords,
+      srtLength: body!.srtContent?.length,
+      videoUrl: body!.youtubeUrl,
+      pipelineConfig: {
+        usePlaybook: body!.usePlaybook,
+        language: body!.language,
+        pipelineConfig: body!.pipelineConfig,
+      },
+      promptVersionId: response.tuningMetadata?.promptVersionId ?? undefined,
+      weightsVersionId: response.tuningMetadata?.weightsVersionId ?? undefined,
+      eventType: 'generation_completed',
+      output: {
+        descriptionLength: response.description?.full?.length,
+        timestampsCount: response.chapters?.timestamps?.split('\n').filter(Boolean).length,
+        hashtagsCount: response.hashtags?.length,
+        faqCount: response.faq?.faqs?.length,
+        qualityScores: response.finalScore ? {
+          total: response.finalScore.total,
+          keywordDensity: response.finalScore.keywordDensity,
+          sentenceStructure: response.finalScore.sentenceStructure,
+          questionPatterns: response.finalScore.questionPatterns,
+          aiExposure: response.finalScore.aiExposure,
+        } : undefined,
+        finalScore: response.finalScore?.total,
+        groundingSourcesCount: response.groundingMetadata?.sources?.length,
+        groundingCitationsCount: response.groundingMetadata?.totalCitations,
+      },
+      performance: {
+        totalDurationMs,
+        externalApisCalled,
+      },
+      requestContext: {
+        endpoint: '/api/generate-v2',
+        method: 'POST',
+        traceId: loggerContext.traceId,
+      },
+    })
 
     return NextResponse.json(response)
   } catch (error) {
     console.error('[GEO v2] Pipeline error:', error)
+
+    // Log failed generation
+    const totalDurationMs = Date.now() - startTime
+    await logGenerationFlow({
+      userId: loggerContext.userId,
+      userEmail: loggerContext.userEmail,
+      productName: body?.productName,
+      keywordsUsed: body?.keywords,
+      srtLength: body?.srtContent?.length,
+      videoUrl: body?.youtubeUrl,
+      eventType: 'generation_failed',
+      error: {
+        type: error instanceof Error ? error.constructor.name : 'UnknownError',
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      },
+      performance: {
+        totalDurationMs,
+        externalApisCalled,
+      },
+      requestContext: {
+        endpoint: '/api/generate-v2',
+        method: 'POST',
+        traceId: loggerContext.traceId,
+      },
+    })
+
     return NextResponse.json(
       { error: 'Failed to generate v2 content', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
@@ -406,6 +643,7 @@ export async function POST(request: NextRequest) {
 /**
  * Stage 1: Generate Description with Google Grounding
  * Based on AEO_GEO_PROMPTS_DOCUMENTATION.md - createDescriptionPrompt()
+ * Now uses dynamic prompts from tuning configuration
  */
 async function generateDescription(
   productName: string,
@@ -414,14 +652,31 @@ async function generateDescription(
   keywords: string[],
   groundingSignals: GroundingSignal[],
   playbookContext: PlaybookSearchResult[],
-  language: 'ko' | 'en'
+  language: 'ko' | 'en',
+  tuningConfig: TuningConfig
 ): Promise<{
   description: { preview: string; full: string; vanityLinks: string[] }
   groundingChunks: Array<{ web?: { uri: string; title: string } }>
 }> {
+  // Get dynamic prompt from tuning configuration
+  const { prompt: basePrompt, promptVersionId, source } = getStagePrompt(tuningConfig, {
+    stage: 'description',
+    engine: 'gemini',
+    language,
+    antiFabricationLevel: 'high',
+    variables: {
+      product_name: productName,
+      keywords: keywords,
+    },
+  })
+
+  console.log(`[Stage:Description] Using ${source} prompt${promptVersionId ? ` (v${promptVersionId.slice(-8)})` : ''}`)
+
   const antiFabPrompt = getAntiFabricationPrompt('high')
 
-  const systemInstruction = `You are a GEO/AEO optimization expert for Samsung content.
+  const systemInstruction = `${basePrompt}
+
+You are a GEO/AEO optimization expert for Samsung content.
 ${antiFabPrompt}
 
 CONTEXT:
@@ -533,27 +788,49 @@ OUTPUT FORMAT (JSON):
 }`
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-flash-latest',
-      contents: userPrompt,
-      config: {
-        systemInstruction,
-        responseMimeType: 'application/json',
-        responseJsonSchema: descriptionSchema,
-        temperature: 0.7,
-        maxOutputTokens: 1500,
-        // Enable Google Search grounding
-        tools: [{ googleSearch: {} }],
-      },
-    })
+    const response = await withRetry(
+      () => ai.models.generateContent({
+        model: 'gemini-flash-latest',
+        contents: userPrompt,
+        config: {
+          systemInstruction,
+          responseMimeType: 'application/json',
+          responseJsonSchema: descriptionSchema,
+          temperature: 0.7,
+          maxOutputTokens: 4000,
+        },
+      }),
+      { context: 'Description Generation' }
+    )
+
+    // Debug: Log raw response structure
+    console.log('[Description] Raw response keys:', Object.keys(response))
+    console.log('[Description] Response text type:', typeof response.text)
+    console.log('[Description] Response text length:', response.text?.length || 0)
+    console.log('[Description] Response text preview:', response.text?.slice(0, 200))
+
+    // Check for candidates and error information
+    const responseAny = response as unknown as Record<string, unknown>
+    if (responseAny.candidates) {
+      console.log('[Description] Candidates:', JSON.stringify(responseAny.candidates, null, 2).slice(0, 500))
+    }
+    if (responseAny.promptFeedback) {
+      console.log('[Description] Prompt feedback:', JSON.stringify(responseAny.promptFeedback))
+    }
+    if (responseAny.error) {
+      console.error('[Description] API Error:', JSON.stringify(responseAny.error))
+    }
 
     const content = response.text
     if (!content) throw new Error('No description generated')
 
-    const parsed = JSON.parse(content)
+    const parsed = safeJsonParse(content, { preview: '', full: '', vanityLinks: [] }, 'Description')
+
+    // Ensure full description exists, fallback to preview or empty string
+    const fullDescription = parsed.full || parsed.preview || ''
 
     // Sanitize for fabrications
-    const sanitized = sanitizeContent(parsed.full)
+    const sanitized = sanitizeContent(fullDescription)
     if (sanitized.wasModified) {
       console.log(`[Description] Sanitized ${sanitized.modifications.length} potential fabrications`)
     }
@@ -594,9 +871,25 @@ OUTPUT FORMAT (JSON):
  */
 async function generateChapters(
   srtContent: string,
-  productName: string
+  productName: string,
+  tuningConfig: TuningConfig
 ): Promise<{ timestamps: string; autoGenerated: boolean }> {
-  const systemInstruction = `You are creating GEO/AEO-optimized timestamp chapters for YouTube video navigation.
+  // Get dynamic prompt from tuning configuration
+  const { prompt: basePrompt, promptVersionId, source } = getStagePrompt(tuningConfig, {
+    stage: 'chapters',
+    engine: 'gemini',
+    language: 'en',
+    antiFabricationLevel: 'low',
+    variables: {
+      product_name: productName,
+    },
+  })
+
+  console.log(`[Stage:Chapters] Using ${source} prompt${promptVersionId ? ` (v${promptVersionId.slice(-8)})` : ''}`)
+
+  const systemInstruction = `${basePrompt}
+
+You are creating GEO/AEO-optimized timestamp chapters for YouTube video navigation.
 
 CRITICAL: Chapters are a strategic SEO asset that:
 1. Improve video discoverability in search results
@@ -656,9 +949,10 @@ EXAMPLES (Good vs Bad):
 - "02:30 Really cool stuff" → Marketing fluff`
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-flash-latest',
-      contents: `Generate GEO/AEO-optimized timestamp chapters for ${productName}:
+    const response = await withRetry(
+      () => ai.models.generateContent({
+        model: 'gemini-flash-latest',
+        contents: `Generate GEO/AEO-optimized timestamp chapters for ${productName}:
 
 ## SRT TRANSCRIPT
 ${srtContent.slice(0, 4000)}
@@ -672,19 +966,27 @@ OUTPUT FORMAT (JSON):
   "timestamps": "00:00 Intro\\n00:16 Design\\n00:33 50MP Camera\\n...",
   "autoGenerated": true
 }`,
-      config: {
-        systemInstruction,
-        responseMimeType: 'application/json',
-        responseJsonSchema: chaptersSchema,
-        temperature: 0.5,
-        maxOutputTokens: 800,
-      },
-    })
+        config: {
+          systemInstruction,
+          responseMimeType: 'application/json',
+          responseJsonSchema: chaptersSchema,
+          temperature: 0.5,
+          maxOutputTokens: 2000,
+        },
+      }),
+      { context: 'Chapters Generation' }
+    )
+
+    // Debug: Log raw response structure
+    console.log('[Chapters] Raw response keys:', Object.keys(response))
+    console.log('[Chapters] Response text type:', typeof response.text)
+    console.log('[Chapters] Response text length:', response.text?.length || 0)
+    console.log('[Chapters] Response text preview:', response.text?.slice(0, 200))
 
     const content = response.text
     if (!content) throw new Error('No chapters generated')
 
-    const parsed = JSON.parse(content)
+    const parsed = safeJsonParse(content, { timestamps: '' }, 'Chapters')
     return {
       timestamps: parsed.timestamps || '',
       autoGenerated: true,
@@ -707,8 +1009,22 @@ async function generateFAQ(
   srtContent: string,
   usps: UniqueSellingPoint[],
   groundingSignals: GroundingSignal[],
-  language: 'ko' | 'en'
+  language: 'ko' | 'en',
+  tuningConfig: TuningConfig
 ): Promise<{ faqs: FAQItem[]; queryPatternOptimization: boolean }> {
+  // Get dynamic prompt from tuning configuration
+  const { prompt: basePrompt, promptVersionId, source } = getStagePrompt(tuningConfig, {
+    stage: 'faq',
+    engine: 'gemini',
+    language,
+    antiFabricationLevel: 'medium',
+    variables: {
+      product_name: productName,
+    },
+  })
+
+  console.log(`[Stage:FAQ] Using ${source} prompt${promptVersionId ? ` (v${promptVersionId.slice(-8)})` : ''}`)
+
   const antiFabPrompt = getAntiFabricationPrompt('medium')
 
   const uspSummary = usps.map((usp, i) =>
@@ -784,9 +1100,10 @@ ${antiFabPrompt}
 Output in ${language === 'ko' ? 'Korean' : 'English'}.`
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-flash-latest',
-      contents: `Generate FAQ for ${productName}:
+    const response = await withRetry(
+      () => ai.models.generateContent({
+        model: 'gemini-flash-latest',
+        contents: `Generate FAQ for ${productName}:
 
 ## UNIQUE SELLING POINTS (from grounded research)
 ${uspSummary}
@@ -800,20 +1117,27 @@ ${srtContent.slice(0, 3000)}
 ## TASK
 Generate 5-7 Q&A pairs optimized for AEO (Answer Engine Optimization) using Query Fan-Out methodology.
 Each question must be 10-15 words, conversational, and cover different query fan-out angles.`,
-      config: {
-        systemInstruction,
-        responseMimeType: 'application/json',
-        responseJsonSchema: faqSchema,
-        temperature: 0.7,
-        maxOutputTokens: 2000,
-        tools: [{ googleSearch: {} }],
-      },
-    })
+        config: {
+          systemInstruction,
+          responseMimeType: 'application/json',
+          responseJsonSchema: faqSchema,
+          temperature: 0.7,
+          maxOutputTokens: 5000,
+        },
+      }),
+      { context: 'FAQ Generation' }
+    )
+
+    // Debug: Log raw response structure
+    console.log('[FAQ] Raw response keys:', Object.keys(response))
+    console.log('[FAQ] Response text type:', typeof response.text)
+    console.log('[FAQ] Response text length:', response.text?.length || 0)
+    console.log('[FAQ] Response text preview:', response.text?.slice(0, 300))
 
     const content = response.text
     if (!content) throw new Error('No FAQ generated')
 
-    const parsed = JSON.parse(content)
+    const parsed = safeJsonParse(content, { faqs: [] }, 'FAQ')
     return {
       faqs: parsed.faqs || [],
       queryPatternOptimization: true,
@@ -841,9 +1165,25 @@ Each question must be 10-15 words, conversational, and cover different query fan
 async function generateStepByStep(
   srtContent: string,
   productName: string,
-  language: 'ko' | 'en'
+  language: 'ko' | 'en',
+  tuningConfig: TuningConfig
 ): Promise<{ steps: string[]; isTutorialContent: boolean; reasoning?: string }> {
-  const systemInstruction = `You are determining if step-by-step instructions are needed for this video.
+  // Get dynamic prompt from tuning configuration (no dedicated stage, use generic)
+  const { prompt: basePrompt, promptVersionId, source } = getStagePrompt(tuningConfig, {
+    stage: 'chapters', // Using chapters stage as step-by-step is similar instructional content
+    engine: 'gemini',
+    language,
+    antiFabricationLevel: 'low',
+    variables: {
+      product_name: productName,
+    },
+  })
+
+  console.log(`[Stage:StepByStep] Using ${source} prompt${promptVersionId ? ` (v${promptVersionId.slice(-8)})` : ''}`)
+
+  const systemInstruction = `${basePrompt}
+
+You are determining if step-by-step instructions are needed for this video.
 
 ## TASK
 1. Determine if step-by-step instructions would benefit users
@@ -879,9 +1219,10 @@ async function generateStepByStep(
 Output in ${language === 'ko' ? 'Korean' : 'English'}.`
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-flash-latest',
-      contents: `Analyze this video content for ${productName} and determine if step-by-step instructions are needed:
+    const response = await withRetry(
+      () => ai.models.generateContent({
+        model: 'gemini-flash-latest',
+        contents: `Analyze this video content for ${productName} and determine if step-by-step instructions are needed:
 
 ## VIDEO TRANSCRIPT
 ${srtContent.slice(0, 3000)}
@@ -890,37 +1231,39 @@ ${srtContent.slice(0, 3000)}
 1. First determine if this content needs step-by-step instructions (YES/NO criteria above)
 2. If yes, create clear, actionable steps
 3. Provide reasoning for your decision`,
-      config: {
-        systemInstruction,
-        responseMimeType: 'application/json',
-        responseJsonSchema: {
-          type: 'object',
-          properties: {
-            needed: {
-              type: 'boolean',
-              description: 'Whether step-by-step instructions are needed',
+        config: {
+          systemInstruction,
+          responseMimeType: 'application/json',
+          responseJsonSchema: {
+            type: 'object',
+            properties: {
+              needed: {
+                type: 'boolean',
+                description: 'Whether step-by-step instructions are needed',
+              },
+              reasoning: {
+                type: 'string',
+                description: '2-3 sentences explaining why step-by-step is or isn\'t needed',
+              },
+              steps: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Clear, actionable steps if needed',
+              },
             },
-            reasoning: {
-              type: 'string',
-              description: '2-3 sentences explaining why step-by-step is or isn\'t needed',
-            },
-            steps: {
-              type: 'array',
-              items: { type: 'string' },
-              description: 'Clear, actionable steps if needed',
-            },
+            required: ['needed', 'reasoning', 'steps'],
           },
-          required: ['needed', 'reasoning', 'steps'],
+          temperature: 0.5,
+          maxOutputTokens: 2500,
         },
-        temperature: 0.5,
-        maxOutputTokens: 1200,
-      },
-    })
+      }),
+      { context: 'Step-by-step Generation' }
+    )
 
     const content = response.text
     if (!content) throw new Error('No steps generated')
 
-    const parsed = JSON.parse(content)
+    const parsed = safeJsonParse(content, { needed: false, steps: [], reasoning: '' }, 'Step-by-step')
     return {
       steps: parsed.needed ? (parsed.steps || []) : [],
       isTutorialContent: parsed.needed || false,
@@ -940,8 +1283,22 @@ async function generateCaseStudies(
   productName: string,
   usps: UniqueSellingPoint[],
   groundingSignals: GroundingSignal[],
-  language: 'ko' | 'en'
+  language: 'ko' | 'en',
+  tuningConfig: TuningConfig
 ): Promise<CaseStudyResult> {
+  // Get dynamic prompt from tuning configuration
+  const { prompt: basePrompt, promptVersionId, source } = getStagePrompt(tuningConfig, {
+    stage: 'case_studies',
+    engine: 'gemini',
+    language,
+    antiFabricationLevel: 'high',
+    variables: {
+      product_name: productName,
+    },
+  })
+
+  console.log(`[Stage:CaseStudies] Using ${source} prompt${promptVersionId ? ` (v${promptVersionId.slice(-8)})` : ''}`)
+
   const antiFabPrompt = getAntiFabricationPrompt('high')
 
   const uspContext = usps.slice(0, 3).map((usp, i) =>
@@ -982,9 +1339,10 @@ When outcomes cannot be verified, use safe language:
 Output in ${language === 'ko' ? 'Korean' : 'English'}.`
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-flash-latest',
-      contents: `Generate realistic case studies for ${productName}:
+    const response = await withRetry(
+      () => ai.models.generateContent({
+        model: 'gemini-flash-latest',
+        contents: `Generate realistic case studies for ${productName}:
 
 ## USPs TO DEMONSTRATE
 ${uspContext}
@@ -998,20 +1356,21 @@ Create 2-3 realistic use case scenarios that:
 2. Are relatable to target users
 3. Include realistic outcomes based on actual features
 4. Use hedging language for claims without verification`,
-      config: {
-        systemInstruction,
-        responseMimeType: 'application/json',
-        responseJsonSchema: caseStudySchema,
-        temperature: 0.7,
-        maxOutputTokens: 1500,
-        tools: [{ googleSearch: {} }],
-      },
-    })
+        config: {
+          systemInstruction,
+          responseMimeType: 'application/json',
+          responseJsonSchema: caseStudySchema,
+          temperature: 0.7,
+          maxOutputTokens: 5000,
+        },
+      }),
+      { context: 'Case Studies Generation' }
+    )
 
     const content = response.text
     if (!content) throw new Error('No case studies generated')
 
-    const parsed = JSON.parse(content)
+    const parsed = safeJsonParse(content, { caseStudies: [] }, 'CaseStudies')
     return {
       caseStudies: parsed.caseStudies || [],
       extractionMethod: 'grounded',
@@ -1031,7 +1390,8 @@ async function generateKeywords(
   srtContent: string,
   inputKeywords: string[],
   groundingSignals: GroundingSignal[],
-  language: 'ko' | 'en'
+  language: 'ko' | 'en',
+  tuningConfig: TuningConfig
 ): Promise<{
   product: string[];
   generic: string[];
@@ -1041,7 +1401,23 @@ async function generateKeywords(
   lengthScore?: number;
   preliminaryTotal?: number;
 }> {
-  const systemInstruction = `You are extracting and analyzing keywords for GEO/AEO scoring.
+  // Get dynamic prompt from tuning configuration
+  const { prompt: basePrompt, promptVersionId, source } = getStagePrompt(tuningConfig, {
+    stage: 'keywords',
+    engine: 'gemini',
+    language,
+    antiFabricationLevel: 'low',
+    variables: {
+      product_name: productName,
+      keywords: inputKeywords,
+    },
+  })
+
+  console.log(`[Stage:Keywords] Using ${source} prompt${promptVersionId ? ` (v${promptVersionId.slice(-8)})` : ''}`)
+
+  const systemInstruction = `${basePrompt}
+
+You are extracting and analyzing keywords for GEO/AEO scoring.
 
 ## CATEGORIES
 
@@ -1088,9 +1464,10 @@ Prioritize keywords that match user search intent and trending signals.
 Output in ${language === 'ko' ? 'Korean' : 'English'}.`
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-flash-latest',
-      contents: `Extract and analyze keywords for ${productName}:
+    const response = await withRetry(
+      () => ai.models.generateContent({
+        model: 'gemini-flash-latest',
+        contents: `Extract and analyze keywords for ${productName}:
 
 ## VIDEO TRANSCRIPT
 ${srtContent.slice(0, 2000)}
@@ -1105,54 +1482,64 @@ ${groundingSignals.slice(0, 5).map(s => s.term).join(', ')}
 1. Extract and categorize keywords (product-specific and generic)
 2. Score based on GEO/AEO criteria
 3. Ensure natural keyword placement recommendations`,
-      config: {
-        systemInstruction,
-        responseMimeType: 'application/json',
-        responseJsonSchema: {
-          type: 'object',
-          properties: {
-            product: {
-              type: 'array',
-              items: { type: 'string' },
-              description: 'Product-specific keywords',
+        config: {
+          systemInstruction,
+          responseMimeType: 'application/json',
+          responseJsonSchema: {
+            type: 'object',
+            properties: {
+              product: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Product-specific keywords',
+              },
+              generic: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Generic competitive keywords',
+              },
+              densityScore: {
+                type: 'number',
+                description: 'Keyword density score (0-20)',
+              },
+              questionScore: {
+                type: 'number',
+                description: 'Question patterns score (0-20)',
+              },
+              structureScore: {
+                type: 'number',
+                description: 'Sentence structure score (0-15)',
+              },
+              lengthScore: {
+                type: 'number',
+                description: 'Length compliance score (0-15)',
+              },
+              preliminaryTotal: {
+                type: 'number',
+                description: 'Total preliminary score (0-70)',
+              },
             },
-            generic: {
-              type: 'array',
-              items: { type: 'string' },
-              description: 'Generic competitive keywords',
-            },
-            densityScore: {
-              type: 'number',
-              description: 'Keyword density score (0-20)',
-            },
-            questionScore: {
-              type: 'number',
-              description: 'Question patterns score (0-20)',
-            },
-            structureScore: {
-              type: 'number',
-              description: 'Sentence structure score (0-15)',
-            },
-            lengthScore: {
-              type: 'number',
-              description: 'Length compliance score (0-15)',
-            },
-            preliminaryTotal: {
-              type: 'number',
-              description: 'Total preliminary score (0-70)',
-            },
+            required: ['product', 'generic', 'densityScore'],
           },
-          required: ['product', 'generic', 'densityScore'],
+          temperature: 0.5,
+          maxOutputTokens: 2000,
         },
-        temperature: 0.5,
-        maxOutputTokens: 1000,
-      },
-    })
+      }),
+      { context: 'Keywords Generation' }
+    )
 
     const content = response.text
     if (!content) throw new Error('No keywords generated')
 
-    const parsed = JSON.parse(content)
+    const parsed = safeJsonParse(content, {
+      product: [] as string[],
+      generic: [] as string[],
+      densityScore: 50,
+      questionScore: undefined as number | undefined,
+      structureScore: undefined as number | undefined,
+      lengthScore: undefined as number | undefined,
+      preliminaryTotal: undefined as number | undefined,
+    }, 'Keywords')
     return {
       product: parsed.product || [],
       generic: parsed.generic || [],
@@ -1177,18 +1564,73 @@ ${groundingSignals.slice(0, 5).map(s => s.term).join(', ')}
 // ==========================================
 
 /**
+ * Fetch grounding signals from Google Custom Search
+ */
+async function fetchGoogleGroundingSignals(
+  productName: string,
+  keywords: string[]
+): Promise<Array<{ title?: string; snippet?: string; url?: string; date?: string }>> {
+  try {
+    const apiKey = process.env.GOOGLE_API_KEY
+    const cx = process.env.GOOGLE_CX
+
+    if (!apiKey || !cx) {
+      console.warn('[Google Grounding] Missing API key or CX')
+      return []
+    }
+
+    const queries = [
+      `${productName} review 2024 2025`,
+      `${productName} ${keywords[0] || 'features'} specs`,
+      `Samsung ${productName} comparison`,
+    ]
+
+    const results = await Promise.all(
+      queries.map(async (query) => {
+        try {
+          const url = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${cx}&q=${encodeURIComponent(query)}&num=5`
+          const response = await fetch(url)
+
+          if (!response.ok) {
+            console.warn(`[Google Grounding] Search failed for "${query}": ${response.status}`)
+            return []
+          }
+
+          const data = await response.json()
+          return (data.items || []).map((item: { title?: string; snippet?: string; link?: string; pagemap?: { metatags?: Array<{ 'article:published_time'?: string }> } }) => ({
+            title: item.title,
+            snippet: item.snippet,
+            url: item.link,
+            date: item.pagemap?.metatags?.[0]?.['article:published_time'],
+          }))
+        } catch (err) {
+          console.warn(`[Google Grounding] Query error: ${err}`)
+          return []
+        }
+      })
+    )
+
+    const allResults = results.flat()
+    console.log(`[Google Grounding] Fetched ${allResults.length} results`)
+    return allResults
+  } catch (error) {
+    console.error('[Google Grounding] Failed:', error)
+    return []
+  }
+}
+
+/**
  * Fetch grounding signals from Perplexity
  */
-async function fetchGroundingSignals(
+async function fetchPerplexityGroundingSignals(
   productName: string,
-  keywords: string[],
-  launchDate?: string
-): Promise<GroundingSignal[]> {
+  keywords: string[]
+): Promise<Array<{ title?: string; snippet?: string; url?: string; date?: string }>> {
   try {
     const apiKey = process.env.PERPLEXITY_API_KEY
     if (!apiKey) {
-      console.warn('[Grounding] No Perplexity API key')
-      return generateFallbackSignals(productName, keywords)
+      console.warn('[Perplexity Grounding] No API key')
+      return []
     }
 
     const queries = [
@@ -1218,6 +1660,37 @@ async function fetchGroundingSignals(
     )
 
     const allResults = results.flat()
+    console.log(`[Perplexity Grounding] Fetched ${allResults.length} results`)
+    return allResults
+  } catch (error) {
+    console.error('[Perplexity Grounding] Failed:', error)
+    return []
+  }
+}
+
+/**
+ * Fetch grounding signals from multiple sources (Google + Perplexity)
+ */
+async function fetchGroundingSignals(
+  productName: string,
+  keywords: string[],
+  launchDate?: string
+): Promise<GroundingSignal[]> {
+  try {
+    // Fetch from both sources in parallel
+    const [googleResults, perplexityResults] = await Promise.all([
+      fetchGoogleGroundingSignals(productName, keywords),
+      fetchPerplexityGroundingSignals(productName, keywords),
+    ])
+
+    const allResults = [...googleResults, ...perplexityResults]
+
+    if (allResults.length === 0) {
+      console.warn('[Grounding] No results from any source, using fallback')
+      return generateFallbackSignals(productName, keywords)
+    }
+
+    console.log(`[Grounding] Combined ${allResults.length} results from Google (${googleResults.length}) + Perplexity (${perplexityResults.length})`)
     return extractSignalsFromResults(allResults, keywords)
   } catch (error) {
     console.error('[Grounding] Failed:', error)
@@ -1326,6 +1799,29 @@ function extractSourcesFromGrounding(
 }
 
 /**
+ * Convert GroundingSignals to GroundingSource[] format
+ * This enables USP enrichment when Gemini native grounding is not available
+ */
+function convertSignalsToSources(signals: GroundingSignal[]): GroundingSource[] {
+  const sources: GroundingSource[] = []
+  const seenUrls = new Set<string>()
+
+  for (const signal of signals) {
+    if (signal.source && !seenUrls.has(signal.source)) {
+      seenUrls.add(signal.source)
+      sources.push({
+        uri: signal.source,
+        title: signal.term, // Use the search term as title
+        usedIn: ['grounding_signals'],
+        tier: getSourceTier(signal.source),
+      })
+    }
+  }
+
+  return sources.sort((a, b) => a.tier - b.tier) // Sort by tier (1 = best first)
+}
+
+/**
  * Extract sources from USPs
  */
 function extractUSPSources(usps: UniqueSellingPoint[]): GroundingSource[] {
@@ -1427,7 +1923,8 @@ async function generateHashtags(
   description: string,
   usps: UniqueSellingPoint[],
   keywords: { product: string[]; generic: string[] },
-  language: 'ko' | 'en'
+  language: 'ko' | 'en',
+  tuningConfig: TuningConfig
 ): Promise<{
   hashtags: string[]
   categories: {
@@ -1437,7 +1934,22 @@ async function generateHashtags(
   }
   reasoning?: string
 }> {
-  const systemInstruction = `You are generating strategic hashtags for YouTube SEO optimization.
+  // Get dynamic prompt from tuning configuration
+  const { prompt: basePrompt, promptVersionId, source } = getStagePrompt(tuningConfig, {
+    stage: 'hashtags',
+    engine: 'gemini',
+    language,
+    antiFabricationLevel: 'low',
+    variables: {
+      product_name: productName,
+    },
+  })
+
+  console.log(`[Stage:Hashtags] Using ${source} prompt${promptVersionId ? ` (v${promptVersionId.slice(-8)})` : ''}`)
+
+  const systemInstruction = `${basePrompt}
+
+You are generating strategic hashtags for YouTube SEO optimization.
 
 ## YOUR MISSION
 Create 5-8 strategic hashtags optimized for YouTube discovery and SEO.
@@ -1541,17 +2053,20 @@ Generate 5-8 strategic hashtags following the categorization strategy.`
   }
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-flash-latest',
-      contents: userPrompt,
-      config: {
-        systemInstruction,
-        responseMimeType: 'application/json',
-        responseJsonSchema: hashtagSchema,
-        temperature: 0.4,
-        maxOutputTokens: 800,
-      },
-    })
+    const response = await withRetry(
+      () => ai.models.generateContent({
+        model: 'gemini-flash-latest',
+        contents: userPrompt,
+        config: {
+          systemInstruction,
+          responseMimeType: 'application/json',
+          responseJsonSchema: hashtagSchema,
+          temperature: 0.4,
+          maxOutputTokens: 1500,
+        },
+      }),
+      { context: 'Hashtags Generation' }
+    )
 
     const content = response.text
     if (!content) {
@@ -1559,7 +2074,7 @@ Generate 5-8 strategic hashtags following the categorization strategy.`
       return getFallbackHashtags(productName, keywords, language)
     }
 
-    const parsed = JSON.parse(content)
+    const parsed = safeJsonParse(content, { hashtags: [], categories: { brand: [], features: [], industry: [] }, reasoning: '' }, 'Hashtags')
 
     // Validate hashtag format
     const validatedHashtags = parsed.hashtags

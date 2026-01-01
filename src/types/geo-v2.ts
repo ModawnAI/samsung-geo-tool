@@ -254,6 +254,21 @@ export interface GEOv2GenerateResponse {
   finalScore: GEOv2Score
   groundingMetadata?: GroundingMetadata
   progress?: PipelineProgress[]
+  tuningMetadata?: {
+    configSource: 'database' | 'default' | 'mixed'
+    promptVersionId: string | null
+    weightsVersionId: string | null
+    weightsName: string
+    loadedAt: string
+    scoreBreakdown?: Array<{
+      metric: string
+      label: string
+      score: number
+      weight: number
+      weightedScore: number
+      contribution: number
+    }>
+  }
 }
 
 export interface GEOv2Score {

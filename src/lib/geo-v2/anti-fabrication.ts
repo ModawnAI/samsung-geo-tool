@@ -73,6 +73,15 @@ export function sanitizeContent(content: string): {
   wasModified: boolean
   modifications: string[]
 } {
+  // Guard against undefined/null input
+  if (!content) {
+    return {
+      sanitized: '',
+      wasModified: false,
+      modifications: [],
+    }
+  }
+
   let sanitized = content
   const modifications: string[] = []
 

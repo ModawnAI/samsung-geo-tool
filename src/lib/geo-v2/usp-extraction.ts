@@ -13,8 +13,66 @@ import type {
   GroundingSource,
   SOURCE_AUTHORITY_TIERS,
 } from '@/types/geo-v2'
+import { safeJsonParse } from '@/lib/utils'
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+
+// Retry helper for transient failures
+interface RetryOptions {
+  maxRetries?: number
+  baseDelayMs?: number
+  maxDelayMs?: number
+  context?: string
+}
+
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  options: RetryOptions = {}
+): Promise<T> {
+  const {
+    maxRetries = 3,
+    baseDelayMs = 1000,
+    maxDelayMs = 10000,
+    context = 'API call'
+  } = options
+
+  let lastError: Error | null = null
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn()
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error))
+      const errorMessage = lastError.message.toLowerCase()
+      const errorCode = (error as { code?: string })?.code?.toLowerCase() || ''
+
+      const isRetryable =
+        errorCode === 'econnreset' ||
+        errorCode === 'etimedout' ||
+        errorCode === 'econnrefused' ||
+        errorMessage.includes('aborted') ||
+        errorMessage.includes('timeout') ||
+        errorMessage.includes('network') ||
+        errorMessage.includes('socket') ||
+        errorMessage.includes('connection')
+
+      if (!isRetryable || attempt === maxRetries) {
+        console.error(`[${context}] Non-retryable error or max retries reached:`, lastError.message)
+        throw lastError
+      }
+
+      const exponentialDelay = Math.min(baseDelayMs * Math.pow(2, attempt - 1), maxDelayMs)
+      const jitter = Math.random() * 500
+      const delay = exponentialDelay + jitter
+
+      console.warn(`[${context}] Attempt ${attempt}/${maxRetries} failed (${errorCode || errorMessage}), retrying in ${Math.round(delay)}ms...`)
+
+      await new Promise(resolve => setTimeout(resolve, delay))
+    }
+  }
+
+  throw lastError || new Error(`${context} failed after ${maxRetries} attempts`)
+}
 
 // Response schema for USP extraction with 2-Stage Content Prioritization
 const uspExtractionSchema = {
@@ -207,17 +265,26 @@ Extract 2-8 USPs that:
 4. Include clear user benefits`
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-flash-latest',
-      contents: userPrompt,
-      config: {
-        systemInstruction,
-        responseMimeType: 'application/json',
-        responseJsonSchema: uspExtractionSchema,
-        temperature: 0.5,
-        maxOutputTokens: 2000,
-      },
-    })
+    const response = await withRetry(
+      () => ai.models.generateContent({
+        model: 'gemini-flash-latest',
+        contents: userPrompt,
+        config: {
+          systemInstruction,
+          responseMimeType: 'application/json',
+          responseJsonSchema: uspExtractionSchema,
+          temperature: 0.5,
+          maxOutputTokens: 4000,
+        },
+      }),
+      { context: 'USP Extraction' }
+    )
+
+    // Debug: Log raw response structure
+    console.log('[USP Extraction] Raw response keys:', Object.keys(response))
+    console.log('[USP Extraction] Response text type:', typeof response.text)
+    console.log('[USP Extraction] Response text length:', response.text?.length || 0)
+    console.log('[USP Extraction] Response text preview:', response.text?.slice(0, 300))
 
     const content = response.text
     if (!content) {
@@ -225,7 +292,19 @@ Extract 2-8 USPs that:
       return getFallbackUSPs(productName, keywords)
     }
 
-    const parsed = JSON.parse(content)
+    // Use safe JSON parsing to handle malformed LLM outputs
+    const defaultParsed = { usps: [], competitiveContext: '' }
+    const parsed = safeJsonParse<{ usps: Array<{ feature: string; category: USPCategory; differentiation: string; userBenefit: string; confidence: ConfidenceLevel }>; competitiveContext: string }>(
+      content,
+      defaultParsed,
+      'USP Extraction'
+    )
+
+    // If parsing failed and returned default, use fallback
+    if (!parsed.usps || parsed.usps.length === 0) {
+      console.warn('[USP Extraction] Parsed result has no USPs, using fallback')
+      return getFallbackUSPs(productName, keywords)
+    }
 
     // Enrich USPs with evidence from grounding sources
     const enrichedUSPs = enrichUSPsWithEvidence(parsed.usps, groundingSources, groundingSignals)
@@ -319,6 +398,7 @@ function enrichUSPsWithEvidence(
 
 /**
  * Find sources relevant to a specific USP feature
+ * Improved matching: checks if feature contains source keywords (not just vice versa)
  */
 function findRelevantSources(
   feature: string,
@@ -328,15 +408,30 @@ function findRelevantSources(
   const featureLower = feature.toLowerCase()
   const categoryLower = category.toLowerCase()
 
+  // Extract significant keywords from the feature for matching
+  const featureKeywords = featureLower
+    .split(/\s+/)
+    .filter(word => word.length > 3) // Skip short words like "the", "and", etc.
+    .map(word => word.replace(/[^a-z0-9]/g, '')) // Remove punctuation
+
   return sources.filter(source => {
     const titleLower = source.title.toLowerCase()
     const uriLower = source.uri.toLowerCase()
 
     // Check if source is relevant to the feature or category
+    // Improved: Check both directions - title in feature OR feature keywords in title
     return (
+      // Original: title contains feature (rare for full feature strings)
       titleLower.includes(featureLower) ||
-      uriLower.includes(featureLower) ||
+      // NEW: Feature contains title (e.g., "200 megapixel camera" contains "camera")
+      featureLower.includes(titleLower) ||
+      // NEW: Any significant feature keyword matches title
+      featureKeywords.some(kw => titleLower.includes(kw)) ||
+      // Original: URI contains feature keywords
+      featureKeywords.some(kw => uriLower.includes(kw)) ||
+      // Original: Category matching
       titleLower.includes(categoryLower) ||
+      featureLower.includes(categoryLower) ||
       source.usedIn.some(section =>
         section.toLowerCase().includes(categoryLower)
       )

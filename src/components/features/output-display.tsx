@@ -15,7 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { GenerationBreakdown } from './generation-breakdown'
+import { GenerationBreakdown, type ActionPayload } from './generation-breakdown'
 import {
   Copy,
   Check,
@@ -85,6 +85,7 @@ export function OutputDisplay() {
   const hashtags = useGenerationStore((state) => state.hashtags)
   const faq = useGenerationStore((state) => state.faq)
   const breakdown = useGenerationStore((state) => state.breakdown)
+  const tuningMetadata = useGenerationStore((state) => state.tuningMetadata)
   const productName = useGenerationStore((state) => state.productName)
   const productId = useGenerationStore((state) => state.productId)
   const selectedKeywords = useGenerationStore((state) => state.selectedKeywords)
@@ -96,6 +97,12 @@ export function OutputDisplay() {
   const setGenerationId = useGenerationStore((state) => state.setGenerationId)
   const setGenerationStatus = useGenerationStore((state) => state.setGenerationStatus)
   const setIsSaving = useGenerationStore((state) => state.setIsSaving)
+  const isGenerating = useGenerationStore((state) => state.isGenerating)
+  const setIsGenerating = useGenerationStore((state) => state.setIsGenerating)
+  const setOutput = useGenerationStore((state) => state.setOutput)
+  const videoUrl = useGenerationStore((state) => state.videoUrl)
+  const categoryId = useGenerationStore((state) => state.categoryId)
+  const launchDate = useGenerationStore((state) => state.launchDate)
 
   // AbortController for cancelable requests
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -259,6 +266,186 @@ export function OutputDisplay() {
     toast.success('YouTube-ready content copied to clipboard')
   }
 
+  // Handler for breakdown actions (regeneration with specific fixes)
+  const handleBreakdownAction = useCallback(async (action: ActionPayload) => {
+    console.log('[Regenerate] Action triggered:', action.type)
+
+    if (action.type === 'copy_fix' && action.details) {
+      try {
+        await navigator.clipboard.writeText(action.details)
+        toast.success('Recommendation copied to clipboard')
+      } catch {
+        toast.error('Failed to copy')
+      }
+      return
+    }
+
+    // Validate required data before proceeding
+    console.log('[Regenerate] Data check:', {
+      productName,
+      hasSrtContent: !!srtContent,
+      srtContentLength: srtContent?.length || 0,
+      selectedKeywords,
+      videoUrl,
+      categoryId,
+    })
+
+    if (!productName) {
+      console.error('[Regenerate] Missing productName - cannot regenerate')
+      toast.error('Missing product name. Please go back and select a product.')
+      return
+    }
+
+    // Cancel any pending request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+    abortControllerRef.current = new AbortController()
+
+    console.log('[Regenerate] Setting isGenerating to true')
+    setIsGenerating(true)
+    try {
+      // Build regeneration config based on action type
+      const regenerationConfig: Record<string, unknown> = {
+        focusArea: action.type,
+        metric: action.metric,
+      }
+
+      // Map action types to pipeline configurations
+      switch (action.type) {
+        case 'regenerate_usps':
+          regenerationConfig.enhanceUSPs = true
+          regenerationConfig.prioritizePlaybook = true
+          break
+        case 'regenerate_grounded':
+          regenerationConfig.enhanceGrounding = true
+          regenerationConfig.deeperWebSearch = true
+          break
+        case 'regenerate_aligned':
+          regenerationConfig.strictBrandAlignment = true
+          regenerationConfig.playbookEnforcement = true
+          break
+        case 'verify_claims':
+          regenerationConfig.verifyClaims = true
+          regenerationConfig.factChecking = true
+          break
+        case 'add_keywords':
+          regenerationConfig.enhanceKeywordDensity = true
+          break
+        case 'improve_structure':
+          regenerationConfig.improveStructure = true
+          regenerationConfig.optimizeReadability = true
+          break
+        case 'regenerate_all':
+          regenerationConfig.fullRegeneration = true
+          regenerationConfig.enhanceUSPs = true
+          regenerationConfig.enhanceGrounding = true
+          regenerationConfig.strictBrandAlignment = true
+          break
+      }
+
+      const requestBody = {
+        productName,
+        youtubeUrl: videoUrl || '',
+        srtContent,
+        keywords: selectedKeywords,
+        productCategory: categoryId || 'all',
+        usePlaybook: true,
+        launchDate: launchDate?.toISOString(),
+        pipelineConfig: 'full',
+        language: 'ko',
+        regenerationConfig,
+      }
+
+      console.log('[Regenerate] Making API request with:', {
+        ...requestBody,
+        srtContent: `${(srtContent || '').substring(0, 100)}... (${(srtContent || '').length} chars)`,
+      })
+
+      const response = await fetch('/api/generate-v2', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+        signal: abortControllerRef.current.signal,
+      })
+
+      console.log('[Regenerate] API response status:', response.status)
+      const data = await response.json()
+      console.log('[Regenerate] API response data:', data.error ? `Error: ${data.error}` : 'Success')
+
+      if (data.error) {
+        throw new Error(data.error)
+      }
+
+      // Map v2 response to store format
+      const newDescription = typeof data.description === 'object'
+        ? data.description.full
+        : data.description || ''
+
+      const newTimestamps = typeof data.chapters === 'object'
+        ? data.chapters.timestamps
+        : data.timestamps || ''
+
+      const faqContent = data.faq?.faqs
+        ? data.faq.faqs.map((f: { question: string; answer: string }) =>
+            `Q: ${f.question}\nA: ${f.answer}`
+          ).join('\n\n')
+        : data.faq || ''
+
+      // Build breakdown from v2 grounding metadata
+      const newBreakdown = data.groundingMetadata ? {
+        playbookInfluence: {
+          sectionsUsed: data.groundingMetadata.sources
+            ?.filter((s: { tier: string }) => s.tier === 'official')
+            .map((s: { title: string }) => s.title)
+            .slice(0, 5) || [],
+          guidelinesApplied: data.groundingMetadata.sources?.length || 0,
+          confidence: data.finalScore?.groundingQuality?.sourceAuthority || 70,
+        },
+        groundingInfluence: {
+          topSignals: data.groundingMetadata.webSearchQueries?.slice(0, 5).map(
+            (q: string, i: number) => ({ term: q, score: 100 - i * 15 })
+          ) || [],
+          signalsApplied: data.groundingMetadata.totalCitations || 0,
+        },
+        userInputInfluence: {
+          keywordsIntegrated: selectedKeywords,
+          timestampsGenerated: newTimestamps.split('\n').filter(Boolean).length,
+        },
+        qualityScores: data.finalScore ? {
+          overall: Math.round(data.finalScore.total || 0),
+          brandVoice: Math.round((data.finalScore.sentenceStructure || 0) * 7),
+          keywordIntegration: Math.round((data.finalScore.keywordDensity || 0) * 5),
+          geoOptimization: Math.round((data.finalScore.aiExposure || 0) * 4),
+          faqQuality: Math.round((data.finalScore.questionPatterns || 0) * 5),
+          refined: true,
+        } : undefined,
+      } : undefined
+
+      setOutput({
+        description: newDescription,
+        timestamps: newTimestamps,
+        hashtags: data.hashtags || [],
+        faq: faqContent,
+        breakdown: newBreakdown,
+        tuningMetadata: data.tuningMetadata,
+      })
+
+      console.log('[Regenerate] Success! Setting output')
+      toast.success(`Content regenerated with ${action.type.replace(/_/g, ' ')} focus`)
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('[Regenerate] Request was aborted')
+        return
+      }
+      console.error('[Regenerate] Failed:', error)
+      toast.error('Failed to regenerate content')
+    } finally {
+      console.log('[Regenerate] Finally block - setting isGenerating to false')
+      setIsGenerating(false)
+    }
+  }, [productName, videoUrl, srtContent, selectedKeywords, categoryId, launchDate, setIsGenerating, setOutput])
+
   if (!description && !timestamps && hashtags.length === 0 && !faq) {
     return (
       <div className="text-center py-12 text-muted-foreground">
@@ -292,7 +479,12 @@ export function OutputDisplay() {
       {/* Generation Breakdown - Shows signal fusion transparency */}
       {breakdown && (
         <motion.div variants={MOTION_VARIANTS.staggerItem}>
-          <GenerationBreakdown breakdown={breakdown} />
+          <GenerationBreakdown
+            breakdown={breakdown}
+            tuningMetadata={tuningMetadata}
+            onAction={handleBreakdownAction}
+            isRegenerating={isGenerating}
+          />
         </motion.div>
       )}
 
