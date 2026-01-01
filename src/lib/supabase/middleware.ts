@@ -19,17 +19,7 @@ const PROTECTED_PREFIXES = [
   '/tools',
 ]
 
-// Phase-gated routes (require specific phase to be enabled)
-const PHASE_PROTECTED_ROUTES: Record<string, 1 | 2 | 3> = {
-  '/tuning': 1,
-  '/analytics': 3,
-  '/reports': 3,
-}
-
-function isPhaseEnabled(phase: 1 | 2 | 3): boolean {
-  const envVar = `NEXT_PUBLIC_PHASE${phase}_ENABLED`
-  return process.env[envVar] === 'true'
-}
+// Phase gates removed - all features enabled by default
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -78,20 +68,8 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Check phase-gated routes
-  if (user) {
-    for (const [route, requiredPhase] of Object.entries(PHASE_PROTECTED_ROUTES)) {
-      if (pathname.startsWith(route)) {
-        if (!isPhaseEnabled(requiredPhase)) {
-          // Redirect to dashboard if phase not enabled
-          const url = request.nextUrl.clone()
-          url.pathname = '/dashboard'
-          return NextResponse.redirect(url)
-        }
-        break
-      }
-    }
-  }
+  // Phase gates disabled - all routes accessible when authenticated
+  // Previous phase gating removed for simplicity
 
   // Redirect logged-in users from login page to dashboard (or redirect target)
   if (pathname === '/login' && user) {
