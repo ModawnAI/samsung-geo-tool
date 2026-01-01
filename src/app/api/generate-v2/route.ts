@@ -44,6 +44,7 @@ import type {
   CaseStudyResult,
 } from '@/types/geo-v2'
 import type { ProductCategory, PlaybookSearchResult, PlaybookSection } from '@/types/playbook'
+import { calculateContentQualityScores } from '@/lib/scoring/content-quality'
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
 
@@ -409,44 +410,34 @@ export async function POST(request: NextRequest) {
     console.log(`[GEO v2] USPs extracted: ${uspResult.usps.length}, Method: ${uspResult.extractionMethod}`)
 
     // ==========================================
-    // STAGE 2 & 3: PARALLEL - CHAPTERS + FAQ
-    // ==========================================
-    const [chaptersResult, faqResult] = await Promise.all([
-      generateChapters(srtContent, productName, tuningConfig),
-      generateFAQ(productName, srtContent, uspResult.usps, groundingSignals, language, tuningConfig),
-    ])
-
-    console.log(`[GEO v2] Chapters: ${chaptersResult.timestamps.split('\n').length} entries`)
-    console.log(`[GEO v2] FAQs: ${faqResult.faqs.length} Q&As`)
-
-    // ==========================================
-    // STAGE 4 & 5: PARALLEL - STEP-BY-STEP + CASE STUDIES
+    // STAGES 2-6: PARALLEL EXECUTION BLOCK
+    // Chapters, FAQ, Case Studies, Step-by-step, Keywords all run concurrently
     // ==========================================
     const isTutorialContent = detectTutorialContent(srtContent)
+    const parallelStagesStart = Date.now()
 
-    const [stepByStepResult, caseStudiesResult] = await Promise.all([
+    const [chaptersResult, faqResult, stepByStepResult, caseStudiesResult, keywordsResult] = await Promise.all([
+      // Stage 2: Chapters (depends only on srtContent)
+      generateChapters(srtContent, productName, tuningConfig),
+      // Stage 3: FAQ (depends on USPs)
+      generateFAQ(productName, srtContent, uspResult.usps, groundingSignals, language, tuningConfig),
+      // Stage 4: Step-by-step (optional, depends on srtContent)
       isTutorialContent
         ? generateStepByStep(srtContent, productName, language, tuningConfig)
         : Promise.resolve(null),
+      // Stage 5: Case Studies (depends on USPs)
       generateCaseStudies(productName, uspResult.usps, groundingSignals, language, tuningConfig),
+      // Stage 6: Keywords (independent - can run in parallel)
+      generateKeywords(productName, srtContent, keywords, groundingSignals, language, tuningConfig),
     ])
 
+    console.log(`[GEO v2] Parallel stages completed in ${Date.now() - parallelStagesStart}ms`)
+    console.log(`[GEO v2] Chapters: ${chaptersResult.timestamps.split('\n').length} entries`)
+    console.log(`[GEO v2] FAQs: ${faqResult.faqs.length} Q&As`)
     if (stepByStepResult) {
       console.log(`[GEO v2] Step-by-step: ${stepByStepResult.steps.length} steps`)
     }
     console.log(`[GEO v2] Case studies: ${caseStudiesResult.caseStudies.length} cases`)
-
-    // ==========================================
-    // STAGE 6: KEYWORDS EXTRACTION
-    // ==========================================
-    const keywordsResult = await generateKeywords(
-      productName,
-      srtContent,
-      keywords,
-      groundingSignals,
-      language,
-      tuningConfig
-    )
 
     // ==========================================
     // STAGE 6.5: HASHTAG GENERATION
@@ -510,6 +501,18 @@ export async function POST(request: NextRequest) {
     const sentenceStructureScore = 12 // Would be calculated from actual content analysis
     const lengthComplianceScore = calculateLengthComplianceScore(descriptionResult.description.full)
 
+    // Calculate content quality scores (semantic similarity and anti-fabrication)
+    const contentQualityScores = calculateContentQualityScores({
+      srtContent,
+      generatedDescription: descriptionResult.description.full,
+      faqAnswers: faqResult.faqs.map(f => f.answer),
+      caseStudies: caseStudiesResult.caseStudies.map(cs => `${cs.scenario} ${cs.solution}`),
+      usps: uspResult.usps.map(u => `${u.feature}: ${u.differentiation} - ${u.userBenefit}`),
+      groundingData: groundingSignals.map(s => s.term).filter(Boolean),
+    })
+
+    console.log(`[GEO v2] Content quality - Semantic similarity: ${contentQualityScores.semanticSimilarity.score.toFixed(2)}, Anti-fabrication: ${contentQualityScores.antiFabrication.score.toFixed(2)} (${contentQualityScores.antiFabrication.violationCount} violations)`)
+
     // Calculate GEO score using tuning weights
     const rawGenerationScores: RawGenerationScores = {
       keywordDensity: keywordDensityScore,
@@ -519,8 +522,8 @@ export async function POST(request: NextRequest) {
       lengthCompliance: lengthComplianceScore,
       groundingQuality: groundingQuality.total,
       uspCoverage: uspResult.usps.length > 0 ? uspResult.groundingQuality / 100 : 0.5,
-      semanticSimilarity: 0.75, // TODO: Calculate from content similarity analysis
-      antiFabrication: 0.85, // High default due to anti-fabrication guardrails
+      semanticSimilarity: contentQualityScores.semanticSimilarity.score,
+      antiFabrication: contentQualityScores.antiFabrication.score,
     }
 
     const geoScoreResult = calculateGEOScore(rawGenerationScores, tuningConfig)

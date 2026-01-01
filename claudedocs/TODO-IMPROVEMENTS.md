@@ -7,33 +7,23 @@
 
 ## Critical Code TODOs
 
-### 1. Semantic Similarity Score - HARDCODED
-**Location**: `src/app/api/generate-v2/route.ts:522`
-```typescript
-semanticSimilarity: 0.75, // TODO: Calculate from content similarity analysis
-```
-**Priority**: 🔴 HIGH
-**Impact**: GEO Score accuracy is compromised - always returns 75% regardless of actual content alignment
-**Solution**:
-- Implement embedding-based similarity calculation
-- Compare generated description against SRT content
-- Compare against playbook examples
-- Use cosine similarity between vector embeddings
+### 1. Semantic Similarity Score - ✅ RESOLVED
+**Location**: `src/app/api/generate-v2/route.ts:535`
+**Status**: ✅ Fixed in Phase 2.1
+**Solution Implemented**:
+- Created `src/lib/scoring/content-quality.ts` with TF-IDF based similarity
+- Uses weighted term overlap (40%), key phrase matching (35%), topic alignment (25%)
+- Compares generated content against SRT + grounding data
 
 ---
 
-### 2. Anti-Fabrication Score - HARDCODED
-**Location**: `src/app/api/generate-v2/route.ts:523`
-```typescript
-antiFabrication: 0.85, // High default due to anti-fabrication guardrails
-```
-**Priority**: 🔴 HIGH
-**Impact**: No actual verification of factual claims
-**Solution**:
-- Cross-reference generated specs against grounding sources
-- Flag statistics/numbers not found in source material
-- Verify brand names and product names are accurate
-- Check for hallucinated features
+### 2. Anti-Fabrication Score - ✅ RESOLVED
+**Location**: `src/app/api/generate-v2/route.ts:536`
+**Status**: ✅ Fixed in Phase 2.2
+**Solution Implemented**:
+- Created `src/lib/scoring/content-quality.ts` with pattern-based detection
+- Leverages existing `checkForFabrications()` + additional patterns
+- Checks all content sections with diminishing penalty for violations
 
 ---
 
@@ -80,71 +70,79 @@ const lengthCompliance = 12 // /15
 
 ---
 
-## Phase 1: Quick Wins (1-2 weeks)
+## Phase 1: Quick Wins ✅ COMPLETED
 
 ### 1.1 Score Threshold Indicators
-**Status**: ⏳ PENDING
-**Files to modify**:
-- `src/components/features/output-display.tsx`
-**Description**: Add visual indicators for score quality:
+**Status**: ✅ COMPLETED (2026-01-01)
+**Files modified**:
+- `src/components/features/generation-breakdown.tsx`
+**Changes**: Added `ScoreThresholdLegend` and `OverallScoreIndicator` components with:
 - 🟢 80-100: Excellent
-- 🟡 60-79: Needs improvement
-- 🔴 0-59: Critical attention required
+- 🟢 60-79: Good
+- 🟡 40-59: Needs improvement
+- 🔴 0-39: Critical attention required
 
 ### 1.2 Auto-Save Wizard State
-**Status**: ⏳ PENDING
-**Files to modify**:
+**Status**: ✅ COMPLETED (2026-01-01)
+**Files modified**:
 - `src/store/generation-store.ts`
-- `src/app/(dashboard)/generate/page.tsx`
-**Description**: Save wizard state to localStorage, restore on page load
+**Changes**: Added Zustand `persist` middleware with `partialize` to save wizard progress (step, product, keywords) to localStorage
 
 ### 1.3 Auto-Run Grounding on Step 3
-**Status**: ⏳ PENDING
-**Files to modify**:
+**Status**: ✅ COMPLETED (2026-01-01)
+**Files modified**:
 - `src/components/features/keyword-selector.tsx`
-**Description**: Automatically trigger grounding when entering keywords step if not already run
+**Changes**: Added `useEffect` with `hasAutoRun` ref to trigger grounding automatically on Step 3 entry
 
 ### 1.4 Stage Progress During Generation
-**Status**: ⏳ PENDING
-**Files to modify**:
-- `src/app/(dashboard)/generate/page.tsx`
-- `src/app/api/generate-v2/route.ts` (for streaming)
-**Description**: Show real-time progress:
-```
-Stage 1/7: Extracting USPs... ✅
-Stage 2/7: Generating FAQ... 🔄
-Stage 3/7: Creating Case Studies... ⏳
-```
+**Status**: ✅ COMPLETED (2026-01-01)
+**Files modified**:
+- `src/components/features/generation-progress.tsx`
+- `src/store/generation-store.ts`
+**Changes**:
+- Updated 7 pipeline stages matching actual API (usps → faq → case-studies → keywords → hashtags → description → chapters)
+- Added `generationStage` state with simulated realistic timing
 
 ---
 
-## Phase 2: Core Improvements (2-4 weeks)
+## Phase 2: Core Improvements ✅ COMPLETED
 
 ### 2.1 Implement Semantic Similarity Calculation
-**Status**: ⏳ PENDING
+**Status**: ✅ COMPLETED (2026-01-01)
 **Priority**: 🔴 HIGH
-**Files to modify**:
-- `src/app/api/generate-v2/route.ts`
-- Create: `src/lib/scoring/semantic-similarity.ts`
-**Description**: Calculate actual similarity between generated content and source material
+**Files created/modified**:
+- Created: `src/lib/scoring/content-quality.ts`
+- Modified: `src/app/api/generate-v2/route.ts`
+**Changes**:
+- Created TF-IDF based semantic similarity calculation
+- Uses weighted term overlap, key phrase matching, and topic alignment
+- Combines source content (SRT) with grounding data for comparison
+- Integrated into rawGenerationScores replacing hardcoded 0.75
 
 ### 2.2 Implement Anti-Fabrication Scoring
-**Status**: ⏳ PENDING
+**Status**: ✅ COMPLETED (2026-01-01)
 **Priority**: 🔴 HIGH
-**Files to modify**:
-- `src/app/api/generate-v2/route.ts`
-- Create: `src/lib/scoring/anti-fabrication.ts`
-**Description**: Verify claims against grounding sources, flag unverified statistics
+**Files created/modified**:
+- Created: `src/lib/scoring/content-quality.ts` (combined module)
+- Modified: `src/app/api/generate-v2/route.ts`
+**Changes**:
+- Leverages existing `checkForFabrications()` from anti-fabrication.ts
+- Added additional fabrication patterns (unverified stats, fake testimonials, superlatives)
+- Checks all content sections: description, FAQs, case studies, USPs
+- Calculates score based on violation count with diminishing returns
+- Integrated into rawGenerationScores replacing hardcoded 0.85
 
 ### 2.3 Parallel Stage Execution
-**Status**: ⏳ PENDING
+**Status**: ✅ COMPLETED (2026-01-01)
 **Priority**: 🟡 MEDIUM
-**Files to modify**:
+**Files modified**:
 - `src/app/api/generate-v2/route.ts`
-**Description**: Run independent stages in parallel:
-- FAQ + Case Studies (both depend on USPs, not each other)
-- Keywords + Hashtags (both derive from content)
-**Estimated improvement**: 30-40% faster generation
+**Changes**:
+- Combined stages 2-6 into single Promise.all() block
+- Now runs in parallel: Chapters, FAQ, Step-by-step, Case Studies, Keywords
+- Hashtags still sequential (depends on keywords result)
+- Added timing log for parallel stages performance monitoring
+**Expected improvement**: ~30-40% faster generation
 
 ### 2.4 Generation Version History
 **Status**: ⏳ PENDING
