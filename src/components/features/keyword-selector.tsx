@@ -32,6 +32,7 @@ import {
 import { cn } from '@/lib/utils'
 import { ICON_SIZES } from '@/lib/constants/ui'
 import { SOURCE_AUTHORITY_TIERS } from '@/types/geo-v2'
+import { SaveTemplateDialog } from './template-manager'
 
 // Source tier utilities
 function getSourceTier(domain: string): 1 | 2 | 3 | 4 {
@@ -368,21 +369,26 @@ export function KeywordSelector() {
           </p>
         )}
 
-        <div
-          id="keyword-limit"
-          className="text-sm text-muted-foreground"
-          role="status"
-          aria-live="polite"
-        >
-          Selected: {selectedKeywords.length}/3
-          {selectedKeywords.length >= 3 && (
-            <span className="sr-only"> - maximum reached</span>
-          )}
-          {selectedKeywords.length > 0 && (
-            <span className="ml-2">
-              ({selectedKeywords.join(', ')})
-            </span>
-          )}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div
+            id="keyword-limit"
+            className="text-sm text-muted-foreground"
+            role="status"
+            aria-live="polite"
+          >
+            Selected: {selectedKeywords.length}/3
+            {selectedKeywords.length >= 3 && (
+              <span className="sr-only"> - maximum reached</span>
+            )}
+            {selectedKeywords.length > 0 && (
+              <span className="ml-2">
+                ({selectedKeywords.join(', ')})
+              </span>
+            )}
+          </div>
+
+          {/* Save Template Button */}
+          <SaveTemplateDialog />
         </div>
       </div>
     </div>
