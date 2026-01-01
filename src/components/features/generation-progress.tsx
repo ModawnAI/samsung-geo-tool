@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Progress } from '@/components/ui/progress'
+import { useGenerationStore } from '@/store/generation-store'
 import {
   FileText,
   Clock,
@@ -10,6 +11,10 @@ import {
   ChatCircleText,
   SpinnerGap,
   Check,
+  Lightbulb,
+  BookOpen,
+  Tag,
+  TreeStructure,
 } from '@phosphor-icons/react'
 import { MOTION_VARIANTS } from '@/lib/constants/ui'
 import { cn } from '@/lib/utils'
@@ -18,55 +23,75 @@ interface GenerationProgressProps {
   isGenerating: boolean
 }
 
+// Actual pipeline stages matching generate-v2 API
 const GENERATION_STEPS = [
-  { id: 'analyze', label: 'Analyzing content', icon: FileText, duration: 2000 },
-  { id: 'description', label: 'Generating description', icon: FileText, duration: 3000 },
-  { id: 'timestamps', label: 'Creating timestamps', icon: Clock, duration: 2000 },
-  { id: 'hashtags', label: 'Generating hashtags', icon: Hash, duration: 1500 },
-  { id: 'faq', label: 'Preparing FAQ', icon: ChatCircleText, duration: 1500 },
+  { id: 'usps', label: 'Extracting USPs', icon: Lightbulb },
+  { id: 'faq', label: 'Generating FAQ', icon: ChatCircleText },
+  { id: 'case-studies', label: 'Creating Case Studies', icon: BookOpen },
+  { id: 'keywords', label: 'Extracting Keywords', icon: Tag },
+  { id: 'hashtags', label: 'Generating Hashtags', icon: Hash },
+  { id: 'description', label: 'Writing Description', icon: FileText },
+  { id: 'chapters', label: 'Creating Chapters', icon: TreeStructure },
 ] as const
 
 export function GenerationProgress({ isGenerating }: GenerationProgressProps) {
-  const [currentStep, setCurrentStep] = useState(0)
+  // Get current generation stage from store (for future real-time updates)
+  const generationStage = useGenerationStore((state) => state.generationStage)
+  const setGenerationStage = useGenerationStore((state) => state.setGenerationStage)
+
+  // Simulated step progression (until we have streaming API)
+  const [simulatedStep, setSimulatedStep] = useState(0)
   const [progress, setProgress] = useState(0)
 
+  // Use store stage if available, otherwise fall back to simulation
+  const currentStep = useMemo(() => {
+    if (generationStage) {
+      const index = GENERATION_STEPS.findIndex(s => s.id === generationStage)
+      return index >= 0 ? index : simulatedStep
+    }
+    return simulatedStep
+  }, [generationStage, simulatedStep])
+
+  // Simulate progress through stages with realistic timing
   useEffect(() => {
     if (!isGenerating) {
-      setCurrentStep(0)
+      setSimulatedStep(0)
       setProgress(0)
+      setGenerationStage(null)
       return
     }
 
-    // Simulate progress through steps
-    let stepIndex = 0
-    let stepProgress = 0
-    const totalDuration = GENERATION_STEPS.reduce((sum, step) => sum + step.duration, 0)
-    let elapsedDuration = 0
+    // Each stage takes approximately 1.5-2 seconds on average
+    // Total ~10-15 seconds for 7 stages
+    const avgStageTime = 1800 // ms per stage
+    let elapsed = 0
+    let currentStageStart = 0
 
     const progressInterval = setInterval(() => {
-      if (stepIndex >= GENERATION_STEPS.length) {
-        clearInterval(progressInterval)
-        return
+      elapsed += 100
+      const totalTime = GENERATION_STEPS.length * avgStageTime
+
+      // Calculate which stage we should be on
+      const stageIndex = Math.min(
+        Math.floor(elapsed / avgStageTime),
+        GENERATION_STEPS.length - 1
+      )
+
+      // Update stage if changed
+      if (stageIndex !== simulatedStep) {
+        setSimulatedStep(stageIndex)
+        setGenerationStage(GENERATION_STEPS[stageIndex].id)
+        currentStageStart = elapsed
       }
 
-      stepProgress += 100
-      elapsedDuration += 100
-
-      // Calculate overall progress (cap at 95% to leave room for actual completion)
-      const overallProgress = Math.min(95, (elapsedDuration / totalDuration) * 100)
+      // Calculate overall progress (cap at 95%)
+      const overallProgress = Math.min(95, (elapsed / totalTime) * 100)
       setProgress(overallProgress)
 
-      // Move to next step when current step duration is reached
-      const currentStepDuration = GENERATION_STEPS[stepIndex].duration
-      if (stepProgress >= currentStepDuration) {
-        stepIndex++
-        stepProgress = 0
-        setCurrentStep(stepIndex)
-      }
     }, 100)
 
     return () => clearInterval(progressInterval)
-  }, [isGenerating])
+  }, [isGenerating, setGenerationStage, simulatedStep])
 
   if (!isGenerating) return null
 

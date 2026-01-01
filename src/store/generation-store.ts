@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist, createJSONStorage } from 'zustand/middleware'
 
 export type GenerationStep = 'product' | 'content' | 'keywords' | 'output'
 
@@ -88,6 +89,7 @@ interface GenerationState {
   breakdown: GenerationBreakdown | null
   tuningMetadata: TuningMetadata | null
   isGenerating: boolean
+  generationStage: string | null // Current generation stage (usps, faq, case-studies, etc.)
 
   // Saved generation tracking
   generationId: string | null
@@ -116,6 +118,7 @@ interface GenerationState {
     tuningMetadata?: TuningMetadata
   }) => void
   setIsGenerating: (generating: boolean) => void
+  setGenerationStage: (stage: string | null) => void
   setGenerationId: (id: string | null) => void
   setGenerationStatus: (status: 'unsaved' | 'draft' | 'confirmed') => void
   setIsSaving: (saving: boolean) => void
@@ -157,15 +160,18 @@ const initialState = {
   breakdown: null as GenerationBreakdown | null,
   tuningMetadata: null as TuningMetadata | null,
   isGenerating: false,
+  generationStage: null as string | null,
   generationId: null,
   generationStatus: 'unsaved' as const,
   isSaving: false,
 }
 
-export const useGenerationStore = create<GenerationState>((set, get) => ({
-  ...initialState,
+export const useGenerationStore = create<GenerationState>()(
+  persist(
+    (set, get) => ({
+      ...initialState,
 
-  setStep: (step) => set({ step }),
+      setStep: (step) => set({ step }),
 
   setCategory: (categoryId) => set({ categoryId, productId: null, productName: null }),
 
@@ -207,6 +213,8 @@ export const useGenerationStore = create<GenerationState>((set, get) => ({
 
   setIsGenerating: (isGenerating) => set({ isGenerating }),
 
+  setGenerationStage: (generationStage) => set({ generationStage }),
+
   setGenerationId: (generationId) => set({ generationId }),
 
   setGenerationStatus: (generationStatus) => set({ generationStatus }),
@@ -232,4 +240,37 @@ export const useGenerationStore = create<GenerationState>((set, get) => ({
     }),
 
   reset: () => set(initialState),
-}))
+    }),
+    {
+      name: 'geo-wizard-storage',
+      storage: createJSONStorage(() => localStorage),
+      // Only persist wizard progress state, not ephemeral UI states
+      partialize: (state) => ({
+        step: state.step,
+        categoryId: state.categoryId,
+        productId: state.productId,
+        productName: state.productName,
+        campaignTag: state.campaignTag,
+        launchDate: state.launchDate,
+        videoUrl: state.videoUrl,
+        srtContent: state.srtContent,
+        briefUsps: state.briefUsps,
+        selectedKeywords: state.selectedKeywords,
+        // Don't persist: isGroundingLoading, isGenerating, isSaving (loading states)
+        // Don't persist: groundingKeywords (re-fetch), output content (can regenerate)
+      }),
+      // Merge persisted state with initial state on rehydration
+      merge: (persistedState, currentState) => {
+        const persisted = persistedState as Partial<GenerationState> | undefined
+        return {
+          ...currentState,
+          ...(persisted || {}),
+          // Ensure loading states are always reset
+          isGroundingLoading: false,
+          isGenerating: false,
+          isSaving: false,
+        }
+      },
+    }
+  )
+)

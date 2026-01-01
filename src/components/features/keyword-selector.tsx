@@ -33,6 +33,9 @@ export function KeywordSelector() {
   const [error, setError] = useState<string | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
 
+  // Track if we've auto-run grounding this session
+  const hasAutoRun = useRef(false)
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -77,6 +80,20 @@ export function KeywordSelector() {
       setIsGroundingLoading(false)
     }
   }, [productName, launchDate, setIsGroundingLoading, setGroundingKeywords])
+
+  // Auto-run grounding when entering step 3 if not already done
+  useEffect(() => {
+    // Auto-run if: product exists, no keywords yet, not loading, and haven't auto-run
+    if (
+      productName &&
+      groundingKeywords.length === 0 &&
+      !isGroundingLoading &&
+      !hasAutoRun.current
+    ) {
+      hasAutoRun.current = true
+      handleRunGrounding()
+    }
+  }, [productName, groundingKeywords.length, isGroundingLoading, handleRunGrounding])
 
   // Combine keywords from brief and grounding for selection
   const allKeywords = [

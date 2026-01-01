@@ -505,6 +505,58 @@ const METRIC_CONFIG: Record<string, {
   },
 }
 
+// Score threshold legend for user understanding
+function ScoreThresholdLegend() {
+  return (
+    <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+      <div className="flex items-center gap-1">
+        <div className="w-2 h-2 rounded-full bg-green-500" />
+        <span>Good (≥60)</span>
+      </div>
+      <div className="flex items-center gap-1">
+        <div className="w-2 h-2 rounded-full bg-amber-500" />
+        <span>Needs Work</span>
+      </div>
+      <div className="flex items-center gap-1">
+        <div className="w-2 h-2 rounded-full bg-red-500" />
+        <span>Critical</span>
+      </div>
+    </div>
+  )
+}
+
+// Overall score indicator with context
+function OverallScoreIndicator({ score }: { score: number }) {
+  const getOverallStatus = () => {
+    if (score >= 80) return { label: 'Excellent', color: 'text-green-600 dark:text-green-400', bg: 'bg-green-100 dark:bg-green-900/30', emoji: '🟢' }
+    if (score >= 60) return { label: 'Good', color: 'text-green-600 dark:text-green-400', bg: 'bg-green-100 dark:bg-green-900/30', emoji: '🟢' }
+    if (score >= 40) return { label: 'Needs Improvement', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-100 dark:bg-amber-900/30', emoji: '🟡' }
+    return { label: 'Critical Attention', color: 'text-red-600 dark:text-red-400', bg: 'bg-red-100 dark:bg-red-900/30', emoji: '🔴' }
+  }
+
+  const status = getOverallStatus()
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className={`flex items-center gap-2 px-2 py-1 rounded-full ${status.bg} cursor-help`}>
+          <span className="text-sm">{status.emoji}</span>
+          <span className={`text-xs font-medium ${status.color}`}>{status.label}</span>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" className="max-w-xs">
+        <div className="text-xs space-y-1">
+          <p className="font-medium">Score Thresholds:</p>
+          <p>🟢 80-100: Excellent - Ready for use</p>
+          <p>🟢 60-79: Good - Minor improvements possible</p>
+          <p>🟡 40-59: Needs Improvement - Review recommended</p>
+          <p>🔴 0-39: Critical - Regeneration needed</p>
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
 interface ScoreBreakdownSectionProps {
   scoreBreakdown: ScoreBreakdownItem[]
   onAction?: (action: ActionPayload) => void
@@ -514,6 +566,9 @@ interface ScoreBreakdownSectionProps {
 function ScoreBreakdownSection({ scoreBreakdown, onAction, isRegenerating }: ScoreBreakdownSectionProps) {
   const [expandedMetric, setExpandedMetric] = useState<string | null>(null)
   const [copiedMetric, setCopiedMetric] = useState<string | null>(null)
+
+  // Calculate overall score
+  const overallScore = scoreBreakdown.reduce((sum, item) => sum + (item.weightedScore || 0), 0)
 
   // Calculate overall health and identify issues
   const criticalIssues = scoreBreakdown.filter(item => {
@@ -594,25 +649,30 @@ function ScoreBreakdownSection({ scoreBreakdown, onAction, isRegenerating }: Sco
 
   return (
     <div className="mt-3 space-y-3">
-      {/* Header with summary */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <ListChecks className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium">Score Breakdown</span>
+      {/* Header with summary and overall score */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ListChecks className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium">Score Breakdown</span>
+            <OverallScoreIndicator score={overallScore} />
+          </div>
+          <div className="flex items-center gap-2">
+            {criticalIssues.length > 0 && (
+              <Badge variant="destructive" className="text-[10px] px-1.5 py-0 gap-1">
+                <Warning className="h-3 w-3" />
+                {criticalIssues.length} Critical
+              </Badge>
+            )}
+            {warnings.length > 0 && (
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                {warnings.length} Warning
+              </Badge>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          {criticalIssues.length > 0 && (
-            <Badge variant="destructive" className="text-[10px] px-1.5 py-0 gap-1">
-              <Warning className="h-3 w-3" />
-              {criticalIssues.length} Critical
-            </Badge>
-          )}
-          {warnings.length > 0 && (
-            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
-              {warnings.length} Warning
-            </Badge>
-          )}
-        </div>
+        {/* Score threshold legend for user context */}
+        <ScoreThresholdLegend />
       </div>
 
       {/* Score items - prioritized */}
