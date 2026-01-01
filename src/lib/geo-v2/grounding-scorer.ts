@@ -150,28 +150,80 @@ function calculateCoverageScore(
 }
 
 /**
+ * Tier metadata for UI display and transparency
+ */
+export const TIER_DESCRIPTIONS = {
+  1: {
+    label: 'Official Samsung',
+    description: 'Direct Samsung sources with highest authority',
+    icon: '🏢',
+    color: 'green',
+    points: '1.5pts each (max 3pts)',
+  },
+  2: {
+    label: 'Tech Media',
+    description: 'Trusted technology publications and news outlets',
+    icon: '📰',
+    color: 'blue',
+    points: '0.5pts each (max 1pt)',
+  },
+  3: {
+    label: 'Community',
+    description: 'Social media and community-driven content',
+    icon: '👥',
+    color: 'yellow',
+    points: '0.5pts if no other sources',
+  },
+  4: {
+    label: 'Other',
+    description: 'Unrecognized sources with unknown authority',
+    icon: '❓',
+    color: 'gray',
+    points: '0pts',
+  },
+} as const
+
+/**
+ * Get tier description for UI display
+ */
+export function getTierDescription(tier: 1 | 2 | 3 | 4) {
+  return TIER_DESCRIPTIONS[tier]
+}
+
+/**
  * Determine source tier from URL
+ * Enhanced with comprehensive domain matching
  */
 export function getSourceTier(uri: string): 1 | 2 | 3 | 4 {
   const urlLower = uri.toLowerCase()
 
+  // Extract hostname for more accurate matching
+  let hostname = ''
+  try {
+    const url = new URL(uri)
+    hostname = url.hostname.toLowerCase()
+  } catch {
+    // If URL parsing fails, fallback to string matching
+    hostname = urlLower
+  }
+
   // Check Tier 1 (Official Samsung)
   for (const domain of SOURCE_AUTHORITY_TIERS.tier1) {
-    if (urlLower.includes(domain)) {
+    if (hostname.includes(domain) || hostname.endsWith(`.${domain}`)) {
       return 1
     }
   }
 
   // Check Tier 2 (Tech Media)
   for (const domain of SOURCE_AUTHORITY_TIERS.tier2) {
-    if (urlLower.includes(domain)) {
+    if (hostname.includes(domain) || hostname.endsWith(`.${domain}`)) {
       return 2
     }
   }
 
   // Check Tier 3 (Community)
   for (const domain of SOURCE_AUTHORITY_TIERS.tier3) {
-    if (urlLower.includes(domain)) {
+    if (hostname.includes(domain) || hostname.endsWith(`.${domain}`)) {
       return 3
     }
   }

@@ -63,11 +63,91 @@ export interface GroundingQualityScore {
   }
 }
 
-// Source authority tiers
+// Source authority tiers - Enhanced for comprehensive detection
 export const SOURCE_AUTHORITY_TIERS = {
-  tier1: ['samsung.com', 'news.samsung.com', 'samsung.co.kr'],
-  tier2: ['gsmarena.com', 'theverge.com', 'techcrunch.com', 'cnet.com', 'techradar.com', 'tomsguide.com', 'androidauthority.com'],
-  tier3: ['reddit.com', 'youtube.com', 'twitter.com', 'medium.com'],
+  // Tier 1: Official Samsung sources (highest authority)
+  tier1: [
+    'samsung.com',
+    'news.samsung.com',
+    'samsung.co.kr',
+    'samsungmobilepress.com',
+    'samsungnewsroom.com',
+    'samsung.cn',
+    'samsung.co.uk',
+    'samsung.de',
+    'samsung.fr',
+    'samsung.es',
+    'samsung.it',
+    'samsung.co.jp',
+    'samsung.com.au',
+    'samsung.com.br',
+    'semiconductor.samsung.com',
+    'samsungdisplay.com',
+    'research.samsung.com',
+  ],
+  // Tier 2: Trusted tech media and publications
+  tier2: [
+    // Major tech publications
+    'gsmarena.com',
+    'theverge.com',
+    'techcrunch.com',
+    'cnet.com',
+    'techradar.com',
+    'tomsguide.com',
+    'androidauthority.com',
+    'engadget.com',
+    'wired.com',
+    'arstechnica.com',
+    'zdnet.com',
+    'pcmag.com',
+    'tomshardware.com',
+    'anandtech.com',
+    'xda-developers.com',
+    'androidcentral.com',
+    '9to5google.com',
+    'androidpolice.com',
+    'phonearena.com',
+    'dpreview.com',
+    'notebookcheck.net',
+    // Business/mainstream tech coverage
+    'bloomberg.com',
+    'reuters.com',
+    'forbes.com',
+    'businessinsider.com',
+    'wsj.com',
+    'nytimes.com',
+    'bbc.com',
+    'theguardian.com',
+    // Samsung-focused media
+    'sammobile.com',
+    // General tech media
+    'gizmodo.com',
+    'mashable.com',
+    'digitaltrends.com',
+    'howtogeek.com',
+    'slashgear.com',
+    'bgr.com',
+    'pocketnow.com',
+    'thenextweb.com',
+  ],
+  // Tier 3: Community and social sources
+  tier3: [
+    'reddit.com',
+    'youtube.com',
+    'twitter.com',
+    'x.com',
+    'medium.com',
+    'quora.com',
+    'facebook.com',
+    'linkedin.com',
+    'instagram.com',
+    'tiktok.com',
+    'discord.com',
+    'github.com',
+    'stackoverflow.com',
+    'forums.androidcentral.com',
+    'xda-forums.com',
+  ],
 } as const
 
 // ==========================================

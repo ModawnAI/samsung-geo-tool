@@ -31,6 +31,9 @@ import {
   FileText,
   FileTxt,
   FileJs,
+  ArrowsClockwise,
+  Sparkle,
+  Lightning,
 } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
@@ -78,6 +81,17 @@ function CopyButton({ text, label }: CopyButtonProps) {
   )
 }
 
+// Regeneration focus area labels
+const REGENERATION_LABELS: Record<string, { label: string; description: string }> = {
+  regenerate_usps: { label: 'USPs', description: 'Enhancing unique selling points from playbook' },
+  regenerate_grounded: { label: 'Grounding', description: 'Deepening web search for current trends' },
+  regenerate_aligned: { label: 'Brand Alignment', description: 'Enforcing Samsung brand voice' },
+  verify_claims: { label: 'Fact Check', description: 'Verifying all claims and statistics' },
+  add_keywords: { label: 'Keywords', description: 'Improving keyword density and placement' },
+  improve_structure: { label: 'Structure', description: 'Optimizing readability and flow' },
+  regenerate_all: { label: 'Full', description: 'Complete regeneration with all enhancements' },
+}
+
 export function OutputDisplay() {
   // Selective Zustand subscriptions for better performance
   const description = useGenerationStore((state) => state.description)
@@ -106,6 +120,9 @@ export function OutputDisplay() {
 
   // AbortController for cancelable requests
   const abortControllerRef = useRef<AbortController | null>(null)
+
+  // Track regeneration focus area for UX feedback
+  const [regenerationFocus, setRegenerationFocus] = useState<string | null>(null)
 
   // Cleanup on unmount
   useEffect(() => {
@@ -304,6 +321,7 @@ export function OutputDisplay() {
 
     console.log('[Regenerate] Setting isGenerating to true')
     setIsGenerating(true)
+    setRegenerationFocus(action.type)
     try {
       // Build regeneration config based on action type
       const regenerationConfig: Record<string, unknown> = {
@@ -443,6 +461,7 @@ export function OutputDisplay() {
     } finally {
       console.log('[Regenerate] Finally block - setting isGenerating to false')
       setIsGenerating(false)
+      setRegenerationFocus(null)
     }
   }, [productName, videoUrl, srtContent, selectedKeywords, categoryId, launchDate, setIsGenerating, setOutput])
 
@@ -462,7 +481,7 @@ export function OutputDisplay() {
       animate="visible"
       className="space-y-6"
     >
-      {/* Summary */}
+      {/* Summary with Refined Badge */}
       <motion.div variants={MOTION_VARIANTS.staggerItem}>
         <div className="flex items-center gap-4 flex-wrap">
           <Badge variant="outline" className="text-sm">
@@ -473,8 +492,45 @@ export function OutputDisplay() {
               {keyword}
             </Badge>
           ))}
+          {/* Prominent Refined Badge when content has been regenerated */}
+          {breakdown?.qualityScores?.refined && (
+            <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0 gap-1.5 px-3">
+              <Sparkle className="h-3.5 w-3.5" weight="fill" />
+              Refined
+            </Badge>
+          )}
         </div>
       </motion.div>
+
+      {/* Regeneration Status Indicator */}
+      {isGenerating && regenerationFocus && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          className="rounded-lg border border-primary/30 bg-primary/5 p-4"
+        >
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <ArrowsClockwise className="h-5 w-5 text-primary animate-spin" />
+              <Lightning className="h-3 w-3 text-primary absolute -top-1 -right-1" weight="fill" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-primary">
+                  Regenerating: {REGENERATION_LABELS[regenerationFocus]?.label || 'Content'}
+                </span>
+                <Badge variant="outline" className="text-xs">
+                  Focus Area
+                </Badge>
+              </div>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {REGENERATION_LABELS[regenerationFocus]?.description || 'Improving content quality...'}
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Generation Breakdown - Shows signal fusion transparency */}
       {breakdown && (

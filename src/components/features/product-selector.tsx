@@ -42,6 +42,9 @@ import {
   MagnifyingGlass,
   BookmarkSimple,
   Check,
+  Warning,
+  ArrowClockwise,
+  Info,
 } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -94,6 +97,8 @@ export function ProductSelector() {
   const [productSearch, setProductSearch] = useState('')
   const [productPopoverOpen, setProductPopoverOpen] = useState(false)
   const [templatePopoverOpen, setTemplatePopoverOpen] = useState(false)
+  const [briefLoading, setBriefLoading] = useState(false)
+  const [briefLoadError, setBriefLoadError] = useState<string | null>(null)
 
   const {
     categoryId,
@@ -180,14 +185,19 @@ export function ProductSelector() {
     fetchProducts()
   }, [categoryId])
 
-  useEffect(() => {
-    async function fetchBrief() {
-      if (!productId) {
-        setActiveBrief(null)
-        setBriefUsps([])
-        return
-      }
-      const { data } = await supabase
+  const fetchBrief = async () => {
+    if (!productId) {
+      setActiveBrief(null)
+      setBriefUsps([])
+      setBriefLoadError(null)
+      return
+    }
+
+    setBriefLoading(true)
+    setBriefLoadError(null)
+
+    try {
+      const { data, error } = await supabase
         .from('briefs')
         .select('*')
         .eq('product_id', productId)
@@ -195,12 +205,30 @@ export function ProductSelector() {
         .order('version', { ascending: false })
         .limit(1)
         .single()
-      if (data) {
+
+      if (error) {
+        // PGRST116 = no rows returned (not an error, just no brief exists)
+        if (error.code === 'PGRST116') {
+          setActiveBrief(null)
+          setBriefUsps([])
+        } else {
+          throw error
+        }
+      } else if (data) {
         const brief = data as Brief
         setActiveBrief(brief)
         setBriefUsps(brief.usps || [])
       }
+    } catch (err) {
+      console.error('Failed to load brief:', err)
+      setBriefLoadError('Failed to load product brief. Please try again.')
+      setActiveBrief(null)
+    } finally {
+      setBriefLoading(false)
     }
+  }
+
+  useEffect(() => {
     fetchBrief()
   }, [productId])
 
@@ -382,7 +410,7 @@ export function ProductSelector() {
             <Label htmlFor="campaign" className="text-sm sm:text-base">
               Campaign Tag
               <span className="text-muted-foreground font-normal ml-2 text-xs sm:text-sm">
-                (for organization only)
+                (optional)
               </span>
             </Label>
             <Input
@@ -392,6 +420,13 @@ export function ProductSelector() {
               placeholder="e.g., Spring 2025 Launch"
               className="mt-1.5"
             />
+            <p className="text-xs text-muted-foreground mt-1.5 flex items-start gap-1">
+              <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
+              <span>
+                Tags help organize your generations in History. Use consistent naming like
+                &quot;Q1 2025 Campaign&quot; or &quot;Galaxy S25 Launch&quot; to easily filter and find content later.
+              </span>
+            </p>
           </div>
 
           <div>
@@ -430,7 +465,46 @@ export function ProductSelector() {
             )}
           </div>
 
-          {activeBrief && (
+          {/* Brief Loading State */}
+          {briefLoading && (
+            <div className="p-4 rounded-lg bg-muted/50 border animate-pulse">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="h-4 w-4 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
+                <span>Loading product brief...</span>
+              </div>
+            </div>
+          )}
+
+          {/* Brief Load Error */}
+          {briefLoadError && !briefLoading && (
+            <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-2 text-sm">
+                  <Warning className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" weight="fill" />
+                  <div>
+                    <p className="font-medium text-destructive">Brief Loading Failed</p>
+                    <p className="text-muted-foreground mt-1">{briefLoadError}</p>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={fetchBrief}
+                  className="gap-2 flex-shrink-0"
+                >
+                  <ArrowClockwise className="h-4 w-4" />
+                  Retry
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1">
+                <Info className="h-3 w-3" />
+                You can continue without a brief, but USP recommendations won&apos;t be available.
+              </p>
+            </div>
+          )}
+
+          {/* Active Brief Display */}
+          {activeBrief && !briefLoading && !briefLoadError && (
             <div className="p-4 rounded-lg bg-muted/50 border">
               <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                 <span>Active Brief:</span>
@@ -448,6 +522,16 @@ export function ProductSelector() {
                     {i + 1}. {usp}
                   </span>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* No Brief Available */}
+          {!activeBrief && !briefLoading && !briefLoadError && productId && (
+            <div className="p-4 rounded-lg bg-muted/30 border border-dashed">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Info className="h-4 w-4" />
+                <span>No active brief found for this product. You can still proceed with generation.</span>
               </div>
             </div>
           )}

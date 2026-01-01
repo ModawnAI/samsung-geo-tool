@@ -47,15 +47,18 @@ import {
   CaretLeft,
   SpinnerGap,
   Check,
+  Info,
+  CheckCircle,
+  Warning,
 } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { MOTION_VARIANTS, ICON_SIZES } from '@/lib/constants/ui'
 
 const steps = [
-  { id: 'product', label: 'Product', icon: Package },
-  { id: 'content', label: 'Content', icon: FileText },
-  { id: 'keywords', label: 'Keywords', icon: Tag },
-  { id: 'output', label: 'Output', icon: Export },
+  { id: 'product', label: 'Product', icon: Package, requirement: 'Select a product' },
+  { id: 'content', label: 'Content', icon: FileText, requirement: 'Add SRT content' },
+  { id: 'keywords', label: 'Keywords', icon: Tag, requirement: 'Select 1-3 keywords' },
+  { id: 'output', label: 'Output', icon: Export, requirement: null },
 ] as const
 
 export default function GeneratePage() {
@@ -348,6 +351,34 @@ export default function GeneratePage() {
           })}
         </ol>
       </nav>
+
+      {/* Step Requirements Indicator */}
+      {step !== 'output' && (
+        <div className={cn(
+          "flex items-center gap-2 px-4 py-3 rounded-lg text-sm transition-colors",
+          canProceed()
+            ? "bg-green-50 text-green-800 dark:bg-green-900/30 dark:text-green-200 border border-green-200 dark:border-green-800"
+            : "bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200 border border-amber-200 dark:border-amber-800"
+        )}>
+          {canProceed() ? (
+            <>
+              <CheckCircle className="h-4 w-4 flex-shrink-0" weight="fill" />
+              <span>Ready to proceed to next step</span>
+            </>
+          ) : (
+            <>
+              <Warning className="h-4 w-4 flex-shrink-0" weight="fill" />
+              <span>
+                <span className="font-medium">Required: </span>
+                {steps.find(s => s.id === step)?.requirement}
+                {step === 'keywords' && selectedKeywords.length > 0 && selectedKeywords.length < 1 && (
+                  <span className="ml-1 text-muted-foreground">({selectedKeywords.length}/1 minimum)</span>
+                )}
+              </span>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Step Content */}
       <Card>
