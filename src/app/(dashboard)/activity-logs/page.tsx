@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useTranslation } from '@/lib/i18n'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -175,6 +176,7 @@ function ActivityLogRow({
   expanded: boolean
   onToggle: () => void
 }) {
+  const { t } = useTranslation()
   return (
     <>
       <TableRow
@@ -190,7 +192,7 @@ function ActivityLogRow({
           <div className="flex items-center gap-2">
             <User className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm truncate max-w-[150px]">
-              {log.user_email || 'Anonymous'}
+              {log.user_email || t.activityLogs.activityTable.anonymous}
             </span>
           </div>
         </TableCell>
@@ -229,37 +231,37 @@ function ActivityLogRow({
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 text-sm">
               {log.action_description && (
                 <div>
-                  <span className="font-medium text-muted-foreground">Description:</span>
+                  <span className="font-medium text-muted-foreground">{t.activityLogs.activityTable.description}:</span>
                   <p className="mt-1">{log.action_description}</p>
                 </div>
               )}
               {log.resource_type && (
                 <div>
-                  <span className="font-medium text-muted-foreground">Resource:</span>
+                  <span className="font-medium text-muted-foreground">{t.activityLogs.activityTable.resource}:</span>
                   <p className="mt-1">{log.resource_type}: {log.resource_name || log.resource_id}</p>
                 </div>
               )}
               {log.request_path && (
                 <div>
-                  <span className="font-medium text-muted-foreground">Request:</span>
+                  <span className="font-medium text-muted-foreground">{t.activityLogs.activityTable.request}:</span>
                   <p className="mt-1 font-mono text-xs">{log.request_method} {log.request_path}</p>
                 </div>
               )}
               {log.ip_address && (
                 <div>
-                  <span className="font-medium text-muted-foreground">IP Address:</span>
+                  <span className="font-medium text-muted-foreground">{t.activityLogs.activityTable.ipAddress}:</span>
                   <p className="mt-1 font-mono text-xs">{log.ip_address}</p>
                 </div>
               )}
               {log.error_message && (
                 <div className="md:col-span-2">
-                  <span className="font-medium text-red-600">Error:</span>
+                  <span className="font-medium text-red-600">{t.activityLogs.activityTable.error}:</span>
                   <p className="mt-1 text-red-600">{log.error_message}</p>
                 </div>
               )}
               {Object.keys(log.metadata).length > 0 && (
                 <div className="md:col-span-3">
-                  <span className="font-medium text-muted-foreground">Metadata:</span>
+                  <span className="font-medium text-muted-foreground">{t.activityLogs.activityTable.metadata}:</span>
                   <pre className="mt-1 p-2 bg-muted rounded text-xs overflow-auto max-h-32">
                     {JSON.stringify(log.metadata, null, 2)}
                   </pre>
@@ -282,6 +284,7 @@ function ApiLogRow({
   expanded: boolean
   onToggle: () => void
 }) {
+  const { t } = useTranslation()
   const statusClass = log.response_status
     ? log.response_status >= 400
       ? 'text-red-600'
@@ -303,7 +306,7 @@ function ApiLogRow({
           <div className="flex items-center gap-2">
             <User className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm truncate max-w-[150px]">
-              {log.user_email || 'Anonymous'}
+              {log.user_email || t.activityLogs.activityTable.anonymous}
             </span>
           </div>
         </TableCell>
@@ -339,27 +342,27 @@ function ApiLogRow({
             <div className="grid gap-4 text-sm">
               {log.trace_id && (
                 <div>
-                  <span className="font-medium text-muted-foreground">Trace ID:</span>
+                  <span className="font-medium text-muted-foreground">{t.activityLogs.apiTable.traceId}:</span>
                   <p className="mt-1 font-mono text-xs">{log.trace_id}</p>
                 </div>
               )}
               {log.tokens_used && (
                 <div>
-                  <span className="font-medium text-muted-foreground">Tokens:</span>
+                  <span className="font-medium text-muted-foreground">{t.activityLogs.apiTable.tokens}:</span>
                   <p className="mt-1">
-                    Input: {log.tokens_used.input || 0} | Output: {log.tokens_used.output || 0} | Total: {log.tokens_used.total || 0}
+                    {t.activityLogs.apiTable.input}: {log.tokens_used.input || 0} | {t.activityLogs.apiTable.output}: {log.tokens_used.output || 0} | {t.activityLogs.apiTable.total}: {log.tokens_used.total || 0}
                   </p>
                 </div>
               )}
               {log.estimated_cost !== null && (
                 <div>
-                  <span className="font-medium text-muted-foreground">Estimated Cost:</span>
+                  <span className="font-medium text-muted-foreground">{t.activityLogs.apiTable.estimatedCost}:</span>
                   <p className="mt-1">${log.estimated_cost.toFixed(6)}</p>
                 </div>
               )}
               {log.external_apis_called && log.external_apis_called.length > 0 && (
                 <div>
-                  <span className="font-medium text-muted-foreground">External APIs Called:</span>
+                  <span className="font-medium text-muted-foreground">{t.activityLogs.apiTable.externalApis}:</span>
                   <div className="mt-1 flex flex-wrap gap-2">
                     {log.external_apis_called.map((api, i) => (
                       <Badge key={i} variant="secondary" className="text-xs">
@@ -371,13 +374,13 @@ function ApiLogRow({
               )}
               {log.error_message && (
                 <div className="md:col-span-2">
-                  <span className="font-medium text-red-600">Error ({log.error_type}):</span>
+                  <span className="font-medium text-red-600">{t.activityLogs.apiTable.error} ({log.error_type}):</span>
                   <p className="mt-1 text-red-600">{log.error_message}</p>
                 </div>
               )}
               {log.request_body && (
                 <div>
-                  <span className="font-medium text-muted-foreground">Request Body:</span>
+                  <span className="font-medium text-muted-foreground">{t.activityLogs.apiTable.requestBody}:</span>
                   <pre className="mt-1 p-2 bg-muted rounded text-xs overflow-auto max-h-32">
                     {JSON.stringify(log.request_body, null, 2)}
                   </pre>
@@ -400,6 +403,7 @@ function GenerationLogRow({
   expanded: boolean
   onToggle: () => void
 }) {
+  const { t } = useTranslation()
   const eventTypeColors: Record<string, string> = {
     generation_started: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
     generation_completed: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
@@ -424,7 +428,7 @@ function GenerationLogRow({
         </TableCell>
         <TableCell>
           <span className="text-sm truncate max-w-[150px] block">
-            {log.product_name || 'Unknown Product'}
+            {log.product_name || t.activityLogs.generationsTable.unknownProduct}
           </span>
         </TableCell>
         <TableCell>
@@ -447,7 +451,7 @@ function GenerationLogRow({
         </TableCell>
         <TableCell>
           {log.keywords_used && log.keywords_used.length > 0 ? (
-            <span className="text-sm text-muted-foreground">{log.keywords_used.length} keywords</span>
+            <span className="text-sm text-muted-foreground">{log.keywords_used.length} {t.activityLogs.generationsTable.keywords.toLowerCase()}</span>
           ) : (
             <span className="text-sm text-muted-foreground">-</span>
           )}
@@ -476,7 +480,7 @@ function GenerationLogRow({
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 text-sm">
               {log.keywords_used && log.keywords_used.length > 0 && (
                 <div>
-                  <span className="font-medium text-muted-foreground">Keywords Used:</span>
+                  <span className="font-medium text-muted-foreground">{t.activityLogs.generationsTable.keywordsUsed}:</span>
                   <div className="mt-1 flex flex-wrap gap-1">
                     {log.keywords_used.map((kw, i) => (
                       <Badge key={i} variant="secondary" className="text-xs">
@@ -488,26 +492,26 @@ function GenerationLogRow({
               )}
               {log.description_length !== null && (
                 <div>
-                  <span className="font-medium text-muted-foreground">Output Metrics:</span>
+                  <span className="font-medium text-muted-foreground">{t.activityLogs.generationsTable.outputMetrics}:</span>
                   <p className="mt-1">
-                    Description: {log.description_length} chars |
-                    Timestamps: {log.timestamps_count || 0} |
-                    Hashtags: {log.hashtags_count || 0} |
-                    FAQs: {log.faq_count || 0}
+                    {t.activityLogs.generationsTable.description}: {log.description_length} chars |
+                    {t.activityLogs.generationsTable.timestamps}: {log.timestamps_count || 0} |
+                    {t.activityLogs.generationsTable.hashtags}: {log.hashtags_count || 0} |
+                    {t.activityLogs.generationsTable.faqs}: {log.faq_count || 0}
                   </p>
                 </div>
               )}
               {log.grounding_sources_count !== null && (
                 <div>
-                  <span className="font-medium text-muted-foreground">Grounding:</span>
+                  <span className="font-medium text-muted-foreground">{t.activityLogs.generationsTable.grounding}:</span>
                   <p className="mt-1">
-                    Sources: {log.grounding_sources_count} | Citations: {log.grounding_citations_count || 0}
+                    {t.activityLogs.generationsTable.sources}: {log.grounding_sources_count} | {t.activityLogs.generationsTable.citations}: {log.grounding_citations_count || 0}
                   </p>
                 </div>
               )}
               {log.quality_scores && (
                 <div className="md:col-span-2">
-                  <span className="font-medium text-muted-foreground">Quality Scores:</span>
+                  <span className="font-medium text-muted-foreground">{t.activityLogs.generationsTable.qualityScores}:</span>
                   <div className="mt-1 flex flex-wrap gap-2">
                     {Object.entries(log.quality_scores).map(([key, value]) => (
                       <Badge key={key} variant="outline" className="text-xs">
@@ -519,7 +523,7 @@ function GenerationLogRow({
               )}
               {log.stage_durations && (
                 <div className="md:col-span-3">
-                  <span className="font-medium text-muted-foreground">Stage Durations:</span>
+                  <span className="font-medium text-muted-foreground">{t.activityLogs.generationsTable.stageDurations}:</span>
                   <div className="mt-1 flex flex-wrap gap-2">
                     {Object.entries(log.stage_durations).map(([stage, duration]) => (
                       <Badge key={stage} variant="secondary" className="text-xs">
@@ -534,15 +538,15 @@ function GenerationLogRow({
               )}
               {log.is_refined && (
                 <div>
-                  <span className="font-medium text-muted-foreground">Refinement:</span>
+                  <span className="font-medium text-muted-foreground">{t.activityLogs.generationsTable.refinement}:</span>
                   <p className="mt-1">
-                    Focus: {log.refinement_focus || 'General'} | Iteration: {log.refinement_iteration}
+                    {t.activityLogs.generationsTable.focus}: {log.refinement_focus || t.activityLogs.generationsTable.general} | {t.activityLogs.generationsTable.iteration}: {log.refinement_iteration}
                   </p>
                 </div>
               )}
               {log.video_url && (
                 <div>
-                  <span className="font-medium text-muted-foreground">Video URL:</span>
+                  <span className="font-medium text-muted-foreground">{t.activityLogs.generationsTable.videoUrl}:</span>
                   <p className="mt-1 text-xs font-mono truncate">{log.video_url}</p>
                 </div>
               )}
@@ -555,6 +559,7 @@ function GenerationLogRow({
 }
 
 export default function ActivityLogsPage() {
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<TabValue>('activity')
   const [isLoading, setIsLoading] = useState(true)
 
@@ -617,7 +622,7 @@ export default function ActivityLogsPage() {
 
     if (error) {
       console.error('Error fetching activity logs:', error)
-      toast.error('Failed to load activity logs')
+      toast.error(t.activityLogs.loadError)
       return
     }
 
@@ -647,7 +652,7 @@ export default function ActivityLogsPage() {
 
     if (error) {
       console.error('Error fetching API logs:', error)
-      toast.error('Failed to load API logs')
+      toast.error(t.activityLogs.loadError)
       return
     }
 
@@ -677,7 +682,7 @@ export default function ActivityLogsPage() {
 
     if (error) {
       console.error('Error fetching generation logs:', error)
-      toast.error('Failed to load generation logs')
+      toast.error(t.activityLogs.loadError)
       return
     }
 
@@ -743,7 +748,7 @@ export default function ActivityLogsPage() {
     } else {
       // CSV export
       if (data.length === 0) {
-        toast.error('No data to export')
+        toast.error(t.activityLogs.noDataToExport)
         return
       }
       const headers = Object.keys(data[0] as object)
@@ -768,7 +773,7 @@ export default function ActivityLogsPage() {
       URL.revokeObjectURL(url)
     }
 
-    toast.success(`Exported ${data.length} log entries`)
+    toast.success(`${data.length} ${t.activityLogs.exportedSuccess}`)
   }
 
   // Summary stats
@@ -790,9 +795,9 @@ export default function ActivityLogsPage() {
         <div className="flex items-center gap-3">
           <ClipboardText className="h-6 w-6" />
           <div>
-            <h1 className="text-2xl font-bold">Activity Logs</h1>
+            <h1 className="text-2xl font-bold">{t.activityLogs.title}</h1>
             <p className="text-sm text-muted-foreground">
-              Monitor user activities, API calls, and generation events
+              {t.activityLogs.subtitle}
             </p>
           </div>
         </div>
@@ -800,16 +805,16 @@ export default function ActivityLogsPage() {
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm">
               <Download className="h-4 w-4 mr-2" />
-              Export
+              {t.activityLogs.export}
               <CaretDown className="h-3 w-3 ml-1" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => handleExport('json')}>
-              Export as JSON
+              {t.activityLogs.exportJson}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleExport('csv')}>
-              Export as CSV
+              {t.activityLogs.exportCsv}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -821,13 +826,13 @@ export default function ActivityLogsPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Lightning className="h-4 w-4" />
-              Activity Logs
+              {t.activityLogs.summary.title}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalActivity}</div>
             <p className="text-xs text-muted-foreground">
-              {stats.successActivity} success / {stats.failedActivity} failed
+              {stats.successActivity} {t.activityLogs.filters.success.toLowerCase()} / {stats.failedActivity} {t.activityLogs.filters.failure.toLowerCase()}
             </p>
           </CardContent>
         </Card>
@@ -835,13 +840,13 @@ export default function ActivityLogsPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Code className="h-4 w-4" />
-              API Calls
+              {t.activityLogs.summary.apiCalls}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalApi}</div>
             <p className="text-xs text-muted-foreground">
-              {stats.errorApi} errors
+              {stats.errorApi} {t.activityLogs.filters.error.toLowerCase()}
             </p>
           </CardContent>
         </Card>
@@ -849,13 +854,13 @@ export default function ActivityLogsPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Sparkle className="h-4 w-4" />
-              Generations
+              {t.activityLogs.summary.generations}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalGeneration}</div>
             <p className="text-xs text-muted-foreground">
-              {stats.completedGeneration} completed / {stats.failedGeneration} failed
+              {stats.completedGeneration} {t.common.completed.toLowerCase()} / {stats.failedGeneration} {t.activityLogs.filters.failure.toLowerCase()}
             </p>
           </CardContent>
         </Card>
@@ -863,13 +868,21 @@ export default function ActivityLogsPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <CalendarBlank className="h-4 w-4" />
-              Time Range
+              {t.activityLogs.summary.timeRange}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold capitalize">{dateRange}</div>
+            <div className="text-2xl font-bold capitalize">
+              {dateRange === 'today' ? t.activityLogs.filters.today :
+               dateRange === 'week' ? t.activityLogs.filters.lastWeek :
+               dateRange === 'month' ? t.activityLogs.filters.lastMonth :
+               t.activityLogs.filters.allTime}
+            </div>
             <p className="text-xs text-muted-foreground">
-              {dateRange === 'all' ? 'All time' : `Last ${dateRange === 'today' ? '24 hours' : dateRange === 'week' ? '7 days' : '30 days'}`}
+              {dateRange === 'all' ? t.activityLogs.filters.allTime :
+               dateRange === 'today' ? t.activityLogs.filters.today :
+               dateRange === 'week' ? t.activityLogs.filters.lastWeek :
+               t.activityLogs.filters.lastMonth}
             </p>
           </CardContent>
         </Card>
@@ -882,7 +895,7 @@ export default function ActivityLogsPage() {
             <div className="relative flex-1">
               <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search logs..."
+                placeholder={t.activityLogs.filters.searchPlaceholder}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
@@ -891,13 +904,13 @@ export default function ActivityLogsPage() {
             <div className="flex flex-wrap gap-2">
               <Select value={dateRange} onValueChange={(v) => setDateRange(v as DateRange)}>
                 <SelectTrigger className="w-[130px]">
-                  <SelectValue placeholder="Date Range" />
+                  <SelectValue placeholder={t.activityLogs.filters.dateRange} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="today">Today</SelectItem>
-                  <SelectItem value="week">Last 7 Days</SelectItem>
-                  <SelectItem value="month">Last 30 Days</SelectItem>
-                  <SelectItem value="all">All Time</SelectItem>
+                  <SelectItem value="today">{t.activityLogs.filters.today}</SelectItem>
+                  <SelectItem value="week">{t.activityLogs.filters.lastWeek}</SelectItem>
+                  <SelectItem value="month">{t.activityLogs.filters.lastMonth}</SelectItem>
+                  <SelectItem value="all">{t.activityLogs.filters.allTime}</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -905,28 +918,28 @@ export default function ActivityLogsPage() {
                 <>
                   <Select value={categoryFilter} onValueChange={(v) => setCategoryFilter(v as typeof categoryFilter)}>
                     <SelectTrigger className="w-[140px]">
-                      <SelectValue placeholder="Category" />
+                      <SelectValue placeholder={t.activityLogs.filters.category} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Categories</SelectItem>
-                      <SelectItem value="auth">Auth</SelectItem>
-                      <SelectItem value="generation">Generation</SelectItem>
-                      <SelectItem value="navigation">Navigation</SelectItem>
-                      <SelectItem value="configuration">Configuration</SelectItem>
-                      <SelectItem value="data">Data</SelectItem>
-                      <SelectItem value="system">System</SelectItem>
+                      <SelectItem value="all">{t.activityLogs.filters.allCategories}</SelectItem>
+                      <SelectItem value="auth">{t.activityLogs.categories.auth}</SelectItem>
+                      <SelectItem value="generation">{t.activityLogs.categories.generation}</SelectItem>
+                      <SelectItem value="navigation">{t.activityLogs.categories.navigation}</SelectItem>
+                      <SelectItem value="configuration">{t.activityLogs.categories.configuration}</SelectItem>
+                      <SelectItem value="data">{t.activityLogs.categories.data}</SelectItem>
+                      <SelectItem value="system">{t.activityLogs.categories.system}</SelectItem>
                     </SelectContent>
                   </Select>
 
                   <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
                     <SelectTrigger className="w-[130px]">
-                      <SelectValue placeholder="Status" />
+                      <SelectValue placeholder={t.activityLogs.filters.status} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="success">Success</SelectItem>
-                      <SelectItem value="failure">Failure</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="all">{t.activityLogs.filters.allStatus}</SelectItem>
+                      <SelectItem value="success">{t.activityLogs.filters.success}</SelectItem>
+                      <SelectItem value="failure">{t.activityLogs.filters.failure}</SelectItem>
+                      <SelectItem value="pending">{t.activityLogs.filters.pending}</SelectItem>
                     </SelectContent>
                   </Select>
                 </>
@@ -936,7 +949,7 @@ export default function ActivityLogsPage() {
                 variant="outline"
                 size="icon"
                 onClick={() => setSortOrder((prev) => (prev === 'desc' ? 'asc' : 'desc'))}
-                title={sortOrder === 'desc' ? 'Newest first' : 'Oldest first'}
+                title={sortOrder === 'desc' ? t.activityLogs.newestFirst : t.activityLogs.oldestFirst}
               >
                 <ArrowsDownUp className="h-4 w-4" />
               </Button>
@@ -950,15 +963,15 @@ export default function ActivityLogsPage() {
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="activity" className="gap-2">
             <Lightning className="h-4 w-4" />
-            Activity ({stats.totalActivity})
+            {t.activityLogs.tabs.activity} ({stats.totalActivity})
           </TabsTrigger>
           <TabsTrigger value="api" className="gap-2">
             <Code className="h-4 w-4" />
-            API Calls ({stats.totalApi})
+            {t.activityLogs.tabs.apiCalls} ({stats.totalApi})
           </TabsTrigger>
           <TabsTrigger value="generation" className="gap-2">
             <Sparkle className="h-4 w-4" />
-            Generations ({stats.totalGeneration})
+            {t.activityLogs.tabs.generations} ({stats.totalGeneration})
           </TabsTrigger>
         </TabsList>
 
@@ -974,19 +987,19 @@ export default function ActivityLogsPage() {
               ) : activityLogs.length === 0 ? (
                 <div className="py-12 text-center text-muted-foreground">
                   <Lightning className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg font-medium">No activity logs found</p>
-                  <p className="text-sm mt-1">Try adjusting your filters</p>
+                  <p className="text-lg font-medium">{t.activityLogs.activityTable.noLogs}</p>
+                  <p className="text-sm mt-1">{t.activityLogs.activityTable.adjustFilters}</p>
                 </div>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Time</TableHead>
-                      <TableHead>User</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Action</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Duration</TableHead>
+                      <TableHead>{t.activityLogs.activityTable.timestamp}</TableHead>
+                      <TableHead>{t.activityLogs.activityTable.user}</TableHead>
+                      <TableHead>{t.activityLogs.activityTable.category}</TableHead>
+                      <TableHead>{t.activityLogs.activityTable.action}</TableHead>
+                      <TableHead>{t.activityLogs.activityTable.status}</TableHead>
+                      <TableHead className="text-right">{t.activityLogs.activityTable.duration}</TableHead>
                       <TableHead className="w-[40px]"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -1018,19 +1031,19 @@ export default function ActivityLogsPage() {
               ) : apiLogs.length === 0 ? (
                 <div className="py-12 text-center text-muted-foreground">
                   <Code className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg font-medium">No API logs found</p>
-                  <p className="text-sm mt-1">Try adjusting your filters</p>
+                  <p className="text-lg font-medium">{t.activityLogs.apiTable.noApiCalls}</p>
+                  <p className="text-sm mt-1">{t.activityLogs.apiTable.adjustFilters}</p>
                 </div>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Time</TableHead>
-                      <TableHead>User</TableHead>
-                      <TableHead>Method</TableHead>
-                      <TableHead>Endpoint</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Duration</TableHead>
+                      <TableHead>{t.activityLogs.apiTable.timestamp}</TableHead>
+                      <TableHead>{t.activityLogs.activityTable.user}</TableHead>
+                      <TableHead>{t.activityLogs.apiTable.method}</TableHead>
+                      <TableHead>{t.activityLogs.apiTable.endpoint}</TableHead>
+                      <TableHead>{t.activityLogs.apiTable.status}</TableHead>
+                      <TableHead className="text-right">{t.activityLogs.apiTable.duration}</TableHead>
                       <TableHead className="w-[40px]"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -1062,19 +1075,19 @@ export default function ActivityLogsPage() {
               ) : generationLogs.length === 0 ? (
                 <div className="py-12 text-center text-muted-foreground">
                   <Sparkle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg font-medium">No generation logs found</p>
-                  <p className="text-sm mt-1">Try adjusting your filters</p>
+                  <p className="text-lg font-medium">{t.activityLogs.generationsTable.noGenerations}</p>
+                  <p className="text-sm mt-1">{t.activityLogs.generationsTable.adjustFilters}</p>
                 </div>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Time</TableHead>
-                      <TableHead>Product</TableHead>
-                      <TableHead>Event</TableHead>
-                      <TableHead>Score</TableHead>
-                      <TableHead>Keywords</TableHead>
-                      <TableHead className="text-right">Duration</TableHead>
+                      <TableHead>{t.activityLogs.generationsTable.timestamp}</TableHead>
+                      <TableHead>{t.activityLogs.generationsTable.product}</TableHead>
+                      <TableHead>{t.activityLogs.generationsTable.event}</TableHead>
+                      <TableHead>{t.activityLogs.generationsTable.score}</TableHead>
+                      <TableHead>{t.activityLogs.generationsTable.keywords}</TableHead>
+                      <TableHead className="text-right">{t.activityLogs.generationsTable.duration}</TableHead>
                       <TableHead className="w-[40px]"></TableHead>
                     </TableRow>
                   </TableHeader>

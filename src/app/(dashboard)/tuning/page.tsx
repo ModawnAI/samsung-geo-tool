@@ -20,6 +20,7 @@ import {
 } from '@phosphor-icons/react'
 import { useTuningStore } from '@/stores/tuning-store'
 import { cn } from '@/lib/utils'
+import { useTranslation } from '@/lib/i18n'
 
 interface QuickStatProps {
   title: string
@@ -58,6 +59,7 @@ function TuningModule({
   href,
   stats,
   actions,
+  openLabel,
 }: {
   title: string
   description: string
@@ -65,6 +67,7 @@ function TuningModule({
   href: string
   stats?: { label: string; value: string | number }[]
   actions?: { label: string; href: string }[]
+  openLabel: string
 }) {
   return (
     <Card>
@@ -81,7 +84,7 @@ function TuningModule({
           </div>
           <Button variant="ghost" size="sm" asChild>
             <Link href={href} className="gap-1">
-              Open
+              {openLabel}
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
@@ -148,6 +151,7 @@ function TuningSkeleton() {
 }
 
 export default function TuningPage() {
+  const { t } = useTranslation()
   const { prompts, weights, batchJobs, isLoading, error, fetchPrompts, fetchWeights, fetchBatchJobs } = useTuningStore()
 
   useEffect(() => {
@@ -166,8 +170,8 @@ export default function TuningPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Tuning Console</h1>
-            <p className="text-muted-foreground">Manage prompts, weights, and batch operations</p>
+            <h1 className="text-2xl font-bold">{t.tuning.console.title}</h1>
+            <p className="text-muted-foreground">{t.tuning.console.subtitle}</p>
           </div>
         </div>
         <TuningSkeleton />
@@ -180,8 +184,8 @@ export default function TuningPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Tuning Console</h1>
-            <p className="text-muted-foreground">Manage prompts, weights, and batch operations</p>
+            <h1 className="text-2xl font-bold">{t.tuning.console.title}</h1>
+            <p className="text-muted-foreground">{t.tuning.console.subtitle}</p>
           </div>
         </div>
         <Card className="border-destructive/50">
@@ -189,7 +193,7 @@ export default function TuningPage() {
             <Warning className="h-12 w-12 text-destructive" />
             <div className="text-center">
               <p className="font-medium text-destructive">{error}</p>
-              <p className="text-sm text-muted-foreground mt-1">Please check your connection and try again</p>
+              <p className="text-sm text-muted-foreground mt-1">{t.tuning.console.connectionError}</p>
             </div>
             <Button
               onClick={() => {
@@ -201,7 +205,7 @@ export default function TuningPage() {
               className="gap-2"
             >
               <ArrowClockwise className="h-4 w-4" />
-              Retry
+              {t.tuning.console.retry}
             </Button>
           </CardContent>
         </Card>
@@ -214,20 +218,20 @@ export default function TuningPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Tuning Console</h1>
-          <p className="text-muted-foreground">Manage prompts, weights, and batch operations</p>
+          <h1 className="text-2xl font-bold">{t.tuning.console.title}</h1>
+          <p className="text-muted-foreground">{t.tuning.console.subtitle}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" asChild>
             <Link href="/tuning/upload">
               <FileArrowUp className="h-4 w-4 mr-2" />
-              Bulk Upload
+              {t.tuning.console.bulkUpload}
             </Link>
           </Button>
           <Button asChild>
             <Link href="/tuning/batch">
               <Queue className="h-4 w-4 mr-2" />
-              Run Batch
+              {t.tuning.console.runBatch}
             </Link>
           </Button>
         </div>
@@ -236,33 +240,33 @@ export default function TuningPage() {
       {/* Quick Stats */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <QuickStat
-          title="Active Prompts"
+          title={t.tuning.quickStats.activePrompts}
           value={activePrompts}
-          description={`${prompts.length} total versions`}
+          description={`${prompts.length} ${t.tuning.quickStats.totalVersions}`}
           icon={Code}
           href="/tuning/prompts"
           status={activePrompts > 0 ? 'success' : 'warning'}
         />
         <QuickStat
-          title="Active Weights"
+          title={t.tuning.quickStats.activeWeights}
           value={activeWeights}
-          description={`${weights.length} weight configs`}
+          description={`${weights.length} ${t.tuning.quickStats.weightConfigs}`}
           icon={Scales}
           href="/tuning/weights"
           status={activeWeights > 0 ? 'success' : 'warning'}
         />
         <QuickStat
-          title="Running Jobs"
+          title={t.tuning.quickStats.runningJobs}
           value={runningJobs}
-          description={`${pendingJobs} pending`}
+          description={`${pendingJobs} ${t.tuning.quickStats.pendingJobs}`}
           icon={Queue}
           href="/tuning/batch"
           status={runningJobs > 0 ? 'warning' : 'neutral'}
         />
         <QuickStat
-          title="Total Jobs"
+          title={t.tuning.quickStats.totalJobs}
           value={batchJobs.length}
-          description="batch operations"
+          description={t.tuning.quickStats.batchOperations}
           icon={Clock}
           href="/tuning/batch"
         />
@@ -271,66 +275,70 @@ export default function TuningPage() {
       {/* Module Cards */}
       <div className="grid gap-4 lg:grid-cols-2">
         <TuningModule
-          title="Bulk Upload"
-          description="Upload multiple briefs, products, or keywords at once"
+          title={t.tuning.modules.uploadTitle}
+          description={t.tuning.modules.uploadDesc}
           icon={FileArrowUp}
           href="/tuning/upload"
+          openLabel={t.tuning.console.open}
           stats={[
-            { label: 'Products', value: '-' },
-            { label: 'Briefs', value: '-' },
-            { label: 'Keywords', value: '-' },
+            { label: t.tuning.modules.products, value: '-' },
+            { label: t.tuning.modules.briefs, value: '-' },
+            { label: t.tuning.modules.keywords, value: '-' },
           ]}
           actions={[
-            { label: 'Upload CSV', href: '/tuning/upload?type=csv' },
-            { label: 'Upload JSON', href: '/tuning/upload?type=json' },
+            { label: t.tuning.modules.uploadCsv, href: '/tuning/upload?type=csv' },
+            { label: t.tuning.modules.uploadJson, href: '/tuning/upload?type=json' },
           ]}
         />
 
         <TuningModule
-          title="Prompt Manager"
-          description="Create and manage prompt versions for different AI engines"
+          title={t.tuning.modules.promptsTitle}
+          description={t.tuning.modules.promptsDesc}
           icon={Code}
           href="/tuning/prompts"
+          openLabel={t.tuning.console.open}
           stats={[
-            { label: 'Gemini', value: prompts.filter((p) => p.engine === 'gemini').length },
-            { label: 'Perplexity', value: prompts.filter((p) => p.engine === 'perplexity').length },
-            { label: 'Cohere', value: prompts.filter((p) => p.engine === 'cohere').length },
+            { label: t.tuning.modules.gemini, value: prompts.filter((p) => p.engine === 'gemini').length },
+            { label: t.tuning.modules.perplexity, value: prompts.filter((p) => p.engine === 'perplexity').length },
+            { label: t.tuning.modules.cohere, value: prompts.filter((p) => p.engine === 'cohere').length },
           ]}
           actions={[
-            { label: 'New Prompt', href: '/tuning/prompts?action=new' },
-            { label: 'Compare Versions', href: '/tuning/prompts?action=compare' },
+            { label: t.tuning.modules.newPrompt, href: '/tuning/prompts?action=new' },
+            { label: t.tuning.modules.compareVersions, href: '/tuning/prompts?action=compare' },
           ]}
         />
 
         <TuningModule
-          title="Weight Controller"
-          description="Configure scoring weights for GEO optimization"
+          title={t.tuning.modules.weightsTitle}
+          description={t.tuning.modules.weightsDesc}
           icon={Scales}
           href="/tuning/weights"
+          openLabel={t.tuning.console.open}
           stats={[
-            { label: 'Active', value: activeWeights },
-            { label: 'Total', value: weights.length },
-            { label: 'Validated', value: '-' },
+            { label: t.tuning.modules.active, value: activeWeights },
+            { label: t.tuning.modules.total, value: weights.length },
+            { label: t.tuning.modules.validated, value: '-' },
           ]}
           actions={[
-            { label: 'New Config', href: '/tuning/weights?action=new' },
-            { label: 'A/B Test', href: '/tuning/weights?action=test' },
+            { label: t.tuning.modules.newConfig, href: '/tuning/weights?action=new' },
+            { label: t.tuning.modules.abTest, href: '/tuning/weights?action=test' },
           ]}
         />
 
         <TuningModule
-          title="Batch Runner"
-          description="Run batch operations for bulk content generation"
+          title={t.tuning.modules.batchTitle}
+          description={t.tuning.modules.batchDesc}
           icon={Queue}
           href="/tuning/batch"
+          openLabel={t.tuning.console.open}
           stats={[
-            { label: 'Running', value: runningJobs },
-            { label: 'Pending', value: pendingJobs },
-            { label: 'Completed', value: batchJobs.filter((j) => j.status === 'completed').length },
+            { label: t.tuning.recentJobs.running, value: runningJobs },
+            { label: t.tuning.recentJobs.pending, value: pendingJobs },
+            { label: t.tuning.recentJobs.completed, value: batchJobs.filter((j) => j.status === 'completed').length },
           ]}
           actions={[
-            { label: 'New Job', href: '/tuning/batch?action=new' },
-            { label: 'View Queue', href: '/tuning/batch?view=queue' },
+            { label: t.tuning.modules.newJob, href: '/tuning/batch?action=new' },
+            { label: t.tuning.modules.viewQueue, href: '/tuning/batch?view=queue' },
           ]}
         />
       </div>
@@ -340,12 +348,12 @@ export default function TuningPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle>Recent Batch Jobs</CardTitle>
-              <CardDescription>Latest batch operations</CardDescription>
+              <CardTitle>{t.tuning.recentJobs.title}</CardTitle>
+              <CardDescription>{t.tuning.recentJobs.subtitle}</CardDescription>
             </div>
             <Button variant="ghost" size="sm" asChild>
               <Link href="/tuning/batch" className="gap-1">
-                View All
+                {t.tuning.recentJobs.viewAll}
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
@@ -378,7 +386,7 @@ export default function TuningPage() {
                     <div>
                       <p className="font-medium">{job.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        {job.processed_items}/{job.total_items} items
+                        {job.processed_items}/{job.total_items} {t.tuning.recentJobs.items}
                       </p>
                     </div>
                   </div>

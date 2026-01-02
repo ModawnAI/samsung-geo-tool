@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { useI18n } from '@/lib/i18n'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -31,20 +32,21 @@ interface DashboardNavProps {
   user: User
 }
 
-const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: ChartBar },
-  { href: '/generate', label: 'Generate', icon: Sparkle },
-  { href: '/history', label: 'History', icon: ClockCounterClockwise },
-  { href: '/briefs', label: 'Briefs', icon: FileText },
-  { href: '/analytics', label: 'Analytics', icon: ChartLineUp },
-  { href: '/tuning', label: 'Tuning', icon: Sliders },
-  { href: '/activity-logs', label: 'Activity Logs', icon: ListBullets },
+const navItemsConfig = [
+  { href: '/dashboard', labelKey: 'dashboard' as const, icon: ChartBar },
+  { href: '/generate', labelKey: 'generate' as const, icon: Sparkle },
+  { href: '/history', labelKey: 'history' as const, icon: ClockCounterClockwise },
+  { href: '/briefs', labelKey: 'briefs' as const, icon: FileText },
+  { href: '/analytics', labelKey: 'analytics' as const, icon: ChartLineUp },
+  { href: '/tuning', labelKey: 'tuning' as const, icon: Sliders },
+  { href: '/activity-logs', labelKey: 'activityLogs' as const, icon: ListBullets },
 ]
 
 export function DashboardNav({ user }: DashboardNavProps) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
+  const { t } = useI18n()
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -61,8 +63,8 @@ export function DashboardNav({ user }: DashboardNavProps) {
               Samsung GEO Tool
             </Link>
             {/* Hide nav on mobile - using bottom nav instead */}
-            <nav className="hidden md:flex items-center gap-1" aria-label="Main navigation">
-              {navItems.map((item) => {
+            <nav className="hidden md:flex items-center gap-1" aria-label={t.a11y.navigation}>
+              {navItemsConfig.map((item) => {
                 const Icon = item.icon
                 const isActive = pathname === item.href
                 return (
@@ -78,7 +80,7 @@ export function DashboardNav({ user }: DashboardNavProps) {
                     aria-current={isActive ? 'page' : undefined}
                   >
                     <Icon className="h-4 w-4" aria-hidden="true" />
-                    {item.label}
+                    {t.nav[item.labelKey]}
                   </Link>
                 )
               })}
@@ -104,13 +106,13 @@ export function DashboardNav({ user }: DashboardNavProps) {
               <DropdownMenuItem asChild>
                 <Link href="/settings" className="flex items-center gap-2">
                   <Gear className="h-4 w-4" aria-hidden="true" />
-                  Settings
+                  {t.nav.settings}
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
                 <SignOut className="h-4 w-4 mr-2" aria-hidden="true" />
-                Sign Out
+                {t.auth.signOut}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

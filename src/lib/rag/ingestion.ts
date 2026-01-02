@@ -208,12 +208,8 @@ export async function deleteDocument(documentId: string): Promise<void> {
   const index = getPlaybookIndex()
   const namespace = index.namespace(PLAYBOOK_NAMESPACE)
 
-  // Delete vectors with prefix matching
-  await namespace.deleteMany({
-    filter: {
-      documentId: { $eq: documentId },
-    },
-  })
+  // Delete vectors by documentId metadata filter
+  await namespace.deleteMany({ documentId: { $eq: documentId } })
 
   // Update document status in Supabase
   const supabase = getSupabaseClient()

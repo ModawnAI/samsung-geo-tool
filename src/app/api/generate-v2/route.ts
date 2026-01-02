@@ -835,7 +835,7 @@ export async function POST(request: NextRequest) {
 /**
  * Stage 1: Generate Description with Google Grounding
  * Based on AEO_GEO_PROMPTS_DOCUMENTATION.md - createDescriptionPrompt()
- * Now uses dynamic prompts from tuning configuration
+ * Uses ONLY dynamic prompts from tuning configuration (no hardcoded content)
  */
 async function generateDescription(
   productName: string,
@@ -850,114 +850,22 @@ async function generateDescription(
   description: { preview: string; full: string; vanityLinks: string[] }
   groundingChunks: Array<{ web?: { uri: string; title: string } }>
 }> {
-  // Get dynamic prompt from tuning configuration
-  const { prompt: basePrompt, promptVersionId, source } = getStagePrompt(tuningConfig, {
+  // Get complete stage prompt from tuning configuration
+  // This includes all methodology, rules, and scoring criteria from prompt-loader.ts
+  const { prompt: systemInstruction, promptVersionId, source } = getStagePrompt(tuningConfig, {
     stage: 'description',
     engine: 'gemini',
     language,
     antiFabricationLevel: 'high',
     variables: {
       product_name: productName,
-      keywords: keywords,
+      keywords: keywords.join(', '),
     },
   })
 
   console.log(`[Stage:Description] Using ${source} prompt${promptVersionId ? ` (v${promptVersionId.slice(-8)})` : ''}`)
 
-  const antiFabPrompt = getAntiFabricationPrompt('high')
-
-  const systemInstruction = `${basePrompt}
-
-You are a GEO/AEO optimization expert for Samsung content.
-${antiFabPrompt}
-
-CONTEXT:
-- Product: ${productName}
-- Video Title: ${productName} Overview
-- Video Transcript: ${srtContent.substring(0, 3000)}...
-${existingDescription ? `- Existing Description (reference): ${existingDescription}` : ''}
-
-GROUNDING INSTRUCTION - MANDATORY QUERY EXECUTION PROTOCOL:
-
-🔴 CRITICAL: You MUST EXECUTE ALL queries listed below. This is MANDATORY, not optional.
-
-📋 VIDEO-BASED SEARCH STRATEGY:
-Generate 10-15 search queries based ONLY on features mentioned in the video content.
-
-QUERY GENERATION PROCESS:
-1. **Extract Features from Video**: Identify ALL features explicitly mentioned
-2. **Generate Numbered Query List**: Create [REQUIRED] queries for each feature
-3. **Site Diversification Strategy** (MANDATORY - use all 5 site types):
-   - Official: "${productName} [feature] specifications site:samsung.com" [REQUIRED]
-   - Community: "${productName} [feature] reddit OR site:reddit.com/r/samsung" [REQUIRED]
-   - Review Sites: "${productName} [feature] site:gsmarena.com OR site:techradar.com" [REQUIRED]
-   - Video Content: "${productName} [feature] site:youtube.com" [REQUIRED]
-   - General: "${productName} [feature] vs [competitor]" [REQUIRED]
-
-📊 MANDATORY QUERY DISTRIBUTION:
-- 3-4 queries with site:samsung.com [REQUIRED]
-- 2-3 queries with reddit OR site:reddit.com [REQUIRED]
-- 2-3 queries with site:gsmarena.com OR site:techradar.com [REQUIRED]
-- 2-3 queries with site:youtube.com [REQUIRED]
-- 2-3 queries without site restrictions (general search) [REQUIRED]
-
-TASK:
-Generate a YouTube description optimized for GEO and AEO.
-
-RULES (CRITICAL):
-1. First 130 characters MUST contain:
-   - Product name
-   - Key feature
-   - User benefit
-   Example: "Introducing the all-new Galaxy Z Flip7. From pro-level 50 MP selfies..."
-
-2. Structure:
-   - Opening (130 chars)
-   - Learn more CTA: "Learn more: http://smsng.co/[VanityLink]"
-   - Content body (natural, not keyword-stuffed)
-   - Include 1-2 expert attribution quotes for credibility
-
-3. GEO/AEO Principles:
-   - Use chunking (modular sections)
-   - Avoid vague terms ("innovative", "eco-friendly" without context)
-   - Add measurable context
-   - Use semantic HTML structure mentally (H1, H2 hierarchy)
-
-4. Expert Attribution (GEO/AEO 2025 Best Practice):
-   - Include 1-2 authoritative quotes from Samsung experts or industry analysts
-   - Format: "According to Samsung Mobile's product team, ${productName}..."
-   - Build trust with AI systems through verifiable sources
-
-CRITICAL: SCORING OPTIMIZATION (TARGET: 85+ points)
-
-1. KEYWORD DENSITY (17-19 points target):
-   ✅ Place ${productName} within first 50 characters of first_130
-   ✅ Include 3+ feature keywords: camera, ai, display, battery, performance
-   ✅ Use 2+ synonym groups naturally:
-      - phone/device/smartphone/mobile
-      - camera/lens/photography/photo
-      - display/screen/panel
-   ✅ Keep product name repetition under 10% of total words
-
-2. AI EXPOSURE (25-28 points target):
-   ✅ Include 3+ competitive keywords: camera, megapixel, foldable, ai, smartphone
-   ✅ Use specific technical specifications ("50 MP", "5000mAh", "6.7 inch OLED")
-   ✅ Mention brand/tech terms: Samsung, Galaxy, AI, OLED, 5G, Knox, Snapdragon
-
-3. SENTENCE STRUCTURE (13-14 points target):
-   ✅ Include 2+ measurable specifications with numbers/units
-   ✅ Use natural, specific language (avoid "innovative", "revolutionary")
-   ✅ Maintain entity density above 1%
-
-4. LENGTH COMPLIANCE (13-14 points target):
-   ✅ first_130: Must be 110-130 characters
-   ✅ full_description: 300-1000 characters optimal
-
-## BRAND GUIDELINES
-${playbookContext.map(ctx => ctx.content).join('\n\n').slice(0, 2000)}
-
-Output in ${language === 'ko' ? 'Korean' : 'English'}.`
-
+  // User prompt contains ONLY runtime context - all instructions are in systemInstruction
   const userPrompt = `Generate optimized description for ${productName}:
 
 ## VIDEO TRANSCRIPT
@@ -1066,8 +974,9 @@ async function generateChapters(
   productName: string,
   tuningConfig: TuningConfig
 ): Promise<{ timestamps: string; autoGenerated: boolean }> {
-  // Get dynamic prompt from tuning configuration
-  const { prompt: basePrompt, promptVersionId, source } = getStagePrompt(tuningConfig, {
+  // Get complete stage prompt from tuning configuration
+  // This includes all methodology, rules, and quality criteria from prompt-loader.ts
+  const { prompt: systemInstruction, promptVersionId, source } = getStagePrompt(tuningConfig, {
     stage: 'chapters',
     engine: 'gemini',
     language: 'en',
@@ -1078,67 +987,6 @@ async function generateChapters(
   })
 
   console.log(`[Stage:Chapters] Using ${source} prompt${promptVersionId ? ` (v${promptVersionId.slice(-8)})` : ''}`)
-
-  const systemInstruction = `${basePrompt}
-
-You are creating GEO/AEO-optimized timestamp chapters for YouTube video navigation.
-
-CRITICAL: Chapters are a strategic SEO asset that:
-1. Improve video discoverability in search results
-2. Help AI systems understand video structure
-3. Enable direct navigation to relevant content
-4. Appear in YouTube search and Google video results
-
-CHAPTER QUALITY CRITERIA (GEO/AEO Optimization):
-
-✅ INCLUDE chapters that:
-- Describe product features or specifications (e.g., "50MP Camera", "Design", "Display")
-- Highlight key functionalities (e.g., "Now Brief", "Gemini Live", "FlexWindow")
-- Explain use cases or demos (e.g., "Photo Demo", "Unboxing", "Setup Guide")
-- Represent major video sections (e.g., "Intro", "Conclusion", "Key Features")
-- Use searchable keywords related to the product
-- Are meaningful standalone (users can understand without watching full video)
-
-❌ EXCLUDE chapters that:
-- Contain personal names or casual references (e.g., "mochi's dog show")
-- Are vague or generic without context (e.g., "Part 1", "Next", "More")
-- Reference non-product content (e.g., "Background music", "Credits")
-- Don't relate to product features or value proposition
-
-CHAPTER TITLE RULES:
-
-1. LENGTH: 2-5 words maximum (concise and scannable)
-
-2. KEYWORD OPTIMIZATION:
-   - Include product feature names when relevant
-   - Use terminology users would search for
-   - Avoid marketing fluff ("Amazing", "Incredible")
-   - Use specific technical terms ("50MP", "OLED", "AI")
-
-3. CLARITY:
-   - Descriptive and self-explanatory
-   - Title alone should convey section purpose
-   - Capitalize first letter of each major word
-
-4. SEARCHABILITY:
-   - Would this appear in search results?
-   - Does it answer "what's in this section?"
-   - Is it product-feature relevant?
-
-EXAMPLES (Good vs Bad):
-
-✅ GOOD CHAPTERS:
-- "00:00 Intro"
-- "00:16 Design"
-- "00:33 50MP Camera"
-- "01:00 Now Brief"
-- "01:37 Gemini Live"
-- "02:15 Battery Life"
-
-❌ BAD CHAPTERS:
-- "00:45 mochi's dog show" → Personal reference
-- "01:20 Random thoughts" → Vague
-- "02:30 Really cool stuff" → Marketing fluff`
 
   try {
     const response = await withRetry(
@@ -1204,8 +1052,9 @@ async function generateFAQ(
   language: 'ko' | 'en',
   tuningConfig: TuningConfig
 ): Promise<{ faqs: FAQItem[]; queryPatternOptimization: boolean }> {
-  // Get dynamic prompt from tuning configuration
-  const { prompt: basePrompt, promptVersionId, source } = getStagePrompt(tuningConfig, {
+  // Get complete stage prompt from tuning configuration
+  // This includes all Query Fan-Out methodology from prompt-loader.ts
+  const { prompt: systemInstruction, promptVersionId, source } = getStagePrompt(tuningConfig, {
     stage: 'faq',
     engine: 'gemini',
     language,
@@ -1217,79 +1066,9 @@ async function generateFAQ(
 
   console.log(`[Stage:FAQ] Using ${source} prompt${promptVersionId ? ` (v${promptVersionId.slice(-8)})` : ''}`)
 
-  const antiFabPrompt = getAntiFabricationPrompt('medium')
-
   const uspSummary = usps.map((usp, i) =>
     `USP ${i + 1}: ${usp.feature} - ${usp.userBenefit}`
   ).join('\n')
-
-  const systemInstruction = `You are creating FAQ for Samsung product content optimized for Query Fan-Out.
-
-## QUERY FAN-OUT STRATEGY
-AI systems generate multiple related subqueries from a single user question. Address these patterns:
-1. Core feature question: How USPs solve user problems
-2. Benefit/Use case question: Real-world applications of USPs
-3. Implementation/How-to question: How to use USP features
-4. Specification question: Technical details of USPs
-5. Troubleshooting question: Common issues with USP features
-6. Alternative question: When USPs provide advantage
-7. Comparative question: How USPs differentiate from alternatives
-
-## QUESTION RULES (CRITICAL)
-1. Questions MUST:
-   - Be 10-15 words (conversational search pattern, NOT 2-3 words)
-   - Start with How/What/Why/When/Where
-   - Reflect real user intent with natural language
-   - Cover different query fan-out angles
-   - Be specific to product features or usage scenarios
-
-2. QUESTION EXAMPLES (Good vs Bad):
-   ❌ Bad: "What is ${productName}'s battery life?" (too short, 7 words)
-   ✅ Good: "How long does the ${productName} battery last with heavy social media use and video streaming throughout the day?" (18 words, conversational)
-
-   ❌ Bad: "What are the camera features?" (vague, 5 words)
-   ✅ Good: "What makes the ${productName} camera better for selfies compared to traditional smartphones like iPhone 16?" (16 words, comparative)
-
-## ANSWER RULES
-1. Answers MUST:
-   - Be direct and factual (passage-level complete)
-   - Include measurable details (specs, numbers, percentages)
-   - Avoid vague marketing language ("innovative", "eco-friendly")
-   - Be semantically complete (answer works independently)
-   - Be concise (2-4 sentences, 50-100 words)
-
-## GROUNDING INSTRUCTION - MANDATORY FAQ QUERY EXECUTION PROTOCOL
-
-🔴 CRITICAL: You MUST EXECUTE queries for grounding before generating FAQs.
-
-QUERY GENERATION per USP/Feature from Video (use all 5 site types):
-
-1. **Official Specifications** [REQUIRED]:
-   - "${productName} [USP feature] specifications site:samsung.com"
-
-2. **Community Discussions** [REQUIRED]:
-   - "${productName} [USP feature] reddit OR site:reddit.com/r/samsung"
-
-3. **Expert Reviews** [REQUIRED]:
-   - "${productName} [USP feature] site:gsmarena.com OR site:techradar.com"
-
-4. **Video Demonstrations** [REQUIRED]:
-   - "${productName} [USP feature] site:youtube.com"
-
-5. **Competitive Comparisons** [REQUIRED]:
-   - "${productName} [USP feature] vs [competitor]"
-
-## SCORING OPTIMIZATION (TARGET: 85+ points)
-
-QUESTION PATTERNS (17-20 points target):
-✅ ALL questions MUST start with How/What/Why/When/Where (5pts)
-✅ Questions must be 10-20 words, conversational and natural (5pts)
-✅ Answers must be 50-150 words, direct and factual (5pts)
-✅ Generate exactly 5-7 FAQs covering different query fan-out angles (5pts)
-
-${antiFabPrompt}
-
-Output in ${language === 'ko' ? 'Korean' : 'English'}.`
 
   try {
     const response = await withRetry(
@@ -1360,9 +1139,10 @@ async function generateStepByStep(
   language: 'ko' | 'en',
   tuningConfig: TuningConfig
 ): Promise<{ steps: string[]; isTutorialContent: boolean; reasoning?: string }> {
-  // Get dynamic prompt from tuning configuration (no dedicated stage, use generic)
-  const { prompt: basePrompt, promptVersionId, source } = getStagePrompt(tuningConfig, {
-    stage: 'chapters', // Using chapters stage as step-by-step is similar instructional content
+  // Get complete stage prompt from tuning configuration
+  // Using chapters stage as step-by-step is similar instructional content
+  const { prompt: systemInstruction, promptVersionId, source } = getStagePrompt(tuningConfig, {
+    stage: 'chapters',
     engine: 'gemini',
     language,
     antiFabricationLevel: 'low',
@@ -1372,43 +1152,6 @@ async function generateStepByStep(
   })
 
   console.log(`[Stage:StepByStep] Using ${source} prompt${promptVersionId ? ` (v${promptVersionId.slice(-8)})` : ''}`)
-
-  const systemInstruction = `${basePrompt}
-
-You are determining if step-by-step instructions are needed for this video.
-
-## TASK
-1. Determine if step-by-step instructions would benefit users
-2. If yes, create them in a clear, actionable format
-
-## CRITERIA FOR "YES" (needed = true):
-✅ Video is How-to, Tutorial, or Guided Demo
-✅ Feature requires specific sequence of actions
-✅ User might struggle without guidance
-✅ Video demonstrates a process or workflow
-
-## CRITERIA FOR "NO" (needed = false):
-❌ Purely promotional (Intro films, product showcases)
-❌ No actionable steps shown
-❌ Too simple to require instructions
-❌ Conceptual or informational only
-
-## STEP FORMAT RULES (if needed = true):
-1. Each step must be clear and actionable
-2. Use imperative verbs: "Open", "Navigate", "Select", "Enable"
-3. Include specific UI elements or settings names
-4. Number steps sequentially
-5. Keep each step concise (1-2 sentences)
-6. Include expected outcomes where relevant
-
-## EXAMPLES:
-✅ Good Step: "Step 1: Open Settings app and navigate to 'Display' section."
-❌ Bad Step: "First you should maybe look at the settings."
-
-✅ Good Step: "Step 2: Toggle 'Always On Display' to enable the feature."
-❌ Bad Step: "Turn on the display thing."
-
-Output in ${language === 'ko' ? 'Korean' : 'English'}.`
 
   try {
     const response = await withRetry(
@@ -1478,8 +1221,9 @@ async function generateCaseStudies(
   language: 'ko' | 'en',
   tuningConfig: TuningConfig
 ): Promise<CaseStudyResult> {
-  // Get dynamic prompt from tuning configuration
-  const { prompt: basePrompt, promptVersionId, source } = getStagePrompt(tuningConfig, {
+  // Get complete stage prompt from tuning configuration
+  // This includes all case study quality standards and anti-fabrication rules from prompt-loader.ts
+  const { prompt: systemInstruction, promptVersionId, source } = getStagePrompt(tuningConfig, {
     stage: 'case_studies',
     engine: 'gemini',
     language,
@@ -1491,44 +1235,9 @@ async function generateCaseStudies(
 
   console.log(`[Stage:CaseStudies] Using ${source} prompt${promptVersionId ? ` (v${promptVersionId.slice(-8)})` : ''}`)
 
-  const antiFabPrompt = getAntiFabricationPrompt('high')
-
   const uspContext = usps.slice(0, 3).map((usp, i) =>
     `USP ${i + 1}: ${usp.feature}\n  - Benefit: ${usp.userBenefit}\n  - Confidence: ${usp.confidence}`
   ).join('\n\n')
-
-  const systemInstruction = `You are creating realistic use case scenarios for Samsung products.
-
-## CASE STUDY QUALITY STANDARDS
-
-### REALISTIC SCENARIOS:
-1. Use relatable user personas (e.g., "content creator", "business professional", "parent")
-2. Describe specific situations where USP features solve real problems
-3. Include context that matches the target audience's lifestyle
-
-### ANTI-FABRICATION RULES:
-${antiFabPrompt}
-
-### HEDGING LANGUAGE FOR UNVERIFIED CLAIMS:
-When outcomes cannot be verified, use safe language:
-- "Designed to help users..."
-- "Enables [persona] to..."
-- "Potential improvement in..."
-- "Built to support..."
-
-### DO NOT:
-❌ Invent specific percentages or statistics
-❌ Claim "studies show" without sources
-❌ Make competitive claims without evidence
-❌ Use superlatives like "best", "revolutionary", "unprecedented"
-
-### DO:
-✅ Use specific feature names and specifications
-✅ Connect features to user benefits
-✅ Include realistic usage contexts
-✅ Cite USP evidence where available
-
-Output in ${language === 'ko' ? 'Korean' : 'English'}.`
 
   try {
     const response = await withRetry(
@@ -1593,8 +1302,9 @@ async function generateKeywords(
   lengthScore?: number;
   preliminaryTotal?: number;
 }> {
-  // Get dynamic prompt from tuning configuration
-  const { prompt: basePrompt, promptVersionId, source } = getStagePrompt(tuningConfig, {
+  // Get complete stage prompt from tuning configuration
+  // This includes all methodology, scoring criteria, and output requirements from prompt-loader.ts
+  const { prompt: systemInstruction, promptVersionId, source } = getStagePrompt(tuningConfig, {
     stage: 'keywords',
     engine: 'gemini',
     language,
@@ -1606,54 +1316,6 @@ async function generateKeywords(
   })
 
   console.log(`[Stage:Keywords] Using ${source} prompt${promptVersionId ? ` (v${promptVersionId.slice(-8)})` : ''}`)
-
-  const systemInstruction = `${basePrompt}
-
-You are extracting and analyzing keywords for GEO/AEO scoring.
-
-## CATEGORIES
-
-### Product-specific Keywords:
-- Product names and model numbers (e.g., Galaxy Z Flip7, Galaxy S25 Ultra)
-- Unique features and proprietary terms (e.g., FlexWindow, ProVisual Engine, Galaxy AI)
-- Brand identifiers (Samsung, Galaxy, One UI)
-- Specific specifications (e.g., 50 MP camera, 3.4-inch display)
-
-### Generic Competitive Keywords:
-- Industry terms (foldable phone, smartphone, AI camera)
-- Use case terms (selfie, mobile photography, productivity)
-- Benefit terms (hands-free, portable, compact)
-- Category descriptors (premium, flagship, compact)
-
-## SCORING CRITERIA (70 points total - AI exposure calculated separately)
-
-### 1. KEYWORD DENSITY (20pts):
-- Product name in first 30 characters: 5pts
-- 3+ feature keywords present: 5pts
-- Natural placement (no stuffing): 5pts
-- Synonym usage (variety): 5pts
-
-### 2. QUESTION PATTERNS (20pts):
-- How/What/Why/When/Where questions: 5pts
-- User intent reflected: 5pts
-- Direct, clear answers: 5pts
-- 4-7 FAQ count: 5pts
-
-### 3. SENTENCE STRUCTURE (15pts):
-- Chunkable content (modular sections): 5pts
-- Lists/tables/structured format: 5pts
-- Semantic clarity (no vague terms): 5pts
-
-### 4. LENGTH COMPLIANCE (15pts):
-- First 130 chars optimized: 5pts
-- Description under 5000 chars: 5pts
-- Appropriate detail level: 5pts
-
-## OUTPUT REQUIREMENTS
-Extract keywords that maximize discoverability while maintaining natural language flow.
-Prioritize keywords that match user search intent and trending signals.
-
-Output in ${language === 'ko' ? 'Korean' : 'English'}.`
 
   try {
     const response = await withRetry(
@@ -2149,8 +1811,9 @@ async function generateHashtags(
   }
   reasoning?: string
 }> {
-  // Get dynamic prompt from tuning configuration
-  const { prompt: basePrompt, promptVersionId, source } = getStagePrompt(tuningConfig, {
+  // Get complete stage prompt from tuning configuration
+  // This includes all methodology, hashtag strategy, and formatting rules from prompt-loader.ts
+  const { prompt: systemInstruction, promptVersionId, source } = getStagePrompt(tuningConfig, {
     stage: 'hashtags',
     engine: 'gemini',
     language,
@@ -2161,53 +1824,6 @@ async function generateHashtags(
   })
 
   console.log(`[Stage:Hashtags] Using ${source} prompt${promptVersionId ? ` (v${promptVersionId.slice(-8)})` : ''}`)
-
-  const systemInstruction = `${basePrompt}
-
-You are generating strategic hashtags for YouTube SEO optimization.
-
-## YOUR MISSION
-Create 5-8 strategic hashtags optimized for YouTube discovery and SEO.
-
-## HASHTAG STRATEGY
-
-### 1. BRAND HASHTAGS (1-2 required)
-- Product name without spaces: #GalaxyZFlip7
-- Brand tags: #Samsung #GalaxyAI #WithGalaxy
-
-### 2. FEATURE HASHTAGS (2-3 required)
-- From USP features and categories
-- Technical specifications (e.g., #50MPCamera #FlexWindow #FoldablePhone)
-- Key capabilities (e.g., #AICamera #ProVisualEngine)
-
-### 3. INDUSTRY HASHTAGS (2-3 required)
-- Broader category terms for discovery
-- Trending tech hashtags
-- Use case hashtags (e.g., #MobilePhotography #TechReview #Smartphone)
-
-## FORMATTING RULES
-1. No spaces - use CamelCase for readability
-2. Start with # symbol
-3. Keep each hashtag under 20 characters
-4. Total character count under 100
-5. First 3 hashtags appear in YouTube search - prioritize discoverability
-
-## PRIORITIZATION ORDER
-- Position 1: Product name (most specific)
-- Position 2-3: Key differentiating features
-- Position 4-5: Category/industry terms
-- Position 6-8: Trending/broad reach terms
-
-## FORBIDDEN
-❌ Generic tags like #tech #phone #new
-❌ Overly long hashtags (>20 characters)
-❌ Competitor brand names (iPhone, Pixel, etc.)
-❌ Irrelevant trending tags
-
-## LANGUAGE CONSIDERATION
-${language === 'ko' ? '- Include 1-2 Korean hashtags for local discovery (e.g., #삼성, #갤럭시)' : '- Use English-only hashtags for global reach'}
-
-Output must be valid JSON.`
 
   const userPrompt = `Generate strategic hashtags for this Samsung product:
 

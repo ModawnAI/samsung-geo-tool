@@ -79,12 +79,42 @@ export interface UploadProgress {
   errors: Array<{ item: string; error: string }>
 }
 
+// Stage types for generation pipeline
+export type Stage = 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
+
+// Test modes
+export type TestMode = 'llm' | 'grounding'
+
+// Grounding source from search APIs
+export interface GroundingSource {
+  title?: string
+  snippet?: string
+  url?: string
+  date?: string
+  source?: 'google' | 'perplexity'
+  tier?: 1 | 2 | 3 | 4
+}
+
+// Grounding test result
+export interface GroundingTestResult {
+  sources: GroundingSource[]
+  totalResults: number
+  googleResults: number
+  perplexityResults: number
+  queriesUsed: string[]
+  tierBreakdown: Record<1 | 2 | 3 | 4, number>
+}
+
 // Prompt test request/response
 export interface PromptTestRequest {
   system_prompt: string
   engine: Engine
   variables: Record<string, string>
   user_message?: string
+  stage?: Stage  // Optional stage for stage-specific prompt composition
+  language?: 'en' | 'ko'
+  live?: boolean  // Whether to make actual LLM calls
+  testMode?: TestMode  // 'llm' for LLM test, 'grounding' for grounding test
 }
 
 export interface PromptTestResponse {
@@ -96,6 +126,9 @@ export interface PromptTestResponse {
   }
   latency: number
   error?: string
+  composedPrompt?: string  // The full composed prompt used
+  source?: 'mock' | 'live'  // Whether response is mock or from real LLM
+  groundingResult?: GroundingTestResult  // Grounding test results when testMode is 'grounding'
 }
 
 // Weight labels for display

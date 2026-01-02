@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useTranslation } from '@/lib/i18n'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -245,6 +246,7 @@ function AnalyticsSkeleton() {
 }
 
 export default function AnalyticsPage() {
+  const { t } = useTranslation()
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -259,7 +261,7 @@ export default function AnalyticsPage() {
       setAnalytics(data)
     } catch (err) {
       console.error('Failed to fetch analytics:', err)
-      setError('Failed to load analytics data')
+      setError(t.analytics.errors.loadFailed)
     } finally {
       setIsLoading(false)
     }
@@ -273,8 +275,8 @@ export default function AnalyticsPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">Analytics</h1>
-          <p className="text-muted-foreground">Insights into your content generation performance</p>
+          <h1 className="text-2xl font-bold">{t.analytics.title}</h1>
+          <p className="text-muted-foreground">{t.analytics.subtitle}</p>
         </div>
         <AnalyticsSkeleton />
       </div>
@@ -285,19 +287,19 @@ export default function AnalyticsPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">Analytics</h1>
-          <p className="text-muted-foreground">Insights into your content generation performance</p>
+          <h1 className="text-2xl font-bold">{t.analytics.title}</h1>
+          <p className="text-muted-foreground">{t.analytics.subtitle}</p>
         </div>
         <Card className="border-destructive/50">
           <CardContent className="flex flex-col items-center justify-center py-12 gap-4">
             <Warning className="h-12 w-12 text-destructive" />
             <div className="text-center">
               <p className="font-medium text-destructive">{error}</p>
-              <p className="text-sm text-muted-foreground mt-1">Please try again</p>
+              <p className="text-sm text-muted-foreground mt-1">{t.analytics.errors.retry}</p>
             </div>
             <Button onClick={fetchAnalytics} variant="outline" className="gap-2">
               <ArrowClockwise className="h-4 w-4" />
-              Retry
+              {t.common.retry}
             </Button>
           </CardContent>
         </Card>
@@ -312,44 +314,44 @@ export default function AnalyticsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Analytics</h1>
-          <p className="text-muted-foreground">Insights into your content generation performance</p>
+          <h1 className="text-2xl font-bold">{t.analytics.title}</h1>
+          <p className="text-muted-foreground">{t.analytics.subtitle}</p>
         </div>
         <Button variant="outline" onClick={fetchAnalytics} className="gap-2">
           <ArrowClockwise className="h-4 w-4" />
-          Refresh
+          {t.common.refresh}
         </Button>
       </div>
 
       {/* Summary Stats */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Average GEO Score"
+          title={t.analytics.stats.averageGeoScore}
           value={summary.avgScore}
-          description="across all generations"
+          description={t.analytics.stats.acrossAllGenerations}
           icon={Target}
           trend={summary.scoreImprovement > 0 ? 'up' : summary.scoreImprovement < 0 ? 'down' : 'neutral'}
-          trendValue={summary.scoreImprovement !== 0 ? `${summary.scoreImprovement > 0 ? '+' : ''}${summary.scoreImprovement} vs last month` : undefined}
+          trendValue={summary.scoreImprovement !== 0 ? `${summary.scoreImprovement > 0 ? '+' : ''}${summary.scoreImprovement} ${t.analytics.stats.vsLastMonth}` : undefined}
         />
         <StatCard
-          title="High Quality Rate"
+          title={t.analytics.stats.highQualityRate}
           value={`${summary.highQualityRate}%`}
-          description="score ≥ 70"
+          description={t.analytics.stats.scoreThreshold}
           icon={Medal}
           trend={summary.highQualityRate >= 50 ? 'up' : 'down'}
         />
         <StatCard
-          title="This Month"
+          title={t.analytics.stats.thisMonth}
           value={summary.thisMonthCount}
-          description={`vs ${summary.lastMonthCount} last month`}
+          description={`vs ${summary.lastMonthCount} ${t.analytics.stats.vsLastMonth}`}
           icon={CalendarBlank}
           trend={summary.momChange > 0 ? 'up' : summary.momChange < 0 ? 'down' : 'neutral'}
           trendValue={summary.momChange !== 0 ? `${summary.momChange > 0 ? '+' : ''}${summary.momChange}%` : undefined}
         />
         <StatCard
-          title="Total Generations"
+          title={t.analytics.stats.totalGenerations}
           value={summary.totalGenerations}
-          description="all time"
+          description={t.analytics.stats.allTime}
           icon={Lightning}
         />
       </div>
@@ -361,16 +363,16 @@ export default function AnalyticsPage() {
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <ChartBar className="h-4 w-4" />
-              Score Trend (30 Days)
+              {t.analytics.charts.scoreTrend}
             </CardTitle>
-            <CardDescription>Daily average GEO scores</CardDescription>
+            <CardDescription>{t.analytics.charts.dailyAvgGeoScores}</CardDescription>
           </CardHeader>
           <CardContent>
             {analytics.scoreTrend.some(d => d.avgScore !== null) ? (
               <ScoreTrendChart data={analytics.scoreTrend} />
             ) : (
               <div className="h-32 flex items-center justify-center text-muted-foreground text-sm">
-                No score data available
+                {t.analytics.charts.noScoreData}
               </div>
             )}
           </CardContent>
@@ -381,16 +383,16 @@ export default function AnalyticsPage() {
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <Target className="h-4 w-4" />
-              Score Distribution
+              {t.analytics.charts.geoScoreDistribution}
             </CardTitle>
-            <CardDescription>GEO score ranges breakdown</CardDescription>
+            <CardDescription>{t.analytics.charts.geoScoreDistributionDesc}</CardDescription>
           </CardHeader>
           <CardContent>
             {analytics.scoreDistribution.some(d => d.count > 0) ? (
               <ScoreDistributionChart data={analytics.scoreDistribution} />
             ) : (
               <div className="h-32 flex items-center justify-center text-muted-foreground text-sm">
-                No score data available
+                {t.analytics.charts.noScoreData}
               </div>
             )}
           </CardContent>
@@ -404,16 +406,16 @@ export default function AnalyticsPage() {
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <Tag className="h-4 w-4" />
-              Top Keywords
+              {t.analytics.charts.topKeywords}
             </CardTitle>
-            <CardDescription>Most frequently used keywords</CardDescription>
+            <CardDescription>{t.analytics.charts.frequentKeywords}</CardDescription>
           </CardHeader>
           <CardContent>
             {analytics.topKeywords.length > 0 ? (
               <KeywordCloud keywords={analytics.topKeywords} />
             ) : (
               <div className="h-24 flex items-center justify-center text-muted-foreground text-sm">
-                No keyword data available
+                {t.analytics.charts.noKeywordData}
               </div>
             )}
           </CardContent>
@@ -424,16 +426,16 @@ export default function AnalyticsPage() {
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <Folder className="h-4 w-4" />
-              Category Breakdown
+              {t.analytics.charts.categoryBreakdown}
             </CardTitle>
-            <CardDescription>Generations by product category (30 days)</CardDescription>
+            <CardDescription>{t.analytics.charts.categoryBreakdownDesc}</CardDescription>
           </CardHeader>
           <CardContent>
             {analytics.categoryBreakdown.length > 0 ? (
               <CategoryBreakdown categories={analytics.categoryBreakdown} />
             ) : (
               <div className="h-24 flex items-center justify-center text-muted-foreground text-sm">
-                No category data available
+                {t.analytics.charts.noCategoryData}
               </div>
             )}
           </CardContent>
@@ -443,25 +445,25 @@ export default function AnalyticsPage() {
       {/* Month Comparison */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Monthly Performance</CardTitle>
-          <CardDescription>Compare this month vs last month</CardDescription>
+          <CardTitle className="text-base">{t.analytics.monthly.title}</CardTitle>
+          <CardDescription>{t.analytics.monthly.subtitle}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="p-4 bg-muted/50 rounded-lg">
-              <p className="text-sm text-muted-foreground">This Month Generations</p>
+              <p className="text-sm text-muted-foreground">{t.analytics.monthly.thisMonthGenerations}</p>
               <p className="text-2xl font-bold mt-1">{summary.thisMonthCount}</p>
             </div>
             <div className="p-4 bg-muted/50 rounded-lg">
-              <p className="text-sm text-muted-foreground">Last Month Generations</p>
+              <p className="text-sm text-muted-foreground">{t.analytics.monthly.lastMonthGenerations}</p>
               <p className="text-2xl font-bold mt-1">{summary.lastMonthCount}</p>
             </div>
             <div className="p-4 bg-muted/50 rounded-lg">
-              <p className="text-sm text-muted-foreground">This Month Avg Score</p>
+              <p className="text-sm text-muted-foreground">{t.analytics.monthly.thisMonthAvgScore}</p>
               <p className="text-2xl font-bold mt-1">{summary.thisMonthAvg || '-'}</p>
             </div>
             <div className="p-4 bg-muted/50 rounded-lg">
-              <p className="text-sm text-muted-foreground">Last Month Avg Score</p>
+              <p className="text-sm text-muted-foreground">{t.analytics.monthly.lastMonthAvgScore}</p>
               <p className="text-2xl font-bold mt-1">{summary.lastMonthAvg || '-'}</p>
             </div>
           </div>

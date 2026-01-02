@@ -59,6 +59,7 @@ import {
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { useTranslation } from '@/lib/i18n'
 
 interface Generation {
   id: string
@@ -86,17 +87,17 @@ type ViewMode = 'list' | 'grid'
 type SortField = 'created_at' | 'updated_at' | 'status'
 type SortOrder = 'asc' | 'desc'
 
-function CopyButton({ text, label }: { text: string; label: string }) {
+function CopyButton({ text, label, successMessage, errorMessage }: { text: string; label: string; successMessage: string; errorMessage: string }) {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(text)
       setCopied(true)
-      toast.success(`${label} copied to clipboard`)
+      toast.success(successMessage)
       setTimeout(() => setCopied(false), 2000)
     } catch {
-      toast.error('Failed to copy')
+      toast.error(errorMessage)
     }
   }
 
@@ -116,13 +117,17 @@ function GenerationCard({
   isSelected,
   onSelect,
   viewMode,
+  t,
 }: {
   generation: Generation
   isSelected: boolean
   onSelect: (id: string, selected: boolean) => void
   viewMode: ViewMode
+  t: ReturnType<typeof useTranslation>['t']
 }) {
   const [expanded, setExpanded] = useState(false)
+
+  const statusLabel = generation.status === 'confirmed' ? t.history.confirmed : t.history.draft
 
   if (viewMode === 'grid') {
     return (
@@ -136,17 +141,17 @@ function GenerationCard({
                 aria-label={`Select ${generation.products?.name}`}
               />
               <CardTitle className="text-sm line-clamp-1">
-                {generation.products?.name || 'Unknown'}
+                {generation.products?.name || t.history.unknown}
               </CardTitle>
             </div>
             <Badge variant={generation.status === 'confirmed' ? 'default' : 'secondary'} className="text-xs">
-              {generation.status}
+              {statusLabel}
             </Badge>
           </div>
         </CardHeader>
         <CardContent className="pb-3">
           <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-            {generation.description || 'No description'}
+            {generation.description || t.history.noDescription}
           </p>
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">
@@ -155,7 +160,7 @@ function GenerationCard({
             <Button variant="ghost" size="sm" className="h-6 px-2" asChild>
               <Link href={`/generate/${generation.id}`}>
                 <Eye className="h-3 w-3 mr-1" />
-                View
+                {t.history.view}
               </Link>
             </Button>
           </div>
@@ -175,10 +180,10 @@ function GenerationCard({
               aria-label={`Select ${generation.products?.name}`}
             />
             <CardTitle className="text-base">
-              {generation.products?.name || 'Unknown Product'}
+              {generation.products?.name || t.history.unknownProduct}
             </CardTitle>
             <Badge variant={generation.status === 'confirmed' ? 'default' : 'secondary'}>
-              {generation.status}
+              {statusLabel}
             </Badge>
             {generation.campaign_tag && (
               <Badge variant="outline">{generation.campaign_tag}</Badge>
@@ -191,7 +196,7 @@ function GenerationCard({
               size="sm"
               onClick={() => setExpanded(!expanded)}
               className="h-8 w-8 p-0"
-              aria-label={expanded ? 'Collapse details' : 'Expand details'}
+              aria-label={expanded ? t.history.collapseDetails : t.history.expandDetails}
             >
               {expanded ? (
                 <CaretUp className="h-4 w-4" />
@@ -215,7 +220,7 @@ function GenerationCard({
             ))}
             {generation.selected_keywords.length > 5 && (
               <Badge variant="outline" className="text-xs">
-                +{generation.selected_keywords.length - 5} more
+                +{generation.selected_keywords.length - 5} {t.history.moreKeywords}
               </Badge>
             )}
           </div>
@@ -231,9 +236,9 @@ function GenerationCard({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm font-medium">
                   <TextAlignLeft className="h-4 w-4" />
-                  Description
+                  {t.history.description}
                 </div>
-                <CopyButton text={generation.description} label="Description" />
+                <CopyButton text={generation.description} label={t.history.description} successMessage={t.history.copySuccess} errorMessage={t.history.copyFailed} />
               </div>
               <div className="p-3 rounded-lg bg-muted/50 border text-sm">
                 <p className="whitespace-pre-wrap">{generation.description}</p>
@@ -246,9 +251,9 @@ function GenerationCard({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm font-medium">
                   <Clock className="h-4 w-4" />
-                  Timestamps
+                  {t.history.timestamps}
                 </div>
-                <CopyButton text={generation.timestamps} label="Timestamps" />
+                <CopyButton text={generation.timestamps} label={t.history.timestamps} successMessage={t.history.copySuccess} errorMessage={t.history.copyFailed} />
               </div>
               <div className="p-3 rounded-lg bg-muted/50 border text-sm font-mono">
                 <pre className="whitespace-pre-wrap">{generation.timestamps}</pre>
@@ -261,9 +266,9 @@ function GenerationCard({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm font-medium">
                   <Hash className="h-4 w-4" />
-                  Hashtags
+                  {t.history.hashtags}
                 </div>
-                <CopyButton text={generation.hashtags.join(' ')} label="Hashtags" />
+                <CopyButton text={generation.hashtags.join(' ')} label={t.history.hashtags} successMessage={t.history.copySuccess} errorMessage={t.history.copyFailed} />
               </div>
               <div className="flex flex-wrap gap-2">
                 {generation.hashtags.map((tag, i) => (
@@ -280,9 +285,9 @@ function GenerationCard({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm font-medium">
                   <ChatCircleText className="h-4 w-4" />
-                  FAQ
+                  {t.history.faq}
                 </div>
-                <CopyButton text={generation.faq} label="FAQ" />
+                <CopyButton text={generation.faq} label={t.history.faq} successMessage={t.history.copySuccess} errorMessage={t.history.copyFailed} />
               </div>
               <div className="p-3 rounded-lg bg-muted/50 border text-sm">
                 <p className="whitespace-pre-wrap">{generation.faq}</p>
@@ -296,6 +301,7 @@ function GenerationCard({
 }
 
 export default function HistoryPage() {
+  const { t } = useTranslation()
   const [generations, setGenerations] = useState<Generation[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -350,14 +356,14 @@ export default function HistoryPage() {
 
       if (error) {
         console.error('Error fetching generations:', error)
-        toast.error('Failed to load history')
+        toast.error(t.history.loadFailed)
         return
       }
 
       setGenerations(data || [])
     } catch (error) {
       console.error('Error:', error)
-      toast.error('Failed to load history')
+      toast.error(t.history.loadFailed)
     } finally {
       setIsLoading(false)
     }
@@ -409,13 +415,13 @@ export default function HistoryPage() {
 
       if (error) throw error
 
-      toast.success(`Deleted ${selectedIds.size} generation(s)`)
+      toast.success(t.history.deletedSuccess)
       setSelectedIds(new Set())
       setIsDeleteDialogOpen(false)
       fetchGenerations()
     } catch (error) {
       console.error('Error deleting generations:', error)
-      toast.error('Failed to delete generations')
+      toast.error(t.history.deleteFailed)
     } finally {
       setIsDeleting(false)
     }
@@ -432,12 +438,12 @@ export default function HistoryPage() {
 
       if (error) throw error
 
-      toast.success(`Updated ${selectedIds.size} generation(s) to ${status}`)
+      toast.success(t.history.updatedSuccess)
       setSelectedIds(new Set())
       fetchGenerations()
     } catch (error) {
       console.error('Error updating generations:', error)
-      toast.error('Failed to update generations')
+      toast.error(t.history.updateFailed)
     }
   }
 
@@ -465,7 +471,7 @@ export default function HistoryPage() {
     a.download = `generations-export-${format(new Date(), 'yyyy-MM-dd-HHmm')}.json`
     a.click()
     URL.revokeObjectURL(url)
-    toast.success(`Exported ${dataToExport.length} generation(s)`)
+    toast.success(t.history.exportedSuccess)
   }
 
   const handleExportCSV = () => {
@@ -496,7 +502,7 @@ export default function HistoryPage() {
     a.download = `generations-export-${format(new Date(), 'yyyy-MM-dd-HHmm')}.csv`
     a.click()
     URL.revokeObjectURL(url)
-    toast.success(`Exported ${dataToExport.length} generation(s) to CSV`)
+    toast.success(t.history.exportedCsvSuccess)
   }
 
   return (
@@ -506,10 +512,10 @@ export default function HistoryPage() {
         <div className="flex items-center gap-3">
           <ClockCounterClockwise className="h-6 w-6" />
           <div>
-            <h1 className="text-2xl font-bold">Generation History</h1>
+            <h1 className="text-2xl font-bold">{t.history.title}</h1>
             <p className="text-sm text-muted-foreground">
-              {generations.length} generation{generations.length !== 1 ? 's' : ''}
-              {selectedIds.size > 0 && ` • ${selectedIds.size} selected`}
+              {generations.length}{generations.length !== 1 ? t.history.generationsCount : t.history.generationCount}
+              {selectedIds.size > 0 && ` • ${selectedIds.size} ${t.history.selected}`}
             </p>
           </div>
         </div>
@@ -518,16 +524,16 @@ export default function HistoryPage() {
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
                 <Download className="h-4 w-4 mr-2" />
-                Export
+                {t.history.export}
                 <CaretDown className="h-3 w-3 ml-1" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={handleExport}>
-                Export as JSON
+                {t.history.exportJson}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleExportCSV}>
-                Export as CSV
+                {t.history.exportCsv}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -541,7 +547,7 @@ export default function HistoryPage() {
             <div className="relative flex-1">
               <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search descriptions, campaigns..."
+                placeholder={t.history.searchPlaceholder}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
@@ -550,21 +556,21 @@ export default function HistoryPage() {
             <div className="flex flex-wrap gap-2">
               <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
                 <SelectTrigger className="w-[130px]">
-                  <SelectValue placeholder="Status" />
+                  <SelectValue placeholder={t.common.status} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="confirmed">Confirmed</SelectItem>
+                  <SelectItem value="all">{t.history.allStatus}</SelectItem>
+                  <SelectItem value="draft">{t.history.draft}</SelectItem>
+                  <SelectItem value="confirmed">{t.history.confirmed}</SelectItem>
                 </SelectContent>
               </Select>
 
               <Select value={productFilter} onValueChange={setProductFilter}>
                 <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Product" />
+                  <SelectValue placeholder={t.common.select} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Products</SelectItem>
+                  <SelectItem value="all">{t.history.allProducts}</SelectItem>
                   {products.map((product) => (
                     <SelectItem key={product.id} value={product.id}>
                       {product.name}
@@ -581,17 +587,17 @@ export default function HistoryPage() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => { setSortField('created_at'); setSortOrder('desc') }}>
-                    Newest First
+                    {t.history.newestFirst}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => { setSortField('created_at'); setSortOrder('asc') }}>
-                    Oldest First
+                    {t.history.oldestFirst}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => { setSortField('updated_at'); setSortOrder('desc') }}>
-                    Recently Updated
+                    {t.history.recentlyUpdated}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => { setSortField('status'); setSortOrder('asc') }}>
-                    Status (Draft → Confirmed)
+                    {t.history.statusDraftConfirmed}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -602,7 +608,7 @@ export default function HistoryPage() {
                   size="icon"
                   onClick={() => setViewMode('list')}
                   className="rounded-r-none"
-                  aria-label="List view"
+                  aria-label={t.history.listView}
                 >
                   <ListBullets className="h-4 w-4" />
                 </Button>
@@ -611,7 +617,7 @@ export default function HistoryPage() {
                   size="icon"
                   onClick={() => setViewMode('grid')}
                   className="rounded-l-none"
-                  aria-label="Grid view"
+                  aria-label={t.history.gridView}
                 >
                   <SquaresFour className="h-4 w-4" />
                 </Button>
@@ -636,13 +642,13 @@ export default function HistoryPage() {
               ) : (
                 <Square className="h-4 w-4" />
               )}
-              {selectedIds.size === generations.length ? 'Deselect All' : 'Select All'}
+              {selectedIds.size === generations.length ? t.history.deselectAll : t.history.selectAll}
             </Button>
             {selectedIds.size > 0 && (
               <>
                 <Separator orientation="vertical" className="h-6" />
                 <span className="text-sm text-muted-foreground">
-                  {selectedIds.size} selected
+                  {selectedIds.size} {t.history.selected}
                 </span>
               </>
             )}
@@ -655,14 +661,14 @@ export default function HistoryPage() {
                 onClick={() => handleBulkStatusChange('confirmed')}
               >
                 <Check className="h-4 w-4 mr-1" />
-                Confirm
+                {t.history.confirm}
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => handleBulkStatusChange('draft')}
               >
-                Set as Draft
+                {t.history.setAsDraft}
               </Button>
               <Button
                 variant="outline"
@@ -671,14 +677,14 @@ export default function HistoryPage() {
                 className="text-destructive hover:text-destructive"
               >
                 <Trash className="h-4 w-4 mr-1" />
-                Delete
+                {t.history.delete}
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleClearSelection}
               >
-                Clear
+                {t.history.clear}
               </Button>
             </div>
           )}
@@ -708,11 +714,11 @@ export default function HistoryPage() {
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
             <ClockCounterClockwise className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p className="text-lg font-medium">No generations found</p>
+            <p className="text-lg font-medium">{t.history.noGenerationsFound}</p>
             <p className="text-sm mt-1">
               {searchQuery || statusFilter !== 'all' || productFilter !== 'all'
-                ? 'Try adjusting your filters'
-                : 'Generated content will appear here after you save or confirm.'}
+                ? t.history.tryAdjustingFilters
+                : t.history.emptyStateHint}
             </p>
           </CardContent>
         </Card>
@@ -727,6 +733,7 @@ export default function HistoryPage() {
               isSelected={selectedIds.has(generation.id)}
               onSelect={handleSelect}
               viewMode={viewMode}
+              t={t}
             />
           ))}
         </div>
@@ -736,19 +743,19 @@ export default function HistoryPage() {
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete {selectedIds.size} Generation(s)?</AlertDialogTitle>
+            <AlertDialogTitle>{t.history.deleteConfirmTitle}</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. The selected generations will be permanently deleted.
+              {t.history.deleteConfirmDescription}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t.common.cancel}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleBulkDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={isDeleting}
             >
-              {isDeleting ? 'Deleting...' : 'Delete'}
+              {isDeleting ? t.history.deleting : t.common.delete}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

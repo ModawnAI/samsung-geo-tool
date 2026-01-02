@@ -165,7 +165,7 @@ export async function GET() {
       indexName: 'samsung-marketing-playbook',
       namespace: 'playbook-v1',
       embeddingModel: 'text-embedding-3-large',
-      dimensions: 3072,
+      dimensions: 1024,
     },
   })
 }

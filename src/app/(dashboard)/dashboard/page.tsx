@@ -23,6 +23,7 @@ import {
 } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { POLLING, ICON_SIZES } from '@/lib/constants/ui'
+import { useTranslation } from '@/lib/i18n'
 
 interface StatsData {
   overview: {
@@ -146,6 +147,7 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
+  const { t, language } = useTranslation()
 
   const fetchStats = useCallback(async (isInitial = false) => {
     // Cancel any pending request
@@ -170,7 +172,7 @@ export default function DashboardPage() {
       // Don't set error if request was aborted
       if (err instanceof Error && err.name === 'AbortError') return
       console.error('Failed to fetch stats:', err)
-      setError('Failed to load dashboard data')
+      setError(t.dashboard.error)
     } finally {
       setIsLoading(false)
     }
@@ -194,13 +196,13 @@ export default function DashboardPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Dashboard</h1>
-            <p className="text-muted-foreground">Overview of your content generation activity</p>
+            <h1 className="text-2xl font-bold">{t.dashboard.title}</h1>
+            <p className="text-muted-foreground">{t.dashboard.subtitle}</p>
           </div>
           <Button asChild>
             <Link href="/generate">
               <Sparkle className={`${ICON_SIZES.sm} mr-2`} />
-              New Generation
+              {t.dashboard.newGeneration}
             </Link>
           </Button>
         </div>
@@ -215,13 +217,13 @@ export default function DashboardPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Dashboard</h1>
-            <p className="text-muted-foreground">Overview of your content generation activity</p>
+            <h1 className="text-2xl font-bold">{t.dashboard.title}</h1>
+            <p className="text-muted-foreground">{t.dashboard.subtitle}</p>
           </div>
           <Button asChild>
             <Link href="/generate">
               <Sparkle className={`${ICON_SIZES.sm} mr-2`} />
-              New Generation
+              {t.dashboard.newGeneration}
             </Link>
           </Button>
         </div>
@@ -231,12 +233,12 @@ export default function DashboardPage() {
             <div className="text-center">
               <p className="font-medium text-destructive">{error}</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Please check your connection and try again
+                {t.dashboard.errorRetry}
               </p>
             </div>
             <Button onClick={() => fetchStats(true)} variant="outline" className="gap-2">
               <ArrowClockwise className={ICON_SIZES.sm} />
-              Retry
+              {t.common.retry}
             </Button>
           </CardContent>
         </Card>
@@ -266,20 +268,20 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">Overview of your content generation activity</p>
+          <h1 className="text-2xl font-bold">{t.dashboard.title}</h1>
+          <p className="text-muted-foreground">{t.dashboard.subtitle}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" asChild>
             <Link href="/briefs">
               <FileText className="h-4 w-4 mr-2" />
-              Manage Briefs
+              {t.dashboard.manageBriefs}
             </Link>
           </Button>
           <Button asChild>
             <Link href="/generate">
               <Sparkle className="h-4 w-4 mr-2" />
-              New Generation
+              {t.dashboard.newGeneration}
             </Link>
           </Button>
         </div>
@@ -288,31 +290,31 @@ export default function DashboardPage() {
       {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Today's Generations"
+          title={t.dashboard.stats.todayGenerations}
           value={overview.todayGenerations}
-          description="generated today"
+          description={t.dashboard.descriptions.generatedToday}
           icon={Lightning}
           href="/history"
         />
         <StatCard
-          title="This Week"
+          title={t.dashboard.stats.thisWeek}
           value={overview.weekGenerations}
-          description="last 7 days"
+          description={t.dashboard.descriptions.lastSevenDays}
           icon={ChartLineUp}
           trend={overview.weekGenerations > 0 ? 'up' : 'neutral'}
           href="/history"
         />
         <StatCard
-          title="Confirmation Rate"
+          title={t.dashboard.stats.confirmationRate}
           value={`${overview.confirmationRate}%`}
-          description={`${overview.confirmedGenerations} confirmed`}
+          description={`${overview.confirmedGenerations} ${t.dashboard.descriptions.confirmed}`}
           icon={Check}
           trend={overview.confirmationRate >= 50 ? 'up' : 'down'}
         />
         <StatCard
-          title="Active Briefs"
+          title={t.dashboard.stats.activeBriefs}
           value={overview.activeBriefs}
-          description={`of ${overview.totalBriefs} total`}
+          description={`${overview.totalBriefs} ${t.dashboard.descriptions.ofTotal}`}
           icon={Article}
           href="/briefs"
         />
@@ -323,15 +325,15 @@ export default function DashboardPage() {
         {/* Weekly Trend */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-base">Weekly Activity</CardTitle>
-            <CardDescription>Generations over the last 7 days</CardDescription>
+            <CardTitle className="text-base">{t.dashboard.weeklyActivity.title}</CardTitle>
+            <CardDescription>{t.dashboard.weeklyActivity.subtitle}</CardDescription>
           </CardHeader>
           <CardContent>
             {weeklyTrend.length > 0 ? (
               <MiniBarChart data={weeklyTrend} />
             ) : (
               <div className="h-16 flex items-center justify-center text-muted-foreground text-sm">
-                No data for this period
+                {t.dashboard.weeklyActivity.noData}
               </div>
             )}
           </CardContent>
@@ -340,8 +342,8 @@ export default function DashboardPage() {
         {/* Top Products */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Top Products</CardTitle>
-            <CardDescription>Most generated this month</CardDescription>
+            <CardTitle className="text-base">{t.dashboard.topProducts.title}</CardTitle>
+            <CardDescription>{t.dashboard.topProducts.subtitle}</CardDescription>
           </CardHeader>
           <CardContent>
             {topProducts.length > 0 ? (
@@ -360,7 +362,7 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="text-muted-foreground text-sm text-center py-4">
-                No generations yet
+                {t.dashboard.topProducts.noData}
               </div>
             )}
           </CardContent>
@@ -370,22 +372,22 @@ export default function DashboardPage() {
       {/* Quick Stats Row */}
       <div className="grid gap-4 md:grid-cols-3">
         <StatCard
-          title="Total Generations"
+          title={t.dashboard.stats.totalGenerations}
           value={overview.totalGenerations}
-          description="all time"
+          description={t.dashboard.descriptions.allTime}
           icon={FileText}
           href="/history"
         />
         <StatCard
-          title="Products"
+          title={t.dashboard.stats.products}
           value={overview.totalProducts}
-          description="in database"
+          description={t.dashboard.descriptions.inDatabase}
           icon={Package}
         />
         <StatCard
-          title="Drafts Pending"
+          title={t.dashboard.stats.draftsPending}
           value={overview.draftGenerations}
-          description="awaiting confirmation"
+          description={t.dashboard.descriptions.awaitingConfirmation}
           icon={Clock}
           href="/history"
         />
@@ -395,12 +397,12 @@ export default function DashboardPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>Latest content generations</CardDescription>
+            <CardTitle>{t.dashboard.recentActivity.title}</CardTitle>
+            <CardDescription>{t.dashboard.recentActivity.subtitle}</CardDescription>
           </div>
           <Button variant="ghost" size="sm" asChild>
             <Link href="/history" className="gap-1">
-              View All
+              {t.dashboard.recentActivity.viewAll}
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
@@ -409,8 +411,8 @@ export default function DashboardPage() {
           {recentActivity.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No generations yet</p>
-              <p className="text-sm mt-1">Click &quot;New Generation&quot; to get started</p>
+              <p>{t.dashboard.recentActivity.noActivity}</p>
+              <p className="text-sm mt-1">{t.dashboard.recentActivity.getStarted}</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -431,21 +433,21 @@ export default function DashboardPage() {
                       </div>
                     )}
                     <div>
-                      <p className="font-medium">{gen.products?.name || 'Unknown Product'}</p>
+                      <p className="font-medium">{gen.products?.name || t.dashboard.recentActivity.unknownProduct}</p>
                       <p className="text-sm text-muted-foreground">
-                        {gen.campaign_tag || 'No campaign'}
+                        {gen.campaign_tag || t.dashboard.recentActivity.noCampaign}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <Badge variant={gen.status === 'confirmed' ? 'default' : 'secondary'}>
-                      {gen.status === 'confirmed' ? 'Confirmed' : 'Draft'}
+                      {gen.status === 'confirmed' ? t.dashboard.status.confirmed : t.dashboard.status.draft}
                     </Badge>
                     <span className="text-sm text-muted-foreground hidden sm:inline">
                       {gen.users?.name || gen.users?.email?.split('@')[0]}
                     </span>
                     <span className="text-sm text-muted-foreground">
-                      {new Date(gen.created_at).toLocaleTimeString('en-US', {
+                      {new Date(gen.created_at).toLocaleTimeString(language === 'ko' ? 'ko-KR' : 'en-US', {
                         hour: '2-digit',
                         minute: '2-digit',
                       })}

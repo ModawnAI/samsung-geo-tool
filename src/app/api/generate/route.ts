@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenAI } from '@google/genai'
 import { multiQuerySearch, getSectionContext } from '@/lib/rag/search'
 import { isPineconeConfigured } from '@/lib/pinecone/client'
+import { loadActivePrompt } from '@/lib/tuning/prompt-loader'
 import type { ProductCategory, PlaybookSearchResult, PlaybookSection } from '@/types/playbook'
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
@@ -690,6 +691,11 @@ async function generateContent(
 ): Promise<GenerateResponse> {
   const { productName, srtContent, keywords, briefUsps } = params
 
+  // Load active system prompt from database (or use default fallback)
+  const promptResult = await loadActivePrompt('gemini')
+  const baseSystemPrompt = promptResult.prompt?.systemPrompt || ''
+  console.log(`[Generate] Using ${promptResult.source} prompt${promptResult.prompt ? ` (v${promptResult.prompt.version})` : ''}`)
+
   // Extract unique sections from playbook context
   const sectionsUsed = [...new Set(playbookContext.map(ctx => ctx.metadata.section))]
   const topGroundingSignals = groundingSignals.slice(0, 5)
@@ -734,31 +740,8 @@ Video Transcript (SRT):
 ${srtContent.slice(0, 3000)}
 `
 
-  const systemInstruction = `You are a Samsung GEO (Generative Engine Optimization) specialist.
-
-## YOUR MISSION
-Create YouTube/Instagram content optimized for AI search engines (ChatGPT, Perplexity, Google AI Overview).
-
-## SIGNAL FUSION FRAMEWORK (Equal Weights)
-You will receive three equally important signals to blend harmoniously:
-1. **Brand Guidelines (${SIGNAL_WEIGHTS.playbook * 100}%)**: Samsung tone, style, and messaging framework
-2. **User Intent Signals (${SIGNAL_WEIGHTS.grounding * 100}%)**: What users are actively searching for
-3. **User Content (${SIGNAL_WEIGHTS.userContent * 100}%)**: The actual product video and transcript
-
-## PRIORITY RULES (Equal Weight Fusion)
-- All three signals are equally important - blend them harmoniously
-- Brand guidelines provide tone and style framework
-- User intent signals ensure content addresses real search queries
-- User content grounds everything in the actual product video
-- Always maintain Samsung's confident, approachable tone
-
-## GEO OPTIMIZATION PRINCIPLES
-- Use structured data patterns AI can parse
-- Include entity-rich descriptions (product names, features, specs)
-- Create FAQ content that directly answers likely queries
-- Use natural language that matches conversational search
-
-Output must be in Korean unless explicitly requested otherwise.`
+  // Use dynamically loaded system prompt from database/default
+  const systemInstruction = baseSystemPrompt
 
   const userPrompt = `Generate optimized content for this Samsung product video:
 

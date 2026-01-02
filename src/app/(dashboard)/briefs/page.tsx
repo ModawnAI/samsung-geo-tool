@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useTranslation } from '@/lib/i18n'
 import { ICON_SIZES } from '@/lib/constants/ui'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -90,6 +91,7 @@ interface Product {
 }
 
 export default function BriefsPage() {
+  const { t } = useTranslation()
   const [briefs, setBriefs] = useState<Brief[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -151,7 +153,7 @@ export default function BriefsPage() {
       // Ignore aborted requests
       if (error instanceof Error && error.name === 'AbortError') return
       console.error('Error fetching briefs:', error)
-      toast.error('Failed to load briefs')
+      toast.error(t.briefs.toastLoadError)
     } finally {
       setIsLoading(false)
     }
@@ -185,7 +187,7 @@ export default function BriefsPage() {
 
   const handleCreate = useCallback(async () => {
     if (!formProductId || formUsps.filter(u => u.trim()).length === 0) {
-      toast.error('Product and at least one USP are required')
+      toast.error(`${t.briefs.productRequired}. ${t.briefs.uspRequired}`)
       return
     }
 
@@ -212,7 +214,7 @@ export default function BriefsPage() {
       const data = await response.json()
       if (data.error) throw new Error(data.error)
 
-      toast.success('Brief created successfully')
+      toast.success(t.briefs.toastCreated)
       setIsCreateOpen(false)
       resetForm()
       fetchBriefs()
@@ -220,7 +222,7 @@ export default function BriefsPage() {
       // Ignore aborted requests
       if (error instanceof Error && error.name === 'AbortError') return
       console.error('Error creating brief:', error)
-      toast.error('Failed to create brief')
+      toast.error(t.briefs.toastCreateError)
     } finally {
       setIsSubmitting(false)
     }
@@ -252,7 +254,7 @@ export default function BriefsPage() {
       const data = await response.json()
       if (data.error) throw new Error(data.error)
 
-      toast.success('Brief updated successfully')
+      toast.success(t.briefs.toastUpdated)
       setIsEditOpen(false)
       setSelectedBrief(null)
       resetForm()
@@ -261,7 +263,7 @@ export default function BriefsPage() {
       // Ignore aborted requests
       if (error instanceof Error && error.name === 'AbortError') return
       console.error('Error updating brief:', error)
-      toast.error('Failed to update brief')
+      toast.error(t.briefs.toastUpdateError)
     } finally {
       setIsSubmitting(false)
     }
@@ -286,7 +288,7 @@ export default function BriefsPage() {
       const data = await response.json()
       if (data.error) throw new Error(data.error)
 
-      toast.success('Brief deleted successfully')
+      toast.success(t.briefs.toastDeleted)
       setIsDeleteOpen(false)
       setSelectedBrief(null)
       fetchBriefs()
@@ -294,7 +296,7 @@ export default function BriefsPage() {
       // Ignore aborted requests
       if (error instanceof Error && error.name === 'AbortError') return
       console.error('Error deleting brief:', error)
-      toast.error('Failed to delete brief')
+      toast.error(t.briefs.toastDeleteError)
     } finally {
       setIsSubmitting(false)
     }
@@ -321,22 +323,22 @@ export default function BriefsPage() {
       const data = await response.json()
       if (data.error) throw new Error(data.error)
 
-      toast.success(brief.is_active ? 'Brief deactivated' : 'Brief activated')
+      toast.success(brief.is_active ? t.briefs.toastDeactivated : t.briefs.toastActivated)
       fetchBriefs()
     } catch (error) {
       // Ignore aborted requests
       if (error instanceof Error && error.name === 'AbortError') return
       console.error('Error toggling brief status:', error)
-      toast.error('Failed to update brief status')
+      toast.error(t.briefs.toastUpdateError)
     }
   }, [fetchBriefs])
 
   const handleCopyUsps = async (usps: string[]) => {
     try {
       await navigator.clipboard.writeText(usps.join('\n'))
-      toast.success('USPs copied to clipboard')
+      toast.success(t.briefs.toastCopied)
     } catch {
-      toast.error('Failed to copy')
+      toast.error(t.briefs.toastError)
     }
   }
 
@@ -382,7 +384,7 @@ export default function BriefsPage() {
     a.download = `briefs-export-${format(new Date(), 'yyyy-MM-dd')}.json`
     a.click()
     URL.revokeObjectURL(url)
-    toast.success('Briefs exported successfully')
+    toast.success(t.success.exported)
   }
 
   return (
@@ -392,20 +394,20 @@ export default function BriefsPage() {
         <div className="flex items-center gap-3">
           <FileText className="h-6 w-6" />
           <div>
-            <h1 className="text-2xl font-bold">Product Briefs</h1>
+            <h1 className="text-2xl font-bold">{t.briefs.title}</h1>
             <p className="text-sm text-muted-foreground">
-              Manage product USPs and marketing content
+              {t.briefs.subtitle}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={handleExport}>
             <Download className="h-4 w-4 mr-2" />
-            Export
+            {t.briefs.export}
           </Button>
           <Button onClick={() => { resetForm(); setIsCreateOpen(true) }}>
             <Plus className="h-4 w-4 mr-2" />
-            New Brief
+            {t.briefs.newBrief}
           </Button>
         </div>
       </div>
@@ -417,7 +419,7 @@ export default function BriefsPage() {
             <div className="relative flex-1">
               <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search briefs..."
+                placeholder={t.briefs.searchPlaceholder}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
@@ -425,10 +427,10 @@ export default function BriefsPage() {
             </div>
             <Select value={productFilter} onValueChange={setProductFilter}>
               <SelectTrigger className="w-full sm:w-[200px]">
-                <SelectValue placeholder="Filter by product" />
+                <SelectValue placeholder={t.briefs.filterByProduct} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Products</SelectItem>
+                <SelectItem value="all">{t.briefs.allProducts}</SelectItem>
                 {products.map((product) => (
                   <SelectItem key={product.id} value={product.id}>
                     {product.name}
@@ -438,12 +440,12 @@ export default function BriefsPage() {
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-full sm:w-[150px]">
-                <SelectValue placeholder="Status" />
+                <SelectValue placeholder={t.common.status} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="true">Active</SelectItem>
-                <SelectItem value="false">Inactive</SelectItem>
+                <SelectItem value="all">{t.briefs.allStatus}</SelectItem>
+                <SelectItem value="true">{t.briefs.active}</SelectItem>
+                <SelectItem value="false">{t.briefs.inactive}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -469,11 +471,11 @@ export default function BriefsPage() {
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
             <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p className="text-lg font-medium">No briefs found</p>
+            <p className="text-lg font-medium">{t.briefs.noBriefs}</p>
             <p className="text-sm mt-1">
               {searchQuery || productFilter !== 'all' || statusFilter !== 'all'
-                ? 'Try adjusting your filters'
-                : 'Click "New Brief" to create your first product brief'}
+                ? t.briefs.noResultsHint
+                : t.briefs.clickToCreate}
             </p>
           </CardContent>
         </Card>
@@ -491,10 +493,10 @@ export default function BriefsPage() {
                     {brief.is_active ? (
                       <Badge className="bg-green-500/10 text-green-600 border-green-200">
                         <Star className="h-3 w-3 mr-1" weight="fill" />
-                        Active
+                        {t.briefs.statusActive}
                       </Badge>
                     ) : (
-                      <Badge variant="secondary">Inactive</Badge>
+                      <Badge variant="secondary">{t.briefs.statusInactive}</Badge>
                     )}
                   </div>
                   <DropdownMenu>
@@ -506,22 +508,22 @@ export default function BriefsPage() {
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => openEditDialog(brief)}>
                         <PencilSimple className="h-4 w-4 mr-2" />
-                        Edit
+                        {t.common.edit}
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleCopyUsps(brief.usps)}>
                         <Copy className="h-4 w-4 mr-2" />
-                        Copy USPs
+                        {t.briefs.copyUsps}
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleToggleActive(brief)}>
                         {brief.is_active ? (
                           <>
                             <StarHalf className="h-4 w-4 mr-2" />
-                            Deactivate
+                            {t.briefs.deactivate}
                           </>
                         ) : (
                           <>
                             <Star className="h-4 w-4 mr-2" />
-                            Set as Active
+                            {t.briefs.setAsActive}
                           </>
                         )}
                       </DropdownMenuItem>
@@ -534,7 +536,7 @@ export default function BriefsPage() {
                         }}
                       >
                         <Trash className="h-4 w-4 mr-2" />
-                        Delete
+                        {t.common.delete}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -553,7 +555,7 @@ export default function BriefsPage() {
                 <div className="space-y-3">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground mb-2">
-                      USPs ({brief.usps.length})
+                      {t.briefs.uspsCount} ({brief.usps.length})
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {brief.usps.map((usp, i) => (
@@ -566,7 +568,7 @@ export default function BriefsPage() {
                   {brief.content && (
                     <div>
                       <p className="text-sm font-medium text-muted-foreground mb-2">
-                        Additional Content
+                        {t.briefs.additionalContent}
                       </p>
                       <p className="text-sm text-muted-foreground line-clamp-2">
                         {brief.content}
@@ -584,17 +586,17 @@ export default function BriefsPage() {
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Create New Brief</DialogTitle>
+            <DialogTitle>{t.briefs.createBrief}</DialogTitle>
             <DialogDescription>
-              Add a new product brief with USPs and marketing content.
+              {t.briefs.subtitle}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Product</label>
+              <label className="text-sm font-medium">{t.briefs.product}</label>
               <Select value={formProductId} onValueChange={setFormProductId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a product" />
+                  <SelectValue placeholder={t.common.select} />
                 </SelectTrigger>
                 <SelectContent>
                   {products.map((product) => (
@@ -606,7 +608,7 @@ export default function BriefsPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">USPs (Unique Selling Points)</label>
+              <label className="text-sm font-medium">{t.briefs.usps}</label>
               <div className="space-y-2">
                 {formUsps.map((usp, index) => (
                   <div key={index} className="flex gap-2">
@@ -635,16 +637,16 @@ export default function BriefsPage() {
                   className="w-full"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Add USP
+                  {t.briefs.addUsp}
                 </Button>
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Additional Content (Optional)</label>
+              <label className="text-sm font-medium">{t.briefs.additionalContentOptional}</label>
               <Textarea
                 value={formContent}
                 onChange={(e) => setFormContent(e.target.value)}
-                placeholder="Additional marketing content, notes, or guidelines..."
+                placeholder={t.briefs.additionalContent}
                 rows={4}
               />
             </div>
@@ -657,16 +659,16 @@ export default function BriefsPage() {
                 className="rounded border-input"
               />
               <label htmlFor="is_active" className="text-sm">
-                Set as active brief for this product
+                {t.briefs.setAsActive}
               </label>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
-              Cancel
+              {t.common.cancel}
             </Button>
             <Button onClick={handleCreate} disabled={isSubmitting}>
-              {isSubmitting ? 'Creating...' : 'Create Brief'}
+              {isSubmitting ? t.briefs.creating : t.briefs.createBrief}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -676,14 +678,14 @@ export default function BriefsPage() {
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Brief</DialogTitle>
+            <DialogTitle>{t.briefs.editBrief}</DialogTitle>
             <DialogDescription>
-              Update the brief for {selectedBrief?.products?.name}
+              {selectedBrief?.products?.name}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">USPs (Unique Selling Points)</label>
+              <label className="text-sm font-medium">{t.briefs.usps}</label>
               <div className="space-y-2">
                 {formUsps.map((usp, index) => (
                   <div key={index} className="flex gap-2">
@@ -712,16 +714,16 @@ export default function BriefsPage() {
                   className="w-full"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Add USP
+                  {t.briefs.addUsp}
                 </Button>
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Additional Content (Optional)</label>
+              <label className="text-sm font-medium">{t.briefs.additionalContentOptional}</label>
               <Textarea
                 value={formContent}
                 onChange={(e) => setFormContent(e.target.value)}
-                placeholder="Additional marketing content, notes, or guidelines..."
+                placeholder={t.briefs.additionalContent}
                 rows={4}
               />
             </div>
@@ -734,16 +736,16 @@ export default function BriefsPage() {
                 className="rounded border-input"
               />
               <label htmlFor="edit_is_active" className="text-sm">
-                Set as active brief for this product
+                {t.briefs.setAsActive}
               </label>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditOpen(false)}>
-              Cancel
+              {t.common.cancel}
             </Button>
             <Button onClick={handleEdit} disabled={isSubmitting}>
-              {isSubmitting ? 'Saving...' : 'Save Changes'}
+              {isSubmitting ? t.briefs.saving : t.briefs.saveChanges}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -753,20 +755,18 @@ export default function BriefsPage() {
       <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Brief</AlertDialogTitle>
+            <AlertDialogTitle>{t.briefs.deleteConfirmTitle}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this brief for{' '}
-              <strong>{selectedBrief?.products?.name}</strong>? This action cannot
-              be undone.
+              {t.briefs.deleteConfirmDescription}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t.common.cancel}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isSubmitting ? 'Deleting...' : 'Delete'}
+              {isSubmitting ? t.briefs.deleting : t.common.delete}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

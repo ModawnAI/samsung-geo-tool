@@ -23,6 +23,7 @@ import { useTuningStore } from '@/stores/tuning-store'
 import { PromptEditor } from '@/components/tuning/prompt-manager/prompt-editor'
 import { VersionHistory } from '@/components/tuning/prompt-manager/version-history'
 import { TestPanel, type TestVariables, type TestResult } from '@/components/tuning/prompt-manager/test-panel'
+import type { TestMode } from '@/types/tuning'
 import { DiffViewer } from '@/components/tuning/prompt-manager/diff-viewer'
 import type { PromptVersion, PromptFormData } from '@/types/tuning'
 import {
@@ -173,7 +174,7 @@ export default function PromptEditorPage({ params }: PageProps) {
   )
 
   const handleTestPrompt = useCallback(
-    async (interpolatedPrompt: string, variables: TestVariables): Promise<TestResult> => {
+    async (interpolatedPrompt: string, variables: TestVariables, testMode?: TestMode): Promise<TestResult> => {
       const response = await fetch('/api/tuning/prompts/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -188,6 +189,7 @@ export default function PromptEditorPage({ params }: PageProps) {
             competitor: variables.competitor,
             language: variables.language,
           },
+          testMode: testMode || 'llm',
         }),
       })
 
@@ -199,6 +201,8 @@ export default function PromptEditorPage({ params }: PageProps) {
         latency: data.latency || 0,
         timestamp: new Date().toISOString(),
         error: data.error,
+        testMode: testMode || 'llm',
+        groundingResult: data.groundingResult,
       }
     },
     [currentPrompt?.engine]

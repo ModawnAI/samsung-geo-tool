@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { useI18n } from '@/lib/i18n'
 import { Button } from '@/components/ui/button'
 import {
   Sheet,
@@ -32,14 +33,14 @@ interface MobileNavProps {
   user: User
 }
 
-const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: ChartBar },
-  { href: '/generate', label: 'Generate', icon: Sparkle },
-  { href: '/history', label: 'History', icon: ClockCounterClockwise },
-  { href: '/briefs', label: 'Briefs', icon: FileText },
-  { href: '/analytics', label: 'Analytics', icon: ChartLineUp },
-  { href: '/tuning', label: 'Tuning', icon: Sliders },
-  { href: '/activity-logs', label: 'Logs', icon: ListBullets },
+const navItemsConfig = [
+  { href: '/dashboard', labelKey: 'dashboard' as const, icon: ChartBar },
+  { href: '/generate', labelKey: 'generate' as const, icon: Sparkle },
+  { href: '/history', labelKey: 'history' as const, icon: ClockCounterClockwise },
+  { href: '/briefs', labelKey: 'briefs' as const, icon: FileText },
+  { href: '/analytics', labelKey: 'analytics' as const, icon: ChartLineUp },
+  { href: '/tuning', labelKey: 'tuning' as const, icon: Sliders },
+  { href: '/activity-logs', labelKey: 'activityLogs' as const, icon: ListBullets },
 ]
 
 export function MobileNav({ user }: MobileNavProps) {
@@ -47,6 +48,7 @@ export function MobileNav({ user }: MobileNavProps) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
+  const { t } = useI18n()
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -73,8 +75,8 @@ export function MobileNav({ user }: MobileNavProps) {
           </SheetTitle>
         </SheetHeader>
 
-        <nav className="mt-6 flex flex-col gap-1" aria-label="Mobile navigation">
-          {navItems.map((item) => {
+        <nav className="mt-6 flex flex-col gap-1" aria-label={t.a11y.navigation}>
+          {navItemsConfig.map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href
 
@@ -91,7 +93,7 @@ export function MobileNav({ user }: MobileNavProps) {
                 )}
               >
                 <Icon className="h-5 w-5" />
-                {item.label}
+                {t.nav[item.labelKey]}
               </Link>
             )
           })}
@@ -117,7 +119,7 @@ export function MobileNav({ user }: MobileNavProps) {
             onClick={handleSignOut}
           >
             <SignOut className="h-4 w-4" />
-            Sign Out
+            {t.auth.signOut}
           </Button>
         </div>
       </SheetContent>
@@ -128,14 +130,15 @@ export function MobileNav({ user }: MobileNavProps) {
 // Bottom navigation for mobile (alternative to sidebar)
 export function MobileBottomNav() {
   const pathname = usePathname()
+  const { t } = useI18n()
 
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t md:hidden"
-      aria-label="Mobile bottom navigation"
+      aria-label={t.a11y.navigation}
     >
       <div className="flex items-center justify-around h-16">
-        {navItems.map((item) => {
+        {navItemsConfig.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href
 
@@ -151,7 +154,7 @@ export function MobileBottomNav() {
               )}
             >
               <Icon className={cn('h-5 w-5', isActive && 'fill-current')} weight={isActive ? 'fill' : 'regular'} />
-              <span className="text-xs font-medium">{item.label}</span>
+              <span className="text-xs font-medium">{t.nav[item.labelKey]}</span>
             </Link>
           )
         })}

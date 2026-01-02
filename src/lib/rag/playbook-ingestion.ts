@@ -4,7 +4,8 @@
  * for maximum generation utility in RAG applications
  */
 
-import { getPineconeClient, PLAYBOOK_NAMESPACE } from '@/lib/pinecone/client'
+import { getPineconeClient, PLAYBOOK_NAMESPACE, PLAYBOOK_INDEX_NAME } from '@/lib/pinecone/client'
+import { generateEmbeddings, EMBEDDING_MODEL, EMBEDDING_DIMENSIONS } from '@/lib/rag/embeddings'
 import type {
   PlaybookMetadata,
   PlaybookSection,
@@ -147,10 +148,8 @@ export async function ingestSamsungPlaybook(
     const enrichedChunks = parsePlaybookMarkdown(markdownContent, chunkingConfig)
     console.log(`Parsed ${enrichedChunks.length} enriched chunks`)
 
-    // Prepare records for Pinecone's integrated inference
-    // The index uses multilingual-e5-large model, so we upsert records directly
-    // and Pinecone generates embeddings automatically
-    const records = enrichedChunks.map((chunk, index) => {
+    // Prepare metadata for all chunks
+    const chunksWithMetadata = enrichedChunks.map((chunk, index) => {
       const fullMetadata = buildFullMetadata(chunk, {
         documentId,
         chunkIndex: index,
@@ -161,8 +160,7 @@ export async function ingestSamsungPlaybook(
 
       // Flatten metadata for Pinecone (no nested objects allowed)
       const flatMetadata: Record<string, string | number | boolean | string[]> = {
-        _id: `${documentId}_chunk_${index}`,
-        content: chunk.content, // Required for integrated inference (fieldMap.text)
+        content: chunk.content,
         documentId: fullMetadata.documentId || '',
         chunkIndex: fullMetadata.chunkIndex || 0,
         totalChunks: fullMetadata.totalChunks || 0,
@@ -194,20 +192,39 @@ export async function ingestSamsungPlaybook(
         indexedAt: fullMetadata.indexedAt || new Date().toISOString(),
       }
 
-      return flatMetadata
+      return {
+        id: `${documentId}_chunk_${index}`,
+        content: chunk.content,
+        metadata: flatMetadata,
+      }
     })
 
-    console.log('Upserting records with Pinecone integrated inference (multilingual-e5-large)...')
+    console.log(`Generating embeddings with OpenAI ${EMBEDDING_MODEL} (${EMBEDDING_DIMENSIONS} dimensions)...`)
 
-    // Upsert to Pinecone using integrated inference in batches
+    // Generate embeddings for all chunks using OpenAI
+    const texts = chunksWithMetadata.map(c => c.content)
+    const embeddings = await generateEmbeddings(texts)
+
+    console.log(`Generated ${embeddings.length} embeddings`)
+
+    // Prepare vectors for Pinecone upsert
+    const vectors = chunksWithMetadata.map((chunk, index) => ({
+      id: chunk.id,
+      values: embeddings[index],
+      metadata: chunk.metadata,
+    }))
+
+    console.log('Upserting vectors to Pinecone...')
+
+    // Upsert to Pinecone in batches
     const pinecone = getPineconeClient()
-    const index = pinecone.index('samsung-marketing-playbook')
+    const index = pinecone.index(PLAYBOOK_INDEX_NAME)
 
     const batchSize = 50 // Smaller batches due to larger metadata
-    for (let i = 0; i < records.length; i += batchSize) {
-      const batch = records.slice(i, i + batchSize)
-      await index.namespace(PLAYBOOK_NAMESPACE).upsertRecords(batch)
-      console.log(`Upserted batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(records.length / batchSize)}`)
+    for (let i = 0; i < vectors.length; i += batchSize) {
+      const batch = vectors.slice(i, i + batchSize)
+      await index.namespace(PLAYBOOK_NAMESPACE).upsert(batch)
+      console.log(`Upserted batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(vectors.length / batchSize)}`)
     }
 
     // Store document record

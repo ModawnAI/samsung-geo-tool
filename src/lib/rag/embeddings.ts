@@ -31,8 +31,9 @@ function getSupabaseClient(): SupabaseClient<Database> | null {
 }
 
 // Embedding model configuration
+// Using text-embedding-3-large with reduced dimensions to match Pinecone index (1024)
 export const EMBEDDING_MODEL = 'text-embedding-3-large'
-export const EMBEDDING_DIMENSIONS = 3072
+export const EMBEDDING_DIMENSIONS = 1024
 
 // Cache configuration
 const CACHE_ENABLED = process.env.EMBEDDING_CACHE_ENABLED !== 'false'
@@ -137,6 +138,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
   const response = await client.embeddings.create({
     model: EMBEDDING_MODEL,
     input: text,
+    dimensions: EMBEDDING_DIMENSIONS,
     encoding_format: 'float',
   })
 
@@ -166,6 +168,7 @@ export async function generateEmbeddings(texts: string[]): Promise<number[][]> {
     const response = await client.embeddings.create({
       model: EMBEDDING_MODEL,
       input: batch,
+      dimensions: EMBEDDING_DIMENSIONS,
       encoding_format: 'float',
     })
 

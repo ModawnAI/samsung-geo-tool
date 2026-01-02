@@ -53,15 +53,32 @@ import {
 } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { MOTION_VARIANTS, ICON_SIZES } from '@/lib/constants/ui'
+import { useTranslation } from '@/lib/i18n'
 
-const steps = [
-  { id: 'product', label: 'Product', icon: Package, requirement: 'Select a product' },
-  { id: 'content', label: 'Content', icon: FileText, requirement: 'Add SRT content' },
-  { id: 'keywords', label: 'Keywords', icon: Tag, requirement: 'Select 1-3 keywords' },
-  { id: 'output', label: 'Output', icon: Export, requirement: null },
-] as const
+type StepId = 'product' | 'content' | 'keywords' | 'output'
+
+interface StepConfig {
+  id: StepId
+  icon: React.ElementType
+}
+
+const stepConfigs: StepConfig[] = [
+  { id: 'product', icon: Package },
+  { id: 'content', icon: FileText },
+  { id: 'keywords', icon: Tag },
+  { id: 'output', icon: Export },
+]
 
 export default function GeneratePage() {
+  const { t } = useTranslation()
+
+  // Build steps array with translations
+  const steps = stepConfigs.map(config => ({
+    ...config,
+    label: t.generate.steps[config.id],
+    requirement: t.generate.requirements[config.id],
+  }))
+
   // Selective Zustand subscriptions for better performance
   const step = useGenerationStore((state) => state.step)
   const setStep = useGenerationStore((state) => state.setStep)
@@ -298,9 +315,9 @@ export default function GeneratePage() {
   return (
     <div className="space-y-4 sm:space-y-8">
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold">Generate Content</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">{t.generate.title}</h1>
         <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-          Create optimized descriptions for YouTube and Instagram
+          {t.generate.subtitle}
         </p>
       </div>
 
@@ -363,16 +380,16 @@ export default function GeneratePage() {
           {canProceed() ? (
             <>
               <CheckCircle className="h-4 w-4 flex-shrink-0" weight="fill" />
-              <span>Ready to proceed to next step</span>
+              <span>{t.generate.readyToProceed}</span>
             </>
           ) : (
             <>
               <Warning className="h-4 w-4 flex-shrink-0" weight="fill" />
               <span>
-                <span className="font-medium">Required: </span>
+                <span className="font-medium">{t.common.required}: </span>
                 {steps.find(s => s.id === step)?.requirement}
                 {step === 'keywords' && selectedKeywords.length > 0 && selectedKeywords.length < 1 && (
-                  <span className="ml-1 text-muted-foreground">({selectedKeywords.length}/1 minimum)</span>
+                  <span className="ml-1 text-muted-foreground">({selectedKeywords.length}/1 {t.generate.minimum})</span>
                 )}
               </span>
             </>
@@ -407,7 +424,7 @@ export default function GeneratePage() {
           className="gap-2 w-full sm:w-auto min-h-[44px]"
         >
           <CaretLeft className="w-4 h-4" />
-          Back
+          {t.common.back}
         </Button>
 
         {step !== 'output' && (
@@ -419,16 +436,16 @@ export default function GeneratePage() {
             {isGenerating ? (
               <>
                 <SpinnerGap className="w-4 h-4 animate-spin" />
-                Generating...
+                {t.generate.generating}
               </>
             ) : step === 'keywords' ? (
               <>
-                Generate
+                {t.generate.generateButton}
                 <CaretRight className="w-4 h-4" />
               </>
             ) : (
               <>
-                Next
+                {t.common.next}
                 <CaretRight className="w-4 h-4" />
               </>
             )}
