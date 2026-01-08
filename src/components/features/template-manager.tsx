@@ -103,10 +103,10 @@ export function SaveTemplateDialog({ onSaved }: SaveTemplateDialogProps) {
           Save as Template
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FloppyDisk className="h-5 w-5 text-primary" />
+            <FloppyDisk className="h-5 w-5 text-[#040523] dark:text-slate-200" />
             Save Configuration as Template
           </DialogTitle>
           <DialogDescription>
@@ -180,9 +180,9 @@ export function SaveTemplateDialog({ onSaved }: SaveTemplateDialogProps) {
                     <Tag className="h-3.5 w-3.5" />
                     Keywords
                   </label>
-                  <div className="flex flex-wrap gap-1 mt-1">
+                  <div className="flex flex-wrap gap-1 mt-1 max-w-full">
                     {selectedKeywords.map((kw, i) => (
-                      <Badge key={i} variant="secondary" className="text-xs">
+                      <Badge key={i} variant="secondary" className="text-xs break-all max-w-full">
                         {kw}
                       </Badge>
                     ))}

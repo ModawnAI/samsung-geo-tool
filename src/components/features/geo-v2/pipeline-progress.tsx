@@ -64,10 +64,10 @@ function StageItem({
       return <XCircle className="h-4 w-4 text-red-500" />
     }
     if (isComplete) {
-      return <CheckCircle className="h-4 w-4 text-green-500" />
+      return <CheckCircle className="h-4 w-4 text-[#040523] dark:text-slate-200" />
     }
     if (isActive) {
-      return <SpinnerGap className="h-4 w-4 text-primary animate-spin" />
+      return <SpinnerGap className="h-4 w-4 text-[#040523] dark:text-slate-200 animate-spin" />
     }
     return <Hourglass className="h-4 w-4 text-muted-foreground" />
   }
@@ -78,8 +78,8 @@ function StageItem({
       animate={{ opacity: 1, x: 0 }}
       className={cn(
         'flex items-center gap-3 p-2 rounded-lg transition-colors',
-        isActive && 'bg-primary/10',
-        isComplete && 'bg-green-50 dark:bg-green-950/30',
+        isActive && 'bg-[#040523]/10 dark:bg-[#040523]/30',
+        isComplete && 'bg-[#040523]/5 dark:bg-[#040523]/20',
         isError && 'bg-red-50 dark:bg-red-950/30'
       )}
     >
@@ -97,7 +97,7 @@ function StageItem({
           <span className="text-sm font-medium">{name}</span>
           {showParallel && (
             <Badge variant="outline" className="text-xs">
-              병렬
+              병렬 실행
             </Badge>
           )}
         </div>
@@ -112,7 +112,7 @@ function StageItem({
       <div className="text-right">
         <span className={cn(
           'text-xs font-medium',
-          isActive ? 'text-primary' : 'text-muted-foreground'
+          isActive ? 'text-[#040523] dark:text-slate-200' : 'text-muted-foreground'
         )}>
           {stageConfig.percentage}%
         </span>
@@ -171,17 +171,17 @@ export function PipelineProgress({
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <Clock className="h-4 w-4" />
-            Pipeline Progress
+            파이프라인 진행 상황
           </CardTitle>
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-xs">
-              {completedStages}/{PIPELINE_ORDER.length} stages
+              {completedStages}/{PIPELINE_ORDER.length} 단계
             </Badge>
             <Badge
               variant={isComplete ? 'default' : hasError ? 'destructive' : 'secondary'}
               className="text-xs"
             >
-              {isComplete ? '✓ Complete' : hasError ? '✗ Error' : 'In Progress'}
+              {isComplete ? '완료' : hasError ? '오류' : '진행 중'}
             </Badge>
           </div>
         </div>
@@ -190,7 +190,7 @@ export function PipelineProgress({
         {/* Overall Progress Bar */}
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Overall Progress</span>
+            <span className="text-muted-foreground">전체 진행률</span>
             <span className="font-medium">{overallProgress}%</span>
           </div>
           <Progress value={overallProgress} className="h-3" />
@@ -198,7 +198,7 @@ export function PipelineProgress({
 
         {/* Time Tracking */}
         <div className="flex items-center justify-between text-sm p-2 rounded-lg bg-muted/50">
-          <span className="text-muted-foreground">Elapsed Time</span>
+          <span className="text-muted-foreground">경과 시간</span>
           <span className="font-mono">{formatTime(elapsedTime)}</span>
         </div>
 
@@ -210,13 +210,13 @@ export function PipelineProgress({
                 <div className="flex items-center gap-2 my-2">
                   <div className="flex-1 border-t border-dashed" />
                   <span className="text-xs text-muted-foreground">
-                    Parallel Execution
+                    병렬 실행
                   </span>
                   <div className="flex-1 border-t border-dashed" />
                 </div>
               )}
               <div className={cn(
-                group.parallel && group.stages.length > 1 && 'pl-4 border-l-2 border-primary/20 space-y-1'
+                group.parallel && group.stages.length > 1 && 'pl-4 border-l-2 border-[#040523]/20 dark:border-slate-600 space-y-1'
               )}>
                 {group.stages.map((stage) => {
                   const stageProgress = progress.find((p) => p.stage === stage)
@@ -254,7 +254,7 @@ export function PipelineProgress({
                 <XCircle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm font-medium text-red-700 dark:text-red-400">
-                    Pipeline Error
+                    파이프라인 오류
                   </p>
                   <p className="text-xs text-red-600 dark:text-red-300 mt-1">
                     {errorMessage}
@@ -272,12 +272,12 @@ export function PipelineProgress({
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="p-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900"
+              className="p-3 rounded-lg bg-[#040523]/5 dark:bg-[#040523]/20 border border-[#040523]/20 dark:border-slate-600"
             >
               <div className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                <p className="text-sm font-medium text-green-700 dark:text-green-400">
-                  All stages completed successfully in {formatTime(elapsedTime)}
+                <CheckCircle className="h-4 w-4 text-[#040523] dark:text-slate-200" />
+                <p className="text-sm font-medium text-[#040523] dark:text-slate-200">
+                  {formatTime(elapsedTime)}만에 모든 단계가 성공적으로 완료되었습니다
                 </p>
               </div>
             </motion.div>
@@ -305,15 +305,15 @@ export function PipelineProgressInline({
   if (isComplete) {
     return (
       <div className="flex items-center gap-2">
-        <CheckCircle className="h-4 w-4 text-green-500" />
-        <span className="text-sm text-green-600 font-medium">Complete</span>
+        <CheckCircle className="h-4 w-4 text-[#040523] dark:text-slate-200" />
+        <span className="text-sm text-[#040523] dark:text-slate-200 font-medium">완료</span>
       </div>
     )
   }
 
   return (
     <div className="flex items-center gap-3">
-      <SpinnerGap className="h-4 w-4 animate-spin text-primary" />
+      <SpinnerGap className="h-4 w-4 animate-spin text-[#040523] dark:text-slate-200" />
       <div className="flex items-center gap-2">
         <Progress value={overallProgress} className="w-24 h-2" />
         <span className="text-xs text-muted-foreground">{overallProgress}%</span>

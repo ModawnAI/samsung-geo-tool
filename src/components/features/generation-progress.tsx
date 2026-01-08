@@ -1,12 +1,11 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Progress } from '@/components/ui/progress'
 import { useGenerationStore } from '@/store/generation-store'
 import {
   FileText,
-  Clock,
   Hash,
   ChatCircleText,
   SpinnerGap,
@@ -23,15 +22,15 @@ interface GenerationProgressProps {
   isGenerating: boolean
 }
 
-// Actual pipeline stages matching generate-v2 API
+// Actual pipeline stages matching generate-v2 API execution order
 const GENERATION_STEPS = [
-  { id: 'usps', label: 'Extracting USPs', icon: Lightbulb },
-  { id: 'faq', label: 'Generating FAQ', icon: ChatCircleText },
-  { id: 'case-studies', label: 'Creating Case Studies', icon: BookOpen },
-  { id: 'keywords', label: 'Extracting Keywords', icon: Tag },
-  { id: 'hashtags', label: 'Generating Hashtags', icon: Hash },
-  { id: 'description', label: 'Writing Description', icon: FileText },
-  { id: 'chapters', label: 'Creating Chapters', icon: TreeStructure },
+  { id: 'description', label: '설명 작성 중', icon: FileText },
+  { id: 'usps', label: 'USP 추출 중', icon: Lightbulb },
+  { id: 'chapters', label: '챕터 생성 중', icon: TreeStructure },
+  { id: 'faq', label: 'FAQ 생성 중', icon: ChatCircleText },
+  { id: 'case-studies', label: '활용 사례 생성 중', icon: BookOpen },
+  { id: 'keywords', label: '키워드 추출 중', icon: Tag },
+  { id: 'hashtags', label: '해시태그 생성 중', icon: Hash },
 ] as const
 
 export function GenerationProgress({ isGenerating }: GenerationProgressProps) {
@@ -42,6 +41,10 @@ export function GenerationProgress({ isGenerating }: GenerationProgressProps) {
   // Simulated step progression (until we have streaming API)
   const [simulatedStep, setSimulatedStep] = useState(0)
   const [progress, setProgress] = useState(0)
+
+  // Use ref to track start time and previous step to avoid dependency issues
+  const startTimeRef = useRef<number | null>(null)
+  const prevStepRef = useRef(0)
 
   // Use store stage if available, otherwise fall back to simulation
   const currentStep = useMemo(() => {
@@ -58,18 +61,23 @@ export function GenerationProgress({ isGenerating }: GenerationProgressProps) {
       setSimulatedStep(0)
       setProgress(0)
       setGenerationStage(null)
+      startTimeRef.current = null
+      prevStepRef.current = 0
       return
     }
 
-    // Each stage takes approximately 1.5-2 seconds on average
-    // Total ~10-15 seconds for 7 stages
-    const avgStageTime = 1800 // ms per stage
-    let elapsed = 0
-    let currentStageStart = 0
+    // Initialize start time on first run
+    if (startTimeRef.current === null) {
+      startTimeRef.current = Date.now()
+    }
+
+    // Each stage takes approximately 8 seconds on average (pipeline takes ~55s total)
+    // Total ~56 seconds for 7 stages
+    const avgStageTime = 8000 // ms per stage
+    const totalTime = GENERATION_STEPS.length * avgStageTime
 
     const progressInterval = setInterval(() => {
-      elapsed += 100
-      const totalTime = GENERATION_STEPS.length * avgStageTime
+      const elapsed = Date.now() - (startTimeRef.current ?? Date.now())
 
       // Calculate which stage we should be on
       const stageIndex = Math.min(
@@ -77,11 +85,11 @@ export function GenerationProgress({ isGenerating }: GenerationProgressProps) {
         GENERATION_STEPS.length - 1
       )
 
-      // Update stage if changed
-      if (stageIndex !== simulatedStep) {
+      // Update stage if changed (use ref to avoid closure issues)
+      if (stageIndex !== prevStepRef.current) {
+        prevStepRef.current = stageIndex
         setSimulatedStep(stageIndex)
         setGenerationStage(GENERATION_STEPS[stageIndex].id)
-        currentStageStart = elapsed
       }
 
       // Calculate overall progress (cap at 95%)
@@ -91,7 +99,7 @@ export function GenerationProgress({ isGenerating }: GenerationProgressProps) {
     }, 100)
 
     return () => clearInterval(progressInterval)
-  }, [isGenerating, setGenerationStage, simulatedStep])
+  }, [isGenerating, setGenerationStage]) // Removed simulatedStep from deps!
 
   if (!isGenerating) return null
 
@@ -105,13 +113,13 @@ export function GenerationProgress({ isGenerating }: GenerationProgressProps) {
         className="space-y-6 py-8"
         role="status"
         aria-live="polite"
-        aria-label={`Generating content: ${GENERATION_STEPS[currentStep]?.label || 'Complete'}, ${Math.round(progress)}% complete`}
+        aria-label={`콘텐츠 생성 중: ${GENERATION_STEPS[currentStep]?.label || '완료'}, ${Math.round(progress)}% 완료`}
       >
         {/* Progress bar */}
         <motion.div variants={MOTION_VARIANTS.staggerItem} className="space-y-2">
           <Progress value={progress} className="h-2" />
           <p className="text-sm text-muted-foreground text-center">
-            {Math.round(progress)}% complete
+            {Math.round(progress)}% 완료
           </p>
         </motion.div>
 
@@ -133,15 +141,15 @@ export function GenerationProgress({ isGenerating }: GenerationProgressProps) {
                 transition={{ delay: index * 0.1 }}
                 className={cn(
                   'flex items-center gap-3 p-3 rounded-lg transition-colors',
-                  isActive && 'bg-primary/5 border border-primary/20',
+                  isActive && 'bg-[#040523]/5 dark:bg-[#040523]/20 border border-[#040523]/20 dark:border-slate-600',
                   isCompleted && 'text-muted-foreground'
                 )}
               >
                 <div
                   className={cn(
                     'flex items-center justify-center w-8 h-8 rounded-full',
-                    isActive && 'bg-primary text-primary-foreground',
-                    isCompleted && 'bg-green-500 text-white',
+                    isActive && 'bg-[#040523] dark:bg-slate-200 text-white dark:text-[#040523]',
+                    isCompleted && 'bg-[#040523]/70 dark:bg-slate-400 text-white dark:text-[#040523]',
                     !isActive && !isCompleted && 'bg-muted text-muted-foreground'
                   )}
                 >
@@ -156,7 +164,7 @@ export function GenerationProgress({ isGenerating }: GenerationProgressProps) {
                 <span
                   className={cn(
                     'font-medium',
-                    isActive && 'text-primary',
+                    isActive && 'text-[#040523] dark:text-slate-200',
                     isCompleted && 'line-through'
                   )}
                 >
@@ -172,7 +180,7 @@ export function GenerationProgress({ isGenerating }: GenerationProgressProps) {
           variants={MOTION_VARIANTS.staggerItem}
           className="text-sm text-muted-foreground text-center"
         >
-          This usually takes 10-15 seconds. Please don&apos;t close this page.
+          보통 50-60초 정도 소요됩니다. 페이지를 닫지 마세요.
         </motion.p>
       </motion.div>
     </AnimatePresence>

@@ -228,7 +228,7 @@ export default function GeneratePage() {
           keywords: selectedKeywords,
           productCategory: categoryId || 'all',
           usePlaybook: true,
-          launchDate: launchDate?.toISOString(),
+          launchDate: launchDate ? (launchDate instanceof Date ? launchDate.toISOString() : launchDate) : undefined,
           pipelineConfig: 'full',
           language: 'ko',
           // Samsung Standard Fields (Part 5.4)

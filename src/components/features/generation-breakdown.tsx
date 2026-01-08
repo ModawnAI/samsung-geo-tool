@@ -89,15 +89,15 @@ export function GenerationBreakdown({
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
-              <Target className="h-4 w-4 text-primary" />
-              Generation Breakdown
+              <Target className="h-4 w-4 text-muted-foreground" />
+              생성 결과 분석
             </CardTitle>
             <Tooltip>
               <TooltipTrigger>
                 <Info className="h-4 w-4 text-muted-foreground" />
               </TooltipTrigger>
               <TooltipContent className="max-w-xs">
-                <p>Shows how each signal source influenced the generated content using weighted fusion.</p>
+                <p>가중치 융합을 사용하여 각 신호 소스가 생성된 콘텐츠에 어떤 영향을 미쳤는지 보여줍니다.</p>
               </TooltipContent>
             </Tooltip>
           </div>
@@ -112,17 +112,17 @@ export function GenerationBreakdown({
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <BookOpenText className="h-4 w-4 text-blue-500" />
-                <span className="text-sm font-medium">Brand Guidelines</span>
+                <BookOpenText className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">브랜드 가이드라인</span>
                 <Badge variant="outline" className="text-xs">
                   {SIGNAL_WEIGHTS.playbook}%
                 </Badge>
               </div>
               <span className="text-xs text-muted-foreground">
-                {playbookInfluence.guidelinesApplied} guidelines
+                {playbookInfluence.guidelinesApplied}개 가이드라인
               </span>
             </div>
-            <Progress value={playbookInfluence.confidence} className="h-2" />
+            <Progress value={playbookInfluence.confidence} className="h-2 [&>div]:bg-[#040523] dark:[&>div]:bg-slate-300" />
             {playbookInfluence.sectionsUsed.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1">
                 {playbookInfluence.sectionsUsed.slice(0, 4).map((section) => (
@@ -136,7 +136,7 @@ export function GenerationBreakdown({
                 ))}
                 {playbookInfluence.sectionsUsed.length > 4 && (
                   <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                    +{playbookInfluence.sectionsUsed.length - 4} more
+                    +{playbookInfluence.sectionsUsed.length - 4}개 더
                   </Badge>
                 )}
               </div>
@@ -152,14 +152,14 @@ export function GenerationBreakdown({
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <MagnifyingGlass className="h-4 w-4 text-amber-500" />
-                <span className="text-sm font-medium">User Intent Signals</span>
+                <MagnifyingGlass className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">사용자 의도 신호</span>
                 <Badge variant="outline" className="text-xs">
                   {SIGNAL_WEIGHTS.grounding}%
                 </Badge>
               </div>
               <span className="text-xs text-muted-foreground">
-                {groundingInfluence.signalsApplied} signals
+                {groundingInfluence.signalsApplied}개 신호
               </span>
             </div>
             {groundingInfluence.topSignals.length > 0 ? (
@@ -173,10 +173,10 @@ export function GenerationBreakdown({
                       <TrendUp
                         className={`h-3 w-3 flex-shrink-0 ${
                           i === 0
-                            ? 'text-green-500'
+                            ? 'text-foreground'
                             : i === 1
-                              ? 'text-yellow-500'
-                              : 'text-muted-foreground'
+                              ? 'text-muted-foreground'
+                              : 'text-muted-foreground/60'
                         }`}
                       />
                       <span className="truncate font-medium">{signal.term}</span>
@@ -184,7 +184,7 @@ export function GenerationBreakdown({
                     <div className="flex items-center gap-1.5">
                       <Progress
                         value={signal.score}
-                        className="h-1.5 w-16"
+                        className="h-1.5 w-16 [&>div]:bg-[#040523]/70 dark:[&>div]:bg-slate-400"
                       />
                       <span className="text-muted-foreground w-8 text-right">
                         {signal.score}%
@@ -195,7 +195,7 @@ export function GenerationBreakdown({
               </div>
             ) : (
               <p className="text-xs text-muted-foreground italic">
-                No grounding signals available
+                사용 가능한 그라운딩 신호 없음
               </p>
             )}
           </motion.div>
@@ -209,8 +209,8 @@ export function GenerationBreakdown({
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <PencilLine className="h-4 w-4 text-purple-500" />
-                <span className="text-sm font-medium">Your Content</span>
+                <PencilLine className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">입력 콘텐츠</span>
                 <Badge variant="outline" className="text-xs">
                   {SIGNAL_WEIGHTS.userContent}%
                 </Badge>
@@ -218,15 +218,15 @@ export function GenerationBreakdown({
             </div>
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
               <div className="flex items-center gap-1">
-                <CheckCircle className="h-3 w-3 text-green-500" />
+                <CheckCircle className="h-3 w-3" />
                 <span>
-                  {userInputInfluence.keywordsIntegrated.length} keywords integrated
+                  {userInputInfluence.keywordsIntegrated.length}개 키워드 적용됨
                 </span>
               </div>
               <div className="flex items-center gap-1">
-                <CheckCircle className="h-3 w-3 text-green-500" />
+                <CheckCircle className="h-3 w-3" />
                 <span>
-                  {userInputInfluence.timestampsGenerated} timestamps generated
+                  {userInputInfluence.timestampsGenerated}개 타임스탬프 생성됨
                 </span>
               </div>
             </div>
@@ -255,16 +255,16 @@ export function GenerationBreakdown({
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Sparkle className="h-4 w-4 text-yellow-500" weight="fill" />
-                  <span className="text-sm font-medium">Quality Assessment</span>
+                  <Sparkle className="h-4 w-4 text-muted-foreground" weight="fill" />
+                  <span className="text-sm font-medium">품질 평가</span>
                   {breakdown.qualityScores.refined && (
-                    <Badge variant="default" className="text-[10px] px-1.5 py-0 bg-green-500">
-                      Refined
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                      개선됨
                     </Badge>
                   )}
                 </div>
                 <div className="flex items-center gap-1">
-                  <span className="text-lg font-bold text-primary">
+                  <span className="text-lg font-bold">
                     {breakdown.qualityScores.overall}
                   </span>
                   <span className="text-xs text-muted-foreground">/100</span>
@@ -273,24 +273,24 @@ export function GenerationBreakdown({
 
               <div className="space-y-2">
                 <ScoreBar
-                  label="Brand Voice"
+                  label="브랜드 보이스"
                   score={breakdown.qualityScores.brandVoice}
-                  icon={<Star className="h-3 w-3 text-blue-500" weight="fill" />}
+                  icon={<Star className="h-3 w-3 text-muted-foreground" weight="fill" />}
                 />
                 <ScoreBar
-                  label="Keyword Integration"
+                  label="키워드 통합"
                   score={breakdown.qualityScores.keywordIntegration}
-                  icon={<Target className="h-3 w-3 text-green-500" />}
+                  icon={<Target className="h-3 w-3 text-muted-foreground" />}
                 />
                 <ScoreBar
-                  label="GEO Optimization"
+                  label="GEO 최적화"
                   score={breakdown.qualityScores.geoOptimization}
-                  icon={<TrendUp className="h-3 w-3 text-amber-500" />}
+                  icon={<TrendUp className="h-3 w-3 text-muted-foreground" />}
                 />
                 <ScoreBar
-                  label="FAQ Quality"
+                  label="FAQ 품질"
                   score={breakdown.qualityScores.faqQuality}
-                  icon={<ChatCircleText className="h-3 w-3 text-purple-500" />}
+                  icon={<ChatCircleText className="h-3 w-3 text-muted-foreground" />}
                 />
               </div>
             </motion.div>
@@ -306,13 +306,13 @@ export function GenerationBreakdown({
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Gear className="h-4 w-4 text-slate-500" />
-                  <span className="text-sm font-medium">Pipeline Configuration</span>
+                  <Gear className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">파이프라인 설정</span>
                   <Badge
                     variant={tuningMetadata.configSource === 'database' ? 'default' : 'secondary'}
                     className="text-[10px] px-1.5 py-0"
                   >
-                    {tuningMetadata.configSource === 'database' ? 'Custom' : 'Default'}
+                    {tuningMetadata.configSource === 'database' ? '사용자 정의' : '기본값'}
                   </Badge>
                 </div>
               </div>
@@ -321,14 +321,14 @@ export function GenerationBreakdown({
                 {tuningMetadata.weightsName && (
                   <div className="flex items-center gap-2">
                     <Database className="h-3 w-3 text-muted-foreground" />
-                    <span className="text-muted-foreground">Weights:</span>
+                    <span className="text-muted-foreground">가중치:</span>
                     <span className="font-medium">{tuningMetadata.weightsName}</span>
                   </div>
                 )}
 
                 {tuningMetadata.promptVersionId && (
                   <div className="flex items-center gap-2 text-muted-foreground">
-                    <span>Prompt Version:</span>
+                    <span>프롬프트 버전:</span>
                     <code className="text-[10px] bg-muted px-1 rounded">
                       {tuningMetadata.promptVersionId.slice(0, 8)}
                     </code>
@@ -374,10 +374,10 @@ interface ScoreBarProps {
 }
 
 function ScoreBar({ label, score, icon }: ScoreBarProps) {
-  const getScoreColor = (score: number) => {
-    if (score >= 85) return 'text-green-600'
-    if (score >= 70) return 'text-yellow-600'
-    return 'text-red-500'
+  const getScoreStyle = (score: number) => {
+    if (score >= 85) return 'text-foreground font-semibold'
+    if (score >= 70) return 'text-muted-foreground font-medium'
+    return 'text-muted-foreground'
   }
 
   return (
@@ -387,9 +387,9 @@ function ScoreBar({ label, score, icon }: ScoreBarProps) {
         <span className="truncate text-muted-foreground">{label}</span>
       </div>
       <div className="flex-1">
-        <Progress value={score} className="h-1.5" />
+        <Progress value={score} className="h-1.5 [&>div]:bg-[#040523]/80 dark:[&>div]:bg-slate-300" />
       </div>
-      <span className={`w-8 text-right font-medium ${getScoreColor(score)}`}>
+      <span className={`w-8 text-right ${getScoreStyle(score)}`}>
         {score}
       </span>
     </div>
@@ -406,108 +406,108 @@ const METRIC_CONFIG: Record<string, {
   thresholds: { critical: number; warning: number }
 }> = {
   usp_coverage: {
-    description: 'How well the content covers key selling points from the brief',
+    description: '브리프의 핵심 셀링 포인트를 콘텐츠가 얼마나 잘 다루는지',
     icon: <Target className="h-3.5 w-3.5" />,
     actionType: 'regenerate_usps',
-    actionLabel: 'Add USPs',
+    actionLabel: 'USP 추가',
     thresholds: { critical: 30, warning: 60 },
     getRecommendation: (score) => {
       if (score < 30) return {
-        text: 'Add more USPs from the product brief. Current content misses key selling points.',
+        text: '제품 브리프에서 더 많은 USP를 추가하세요. 현재 콘텐츠에 핵심 셀링 포인트가 부족합니다.',
         priority: 'critical'
       }
       if (score < 60) return {
-        text: 'Include additional USPs: features, benefits, or differentiators from the brief.',
+        text: '브리프의 기능, 혜택 또는 차별화 요소를 추가로 포함하세요.',
         priority: 'warning'
       }
       return null
     },
   },
   grounding_score: {
-    description: 'Factual accuracy verified against external sources (Google/Perplexity)',
+    description: '외부 소스(Google/Perplexity)로 검증된 사실 정확성',
     icon: <ShieldCheck className="h-3.5 w-3.5" />,
     actionType: 'regenerate_grounded',
-    actionLabel: 'Add Sources',
+    actionLabel: '출처 추가',
     thresholds: { critical: 20, warning: 50 },
     getRecommendation: (score) => {
       if (score < 20) return {
-        text: 'Content lacks verified sources. Add citations from official Samsung pages or reviews.',
+        text: '검증된 출처가 부족합니다. 공식 삼성 페이지나 리뷰에서 인용을 추가하세요.',
         priority: 'critical'
       }
       if (score < 50) return {
-        text: 'Improve grounding: Reference official specs, reviews, or trusted tech sources.',
+        text: '그라운딩 개선: 공식 스펙, 리뷰 또는 신뢰할 수 있는 기술 소스를 참조하세요.',
         priority: 'warning'
       }
       return null
     },
   },
   semantic_similarity: {
-    description: 'How closely the generated content matches the brief intent and context',
+    description: '생성된 콘텐츠가 브리프의 의도와 맥락에 얼마나 부합하는지',
     icon: <BookOpenText className="h-3.5 w-3.5" />,
     actionType: 'regenerate_aligned',
-    actionLabel: 'Align to Brief',
+    actionLabel: '브리프 정렬',
     thresholds: { critical: 30, warning: 55 },
     getRecommendation: (score) => {
       if (score < 30) return {
-        text: 'Content diverges from brief. Regenerate with focus on brief requirements.',
+        text: '콘텐츠가 브리프에서 벗어났습니다. 브리프 요구사항에 집중하여 재생성하세요.',
         priority: 'critical'
       }
       if (score < 55) return {
-        text: 'Align content more closely with the brief messaging and target audience.',
+        text: '브리프의 메시징과 타겟 오디언스에 맞게 콘텐츠를 조정하세요.',
         priority: 'warning'
       }
       return null
     },
   },
   anti_fabrication: {
-    description: 'Prevention of hallucinated or unverified claims in the content',
+    description: '콘텐츠에서 허위 또는 미검증 주장의 방지',
     icon: <Warning className="h-3.5 w-3.5" />,
     actionType: 'verify_claims',
-    actionLabel: 'Verify Claims',
+    actionLabel: '주장 검증',
     thresholds: { critical: 40, warning: 65 },
     getRecommendation: (score) => {
       if (score < 40) return {
-        text: 'High fabrication risk detected. Review all claims and remove unverified statements.',
+        text: '허위 정보 위험이 높습니다. 모든 주장을 검토하고 미검증 내용을 제거하세요.',
         priority: 'critical'
       }
       if (score < 65) return {
-        text: 'Verify all technical specs and claims against official Samsung documentation.',
+        text: '모든 기술 스펙과 주장을 공식 삼성 문서와 대조 검증하세요.',
         priority: 'warning'
       }
       return null
     },
   },
   keyword_density: {
-    description: 'Presence and natural integration of target keywords',
+    description: '타겟 키워드의 존재 및 자연스러운 통합',
     icon: <MagnifyingGlass className="h-3.5 w-3.5" />,
     actionType: 'add_keywords',
-    actionLabel: 'Add Keywords',
+    actionLabel: '키워드 추가',
     thresholds: { critical: 25, warning: 50 },
     getRecommendation: (score) => {
       if (score < 25) return {
-        text: 'Missing target keywords. Add selected keywords naturally throughout content.',
+        text: '타겟 키워드가 부족합니다. 선택한 키워드를 콘텐츠 전반에 자연스럽게 추가하세요.',
         priority: 'critical'
       }
       if (score < 50) return {
-        text: 'Increase keyword usage in headings, descriptions, and FAQ sections.',
+        text: '제목, 설명, FAQ 섹션에서 키워드 사용을 늘리세요.',
         priority: 'warning'
       }
       return null
     },
   },
   structure_quality: {
-    description: 'Content organization, formatting, and readability',
+    description: '콘텐츠 구성, 포맷팅 및 가독성',
     icon: <TreeStructure className="h-3.5 w-3.5" />,
     actionType: 'improve_structure',
-    actionLabel: 'Fix Structure',
+    actionLabel: '구조 개선',
     thresholds: { critical: 30, warning: 55 },
     getRecommendation: (score) => {
       if (score < 30) return {
-        text: 'Poor structure. Reorganize with clear sections, headers, and formatting.',
+        text: '구조가 부실합니다. 명확한 섹션, 헤더, 포맷팅으로 재구성하세요.',
         priority: 'critical'
       }
       if (score < 55) return {
-        text: 'Improve structure: Add clearer headings, bullet points, or logical flow.',
+        text: '구조 개선: 더 명확한 제목, 불릿 포인트 또는 논리적 흐름을 추가하세요.',
         priority: 'warning'
       }
       return null
@@ -520,16 +520,16 @@ function ScoreThresholdLegend() {
   return (
     <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
       <div className="flex items-center gap-1">
-        <div className="w-2 h-2 rounded-full bg-green-500" />
-        <span>Good (≥60)</span>
+        <div className="w-2 h-2 rounded-full bg-[#040523] dark:bg-slate-200" />
+        <span>양호 (≥60)</span>
       </div>
       <div className="flex items-center gap-1">
-        <div className="w-2 h-2 rounded-full bg-amber-500" />
-        <span>Needs Work</span>
+        <div className="w-2 h-2 rounded-full bg-[#040523]/50 dark:bg-slate-500" />
+        <span>개선 필요</span>
       </div>
       <div className="flex items-center gap-1">
-        <div className="w-2 h-2 rounded-full bg-red-500" />
-        <span>Critical</span>
+        <div className="w-2 h-2 rounded-full bg-[#040523]/20 dark:bg-slate-700 ring-1 ring-[#040523]/30" />
+        <span>심각</span>
       </div>
     </div>
   )
@@ -538,10 +538,10 @@ function ScoreThresholdLegend() {
 // Overall score indicator with context
 function OverallScoreIndicator({ score }: { score: number }) {
   const getOverallStatus = () => {
-    if (score >= 80) return { label: 'Excellent', color: 'text-green-600 dark:text-green-400', bg: 'bg-green-100 dark:bg-green-900/30', emoji: '🟢' }
-    if (score >= 60) return { label: 'Good', color: 'text-green-600 dark:text-green-400', bg: 'bg-green-100 dark:bg-green-900/30', emoji: '🟢' }
-    if (score >= 40) return { label: 'Needs Improvement', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-100 dark:bg-amber-900/30', emoji: '🟡' }
-    return { label: 'Critical Attention', color: 'text-red-600 dark:text-red-400', bg: 'bg-red-100 dark:bg-red-900/30', emoji: '🔴' }
+    if (score >= 80) return { label: '우수', color: 'text-foreground', bg: 'bg-[#040523] dark:bg-slate-100', textBg: 'text-white dark:text-[#040523]' }
+    if (score >= 60) return { label: '양호', color: 'text-foreground', bg: 'bg-[#040523]/80 dark:bg-slate-300', textBg: 'text-white dark:text-[#040523]' }
+    if (score >= 40) return { label: '개선 필요', color: 'text-muted-foreground', bg: 'bg-[#040523]/40 dark:bg-slate-600', textBg: 'text-white dark:text-slate-200' }
+    return { label: '심각', color: 'text-muted-foreground', bg: 'border border-[#040523]/30 bg-transparent', textBg: 'text-muted-foreground' }
   }
 
   const status = getOverallStatus()
@@ -549,18 +549,17 @@ function OverallScoreIndicator({ score }: { score: number }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div className={`flex items-center gap-2 px-2 py-1 rounded-full ${status.bg} cursor-help`}>
-          <span className="text-sm">{status.emoji}</span>
-          <span className={`text-xs font-medium ${status.color}`}>{status.label}</span>
+        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full ${status.bg} cursor-help`}>
+          <span className={`text-xs font-medium ${status.textBg}`}>{status.label}</span>
         </div>
       </TooltipTrigger>
       <TooltipContent side="bottom" className="max-w-xs">
         <div className="text-xs space-y-1">
-          <p className="font-medium">Score Thresholds:</p>
-          <p>🟢 80-100: Excellent - Ready for use</p>
-          <p>🟢 60-79: Good - Minor improvements possible</p>
-          <p>🟡 40-59: Needs Improvement - Review recommended</p>
-          <p>🔴 0-39: Critical - Regeneration needed</p>
+          <p className="font-medium">점수 기준:</p>
+          <p>80-100: 우수 - 바로 사용 가능</p>
+          <p>60-79: 양호 - 약간의 개선 가능</p>
+          <p>40-59: 개선 필요 - 검토 권장</p>
+          <p>0-39: 심각 - 재생성 필요</p>
         </div>
       </TooltipContent>
     </Tooltip>
@@ -612,24 +611,24 @@ function ScoreBreakdownSection({ scoreBreakdown, onAction, isRegenerating }: Sco
     if (score < config.thresholds.critical) {
       return {
         status: 'critical',
-        color: 'text-red-600 dark:text-red-400',
-        bg: 'bg-red-50 dark:bg-red-900/20',
-        border: 'border-red-200 dark:border-red-800'
+        color: 'text-[#040523] dark:text-slate-200',
+        bg: 'bg-[#040523]/5 dark:bg-[#040523]/20',
+        border: 'border-[#040523]/20 dark:border-slate-700'
       }
     }
     if (score < config.thresholds.warning) {
       return {
         status: 'warning',
-        color: 'text-amber-600 dark:text-amber-400',
-        bg: 'bg-amber-50 dark:bg-amber-900/20',
-        border: 'border-amber-200 dark:border-amber-800'
+        color: 'text-[#040523]/70 dark:text-slate-400',
+        bg: 'bg-[#040523]/[0.02] dark:bg-[#040523]/10',
+        border: 'border-[#040523]/10 dark:border-slate-800'
       }
     }
     return {
       status: 'good',
-      color: 'text-green-600 dark:text-green-400',
-      bg: 'bg-green-50 dark:bg-green-900/20',
-      border: 'border-green-200 dark:border-green-800'
+      color: 'text-[#040523] dark:text-slate-200',
+      bg: 'bg-transparent',
+      border: 'border-transparent'
     }
   }
 
@@ -637,9 +636,9 @@ function ScoreBreakdownSection({ scoreBreakdown, onAction, isRegenerating }: Sco
     const config = METRIC_CONFIG[metric]
     if (!config) return ''
 
-    if (score < config.thresholds.critical) return '[&>div]:bg-red-500'
-    if (score < config.thresholds.warning) return '[&>div]:bg-amber-500'
-    return '[&>div]:bg-green-500'
+    if (score < config.thresholds.critical) return '[&>div]:bg-[#040523]/30 dark:[&>div]:bg-slate-600'
+    if (score < config.thresholds.warning) return '[&>div]:bg-[#040523]/50 dark:[&>div]:bg-slate-500'
+    return '[&>div]:bg-[#040523] dark:[&>div]:bg-slate-200'
   }
 
   const handleAction = useCallback((actionType: ActionType, metric: string) => {
@@ -664,19 +663,19 @@ function ScoreBreakdownSection({ scoreBreakdown, onAction, isRegenerating }: Sco
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <ListChecks className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">Score Breakdown</span>
+            <span className="text-sm font-medium">점수 분석</span>
             <OverallScoreIndicator score={overallScore} />
           </div>
           <div className="flex items-center gap-2">
             {criticalIssues.length > 0 && (
-              <Badge variant="destructive" className="text-[10px] px-1.5 py-0 gap-1">
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1 border-neutral-400">
                 <Warning className="h-3 w-3" />
-                {criticalIssues.length} Critical
+                {criticalIssues.length}개 심각
               </Badge>
             )}
             {warnings.length > 0 && (
-              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
-                {warnings.length} Warning
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                {warnings.length}개 경고
               </Badge>
             )}
           </div>
@@ -743,7 +742,7 @@ function ScoreBreakdownSection({ scoreBreakdown, onAction, isRegenerating }: Sco
                     </span>
                   </TooltipTrigger>
                   <TooltipContent side="top">
-                    <p className="text-xs">Weight: {(item.weight * 100).toFixed(0)}% of total score</p>
+                    <p className="text-xs">가중치: 총점의 {(item.weight * 100).toFixed(0)}%</p>
                   </TooltipContent>
                 </Tooltip>
 
@@ -778,7 +777,7 @@ function ScoreBreakdownSection({ scoreBreakdown, onAction, isRegenerating }: Sco
                     {config && onAction && (
                       <Button
                         size="sm"
-                        variant={recommendation.priority === 'critical' ? 'destructive' : 'secondary'}
+                        variant="outline"
                         className="h-7 text-xs gap-1.5"
                         onClick={(e) => {
                           e.stopPropagation()
@@ -804,11 +803,11 @@ function ScoreBreakdownSection({ scoreBreakdown, onAction, isRegenerating }: Sco
                       }}
                     >
                       {isCopied ? (
-                        <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                        <CheckCircle className="h-3.5 w-3.5" />
                       ) : (
                         <Copy className="h-3.5 w-3.5" />
                       )}
-                      {isCopied ? 'Copied' : 'Copy'}
+                      {isCopied ? '복사됨' : '복사'}
                     </Button>
                   </div>
                 </motion.div>
@@ -820,16 +819,16 @@ function ScoreBreakdownSection({ scoreBreakdown, onAction, isRegenerating }: Sco
 
       {/* Quick Actions Summary for Critical Issues */}
       {criticalIssues.length > 0 && onAction && (
-        <div className="mt-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+        <div className="mt-4 p-3 rounded-lg bg-[#040523]/5 dark:bg-[#040523]/20 border border-[#040523]/15 dark:border-slate-700">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <Warning className="h-4 w-4 text-red-600 dark:text-red-400" />
-              <span className="text-sm font-semibold text-red-700 dark:text-red-300">
-                Action Required
+              <Warning className="h-4 w-4 text-[#040523] dark:text-slate-200" />
+              <span className="text-sm font-semibold text-[#040523] dark:text-slate-200">
+                조치 필요
               </span>
             </div>
-            <Badge variant="destructive" className="text-[10px]">
-              {criticalIssues.length} issue{criticalIssues.length > 1 ? 's' : ''}
+            <Badge variant="outline" className="text-[10px] border-[#040523]/30 dark:border-slate-600">
+              {criticalIssues.length}개 문제
             </Badge>
           </div>
 
@@ -839,12 +838,12 @@ function ScoreBreakdownSection({ scoreBreakdown, onAction, isRegenerating }: Sco
               const config = METRIC_CONFIG[issue.metric]
               return (
                 <div key={issue.metric} className="flex items-center gap-2 text-xs">
-                  <span className="w-4 h-4 rounded-full bg-red-200 dark:bg-red-800 text-red-700 dark:text-red-300 flex items-center justify-center font-bold text-[10px]">
+                  <span className="w-4 h-4 rounded-full bg-[#040523]/20 dark:bg-slate-700 text-[#040523] dark:text-slate-200 flex items-center justify-center font-bold text-[10px]">
                     {index + 1}
                   </span>
-                  <span className="text-red-700 dark:text-red-300 font-medium">{issue.label}</span>
-                  <ArrowRight className="h-3 w-3 text-red-400" />
-                  <span className="text-red-600 dark:text-red-400">{config?.actionLabel}</span>
+                  <span className="font-medium text-[#040523] dark:text-slate-300">{issue.label}</span>
+                  <ArrowRight className="h-3 w-3 text-[#040523]/50 dark:text-slate-500" />
+                  <span className="text-[#040523]/60 dark:text-slate-400">{config?.actionLabel}</span>
                 </div>
               )
             })}
@@ -853,7 +852,7 @@ function ScoreBreakdownSection({ scoreBreakdown, onAction, isRegenerating }: Sco
           {/* Bulk action button */}
           <Button
             size="sm"
-            variant="destructive"
+            variant="outline"
             className="w-full h-8 text-xs gap-2"
             onClick={() => onAction({ type: 'regenerate_all' })}
             disabled={isRegenerating}
@@ -861,12 +860,12 @@ function ScoreBreakdownSection({ scoreBreakdown, onAction, isRegenerating }: Sco
             {isRegenerating ? (
               <>
                 <ArrowClockwise className="h-4 w-4 animate-spin" />
-                Regenerating...
+                재생성 중...
               </>
             ) : (
               <>
                 <ArrowClockwise className="h-4 w-4" />
-                Regenerate with All Fixes
+                모든 문제 수정 후 재생성
               </>
             )}
           </Button>
@@ -875,10 +874,10 @@ function ScoreBreakdownSection({ scoreBreakdown, onAction, isRegenerating }: Sco
 
       {/* Success state when no issues */}
       {criticalIssues.length === 0 && warnings.length === 0 && (
-        <div className="mt-3 p-2 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-          <div className="flex items-center gap-2 text-xs text-green-700 dark:text-green-300">
+        <div className="mt-3 p-2 rounded-lg bg-[#040523]/5 dark:bg-[#040523]/15 border border-[#040523]/10 dark:border-slate-700">
+          <div className="flex items-center gap-2 text-xs text-[#040523] dark:text-slate-200">
             <CheckCircle className="h-4 w-4" weight="fill" />
-            <span className="font-medium">All quality metrics are within acceptable ranges</span>
+            <span className="font-medium">모든 품질 지표가 허용 범위 내에 있습니다</span>
           </div>
         </div>
       )}
@@ -886,14 +885,14 @@ function ScoreBreakdownSection({ scoreBreakdown, onAction, isRegenerating }: Sco
   )
 }
 
-// Weight color mapping for visual distinction
+// Weight color mapping for visual distinction - deep navy palette (#040523)
 const WEIGHT_COLORS: Record<keyof WeightValues, { bg: string; text: string; bar: string }> = {
-  usp_coverage: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300', bar: 'bg-blue-500' },
-  grounding_score: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-300', bar: 'bg-green-500' },
-  semantic_similarity: { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-300', bar: 'bg-purple-500' },
-  anti_fabrication: { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-300', bar: 'bg-amber-500' },
-  keyword_density: { bg: 'bg-pink-100 dark:bg-pink-900/30', text: 'text-pink-700 dark:text-pink-300', bar: 'bg-pink-500' },
-  structure_quality: { bg: 'bg-slate-100 dark:bg-slate-800/50', text: 'text-slate-700 dark:text-slate-300', bar: 'bg-slate-500' },
+  usp_coverage: { bg: 'bg-[#040523]/5 dark:bg-[#040523]/30', text: 'text-[#040523] dark:text-slate-200', bar: 'bg-[#040523] dark:bg-slate-200' },
+  grounding_score: { bg: 'bg-[#040523]/5 dark:bg-[#040523]/25', text: 'text-[#040523]/90 dark:text-slate-300', bar: 'bg-[#040523]/90 dark:bg-slate-300' },
+  semantic_similarity: { bg: 'bg-[#040523]/5 dark:bg-[#040523]/20', text: 'text-[#040523]/80 dark:text-slate-400', bar: 'bg-[#040523]/70 dark:bg-slate-400' },
+  anti_fabrication: { bg: 'bg-[#040523]/5 dark:bg-[#040523]/15', text: 'text-[#040523]/70 dark:text-slate-400', bar: 'bg-[#040523]/60 dark:bg-slate-500' },
+  keyword_density: { bg: 'bg-[#040523]/5 dark:bg-[#040523]/10', text: 'text-[#040523]/60 dark:text-slate-500', bar: 'bg-[#040523]/50 dark:bg-slate-500' },
+  structure_quality: { bg: 'bg-[#040523]/5 dark:bg-[#040523]/10', text: 'text-[#040523]/50 dark:text-slate-600', bar: 'bg-[#040523]/40 dark:bg-slate-600' },
 }
 
 interface WeightTransparencySectionProps {
@@ -927,14 +926,14 @@ export function WeightTransparencySection({ scoreBreakdown, weightsUsed }: Weigh
       >
         <div className="flex items-center gap-2">
           <Gear className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium">How Your Score is Calculated</span>
+          <span className="text-sm font-medium">점수 계산 방법</span>
           <Badge variant="outline" className="text-[10px]">
-            {Object.keys(weights).length} factors
+            {Object.keys(weights).length}개 요소
           </Badge>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">
-            Click to {isExpanded ? 'collapse' : 'expand'}
+            클릭하여 {isExpanded ? '접기' : '펼치기'}
           </span>
           {isExpanded ? (
             <CaretUp className="h-4 w-4 text-muted-foreground" />
@@ -956,9 +955,9 @@ export function WeightTransparencySection({ scoreBreakdown, weightsUsed }: Weigh
             <div className="flex items-start gap-2 mb-2">
               <Info className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
               <div className="text-xs text-muted-foreground">
-                <p className="font-medium mb-1">Scoring Formula:</p>
+                <p className="font-medium mb-1">점수 산정 공식:</p>
                 <code className="text-[10px] bg-muted px-1.5 py-0.5 rounded block w-fit">
-                  Final Score = Σ (Metric Score × Weight)
+                  최종 점수 = Σ (지표 점수 × 가중치)
                 </code>
               </div>
             </div>
@@ -967,7 +966,7 @@ export function WeightTransparencySection({ scoreBreakdown, weightsUsed }: Weigh
           {/* Weight distribution visualization */}
           <div className="space-y-2">
             <div className="text-xs font-medium text-muted-foreground mb-1">
-              Weight Distribution
+              가중치 분포
             </div>
 
             {/* Stacked bar visualization */}
@@ -982,7 +981,7 @@ export function WeightTransparencySection({ scoreBreakdown, weightsUsed }: Weigh
                   </TooltipTrigger>
                   <TooltipContent side="top">
                     <p className="text-xs font-medium">{WEIGHT_LABELS[key].label}</p>
-                    <p className="text-[10px] text-muted-foreground">{(value * 100).toFixed(0)}% of total score</p>
+                    <p className="text-[10px] text-muted-foreground">총점의 {(value * 100).toFixed(0)}%</p>
                   </TooltipContent>
                 </Tooltip>
               ))}
@@ -1009,7 +1008,7 @@ export function WeightTransparencySection({ scoreBreakdown, weightsUsed }: Weigh
                         </div>
                         {scoreItem && (
                           <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                            <span>Score: {Math.round(scoreItem.score)}</span>
+                            <span>점수: {Math.round(scoreItem.score)}</span>
                             <span>×</span>
                             <span>{(value * 100).toFixed(0)}%</span>
                             <span>=</span>
@@ -1032,16 +1031,16 @@ export function WeightTransparencySection({ scoreBreakdown, weightsUsed }: Weigh
           {scoreBreakdown && scoreBreakdown.length > 0 && (
             <div className="space-y-2 pt-2 border-t">
               <div className="text-xs font-medium text-muted-foreground">
-                Score Calculation
+                점수 계산
               </div>
               <div className="rounded-lg border overflow-hidden">
                 <table className="w-full text-xs">
                   <thead className="bg-muted/50">
                     <tr>
-                      <th className="text-left px-2 py-1.5 font-medium">Metric</th>
-                      <th className="text-right px-2 py-1.5 font-medium">Score</th>
-                      <th className="text-right px-2 py-1.5 font-medium">Weight</th>
-                      <th className="text-right px-2 py-1.5 font-medium">Contribution</th>
+                      <th className="text-left px-2 py-1.5 font-medium">지표</th>
+                      <th className="text-right px-2 py-1.5 font-medium">점수</th>
+                      <th className="text-right px-2 py-1.5 font-medium">가중치</th>
+                      <th className="text-right px-2 py-1.5 font-medium">기여도</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1056,7 +1055,7 @@ export function WeightTransparencySection({ scoreBreakdown, weightsUsed }: Weigh
                       </tr>
                     ))}
                     <tr className="border-t bg-muted/30 font-medium">
-                      <td className="px-2 py-1.5" colSpan={3}>Total Score</td>
+                      <td className="px-2 py-1.5" colSpan={3}>총점</td>
                       <td className="px-2 py-1.5 text-right font-mono">{totalScore.toFixed(1)}</td>
                     </tr>
                   </tbody>
@@ -1066,14 +1065,14 @@ export function WeightTransparencySection({ scoreBreakdown, weightsUsed }: Weigh
           )}
 
           {/* Improvement tip */}
-          <div className="flex items-start gap-2 p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-            <Lightbulb className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-            <div className="text-xs text-blue-700 dark:text-blue-300">
-              <p className="font-medium">Tip:</p>
+          <div className="flex items-start gap-2 p-2 rounded-lg bg-[#040523]/[0.03] dark:bg-[#040523]/10 border border-[#040523]/10 dark:border-slate-700">
+            <Lightbulb className="h-4 w-4 text-[#040523]/60 dark:text-slate-400 flex-shrink-0 mt-0.5" />
+            <div className="text-xs text-[#040523]/70 dark:text-slate-400">
+              <p className="font-medium text-[#040523] dark:text-slate-200">팁:</p>
               <p>
-                Focus on improving metrics with higher weights for maximum impact.
-                USP Coverage ({(weights.usp_coverage * 100).toFixed(0)}%) and Grounding Score ({(weights.grounding_score * 100).toFixed(0)}%)
-                have the biggest influence on your final score.
+                최대 효과를 위해 가중치가 높은 지표를 개선하는 데 집중하세요.
+                USP 커버리지({(weights.usp_coverage * 100).toFixed(0)}%)와 그라운딩 점수({(weights.grounding_score * 100).toFixed(0)}%)가
+                최종 점수에 가장 큰 영향을 미칩니다.
               </p>
             </div>
           </div>

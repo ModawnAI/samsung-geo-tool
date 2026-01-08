@@ -47,7 +47,7 @@ export function ResultsDisplay({
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <ChartBar className="h-5 w-5 text-primary" weight="fill" />
+            <ChartBar className="h-5 w-5 text-[#040523] dark:text-slate-200" weight="fill" />
             <span className="text-sm font-medium">
               {isKorean ? 'GEO/AEO 점수' : 'GEO/AEO Score'}
             </span>
@@ -215,7 +215,7 @@ function DescriptionSection({
               className="h-8 gap-1.5"
             >
               {copied === 'preview' ? (
-                <Check className="h-4 w-4 text-green-500" />
+                <Check className="h-4 w-4 text-[#040523] dark:text-slate-200" />
               ) : (
                 <Copy className="h-4 w-4" />
               )}
@@ -247,7 +247,7 @@ function DescriptionSection({
               className="h-8 gap-1.5"
             >
               {copied === 'full' ? (
-                <Check className="h-4 w-4 text-green-500" />
+                <Check className="h-4 w-4 text-[#040523] dark:text-slate-200" />
               ) : (
                 <Copy className="h-4 w-4" />
               )}
@@ -320,7 +320,7 @@ function ChaptersSection({
             className="h-8 gap-1.5"
           >
             {copied ? (
-              <Check className="h-4 w-4 text-green-500" />
+              <Check className="h-4 w-4 text-[#040523] dark:text-slate-200" />
             ) : (
               <Copy className="h-4 w-4" />
             )}
@@ -439,7 +439,7 @@ function StepByStepSection({
         <ol className="space-y-3">
           {stepByStep.steps.map((step, idx) => (
             <li key={idx} className="flex gap-3">
-              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center font-medium">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#040523]/10 text-[#040523] dark:bg-[#040523]/30 dark:text-slate-200 text-xs flex items-center justify-center font-medium">
                 {idx + 1}
               </span>
               <span className="text-sm">{step}</span>
@@ -567,7 +567,7 @@ function KeywordsSection({
               className="h-8 gap-1.5"
             >
               {copied === 'product' ? (
-                <Check className="h-4 w-4 text-green-500" />
+                <Check className="h-4 w-4 text-[#040523] dark:text-slate-200" />
               ) : (
                 <Copy className="h-4 w-4" />
               )}
@@ -600,7 +600,7 @@ function KeywordsSection({
               className="h-8 gap-1.5"
             >
               {copied === 'generic' ? (
-                <Check className="h-4 w-4 text-green-500" />
+                <Check className="h-4 w-4 text-[#040523] dark:text-slate-200" />
               ) : (
                 <Copy className="h-4 w-4" />
               )}
@@ -636,7 +636,7 @@ function KeywordsSection({
               className="h-8 gap-1.5"
             >
               {copied === 'hashtags' ? (
-                <Check className="h-4 w-4 text-green-500" />
+                <Check className="h-4 w-4 text-[#040523] dark:text-slate-200" />
               ) : (
                 <Copy className="h-4 w-4" />
               )}
@@ -645,7 +645,7 @@ function KeywordsSection({
           </div>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-primary">{hashtags.join(' ')}</p>
+          <p className="text-sm text-[#040523] dark:text-slate-200">{hashtags.join(' ')}</p>
         </CardContent>
       </Card>
     </div>
@@ -709,7 +709,7 @@ function ScoreBreakdown({
             </div>
             <div className="h-2 bg-muted rounded-full overflow-hidden">
               <div
-                className="h-full bg-primary transition-all duration-500"
+                className="h-full bg-[#040523] dark:bg-slate-300 transition-all duration-500"
                 style={{ width: `${(metric.value / metric.max) * 100}%` }}
               />
             </div>

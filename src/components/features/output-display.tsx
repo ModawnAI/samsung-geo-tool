@@ -80,7 +80,7 @@ function CopyButton({ text, label }: CopyButtonProps) {
     >
       {copied ? (
         <>
-          <Check className="h-4 w-4 text-green-500" aria-hidden="true" />
+          <Check className="h-4 w-4" aria-hidden="true" />
           Copied
         </>
       ) : (
@@ -684,7 +684,7 @@ export function OutputDisplay() {
           ))}
           {/* Prominent Refined Badge when content has been regenerated */}
           {breakdown?.qualityScores?.refined && (
-            <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0 gap-1.5 px-3">
+            <Badge variant="default" className="gap-1.5 px-3">
               <Sparkle className="h-3.5 w-3.5" weight="fill" />
               Refined
             </Badge>
@@ -694,12 +694,12 @@ export function OutputDisplay() {
 
       {/* Samsung Compliance Indicators (P0-2) */}
       <motion.div variants={MOTION_VARIANTS.staggerItem}>
-        <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+        <Card className="border-[#040523]/10 dark:border-slate-700 bg-[#040523]/[0.02] dark:bg-[#040523]/10">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2 text-blue-900 dark:text-blue-100">
-              <Info className="h-4 w-4" />
+            <CardTitle className="text-sm flex items-center gap-2 text-[#040523] dark:text-slate-100">
+              <Info className="h-4 w-4 text-[#040523]/60 dark:text-slate-400" />
               {t.samsung.compliance.title}
-              <Badge variant="outline" className="ml-auto text-xs">
+              <Badge variant="outline" className="ml-auto text-xs border-[#040523]/20 dark:border-slate-600">
                 {t.samsung.videoFormats[videoFormat]} · {t.samsung.contentTypes[contentType]}
               </Badge>
             </CardTitle>
@@ -709,29 +709,31 @@ export function OutputDisplay() {
               {samsungCompliance.map((check, i) => (
                 <Badge
                   key={i}
-                  variant={check.valid ? "outline" : "destructive"}
-                  className={`gap-1.5 ${check.valid ? 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800' : ''}`}
+                  variant="outline"
+                  className={`gap-1.5 ${check.valid
+                    ? 'bg-[#040523]/5 dark:bg-[#040523]/20 text-[#040523] dark:text-slate-200 border-[#040523]/15 dark:border-slate-600'
+                    : 'bg-transparent text-[#040523]/60 dark:text-slate-400 border-[#040523]/30 dark:border-slate-500'}`}
                   title={check.tip}
                 >
                   {check.valid ? (
                     <Check className="h-3 w-3" weight="bold" />
                   ) : (
-                    <Warning className="h-3 w-3" weight="fill" />
+                    <Warning className="h-3 w-3" />
                   )}
                   {t.samsung.compliance[check.labelKey as keyof typeof t.samsung.compliance]}
                 </Badge>
               ))}
               {/* Fixed vs AI hashtags indicator */}
-              <Badge variant="secondary" className="gap-1.5">
+              <Badge variant="outline" className="gap-1.5 border-[#040523]/15 dark:border-slate-600 text-[#040523]/70 dark:text-slate-300">
                 <Hash className="h-3 w-3" />
                 {useFixedHashtags ? t.samsung.compliance.fixedHashtagsUsed : t.samsung.compliance.aiHashtagsUsed}
               </Badge>
             </div>
             {/* Show non-compliant tips */}
             {samsungCompliance.some(c => !c.valid) && (
-              <div className="mt-3 p-2 rounded bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
-                <p className="text-xs text-amber-700 dark:text-amber-300 flex items-start gap-1.5">
-                  <Warning className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" weight="fill" />
+              <div className="mt-3 p-2 rounded bg-[#040523]/5 dark:bg-[#040523]/15 border border-[#040523]/10 dark:border-slate-700">
+                <p className="text-xs text-[#040523]/70 dark:text-slate-400 flex items-start gap-1.5">
+                  <Warning className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-[#040523]/50 dark:text-slate-500" />
                   <span>
                     {samsungCompliance.filter(c => !c.valid).map(c => c.tip).join(' · ')}
                   </span>
@@ -744,28 +746,28 @@ export function OutputDisplay() {
 
       {/* YouTube Ready Preview (P0-2) */}
       <motion.div variants={MOTION_VARIANTS.staggerItem}>
-        <Card>
+        <Card className="border-[#040523]/10 dark:border-slate-700">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                <YoutubeLogo className="h-4 w-4 text-red-500" weight="fill" />
+              <CardTitle className="text-base flex items-center gap-2 text-[#040523] dark:text-slate-100">
+                <YoutubeLogo className="h-4 w-4 text-[#040523]/60 dark:text-slate-400" weight="fill" />
                 {t.samsung.youtubePreview.title}
               </CardTitle>
               <CopyButton text={youtubeReadyContent} label="YouTube Description" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="p-4 rounded-lg bg-muted/50 border font-mono text-sm max-h-[300px] overflow-y-auto">
-              <pre className="whitespace-pre-wrap text-xs">
+            <div className="p-4 rounded-lg bg-[#040523]/[0.02] dark:bg-[#040523]/10 border border-[#040523]/10 dark:border-slate-700 font-mono text-sm max-h-[300px] overflow-y-auto">
+              <pre className="whitespace-pre-wrap text-xs text-[#040523]/80 dark:text-slate-300">
                 {youtubeReadyContent}
               </pre>
             </div>
             <div className="flex items-center justify-between mt-2">
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-[#040523]/60 dark:text-slate-500">
                 {t.samsung.youtubePreview.characterCount.replace('{count}', String(youtubeReadyContent.length))} / 5,000
               </p>
               {youtubeReadyContent.length > 5000 && (
-                <Badge variant="destructive" className="text-xs">
+                <Badge variant="outline" className="text-xs border-[#040523]/30 dark:border-slate-600 text-[#040523]/70 dark:text-slate-400">
                   {t.samsung.youtubePreview.exceedsLimit}
                 </Badge>
               )}
@@ -780,23 +782,23 @@ export function OutputDisplay() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
-          className="rounded-lg border border-primary/30 bg-primary/5 p-4"
+          className="rounded-lg border border-[#040523]/20 dark:border-slate-700 bg-[#040523]/5 dark:bg-[#040523]/20 p-4"
         >
           <div className="flex items-center gap-3">
             <div className="relative">
-              <ArrowsClockwise className="h-5 w-5 text-primary animate-spin" />
-              <Lightning className="h-3 w-3 text-primary absolute -top-1 -right-1" weight="fill" />
+              <ArrowsClockwise className="h-5 w-5 text-[#040523] dark:text-slate-200 animate-spin" />
+              <Lightning className="h-3 w-3 text-[#040523] dark:text-slate-200 absolute -top-1 -right-1" weight="fill" />
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <span className="font-medium text-primary">
+                <span className="font-medium text-[#040523] dark:text-slate-200">
                   Regenerating: {REGENERATION_LABELS[regenerationFocus]?.label || 'Content'}
                 </span>
-                <Badge variant="outline" className="text-xs">
+                <Badge variant="outline" className="text-xs border-[#040523]/20 dark:border-slate-600 text-[#040523]/70 dark:text-slate-400">
                   Focus Area
                 </Badge>
               </div>
-              <p className="text-sm text-muted-foreground mt-0.5">
+              <p className="text-sm text-[#040523]/60 dark:text-slate-400 mt-0.5">
                 {REGENERATION_LABELS[regenerationFocus]?.description || 'Improving content quality...'}
               </p>
             </div>

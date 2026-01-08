@@ -103,7 +103,7 @@ export function KeywordSelector() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           productName,
-          launchDate: launchDate?.toISOString(),
+          launchDate: launchDate ? (launchDate instanceof Date ? launchDate.toISOString() : launchDate) : undefined,
         }),
         signal: abortControllerRef.current.signal,
       })
