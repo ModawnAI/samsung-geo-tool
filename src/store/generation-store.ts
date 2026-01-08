@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
+import type { ContentType, VideoFormat, InputMethod } from '@/types/geo-v2'
 
 export type GenerationStep = 'product' | 'content' | 'keywords' | 'output'
 
@@ -71,6 +72,14 @@ interface GenerationState {
   campaignTag: string
   launchDate: Date | null // Product launch date for content filtering
 
+  // Samsung Standard Fields (P1)
+  contentType: ContentType
+  videoFormat: VideoFormat
+  inputMethod: InputMethod
+  fixedHashtags: string[]
+  useFixedHashtags: boolean
+  vanityLinkCode: string
+
   // Step 2: Content input
   videoUrl: string
   srtContent: string
@@ -102,6 +111,13 @@ interface GenerationState {
   setProduct: (productId: string, productName: string) => void
   setCampaignTag: (tag: string) => void
   setLaunchDate: (date: Date | null) => void
+  // Samsung Standard Actions (P1)
+  setContentType: (type: ContentType) => void
+  setVideoFormat: (format: VideoFormat) => void
+  setInputMethod: (method: InputMethod) => void
+  setFixedHashtags: (hashtags: string[]) => void
+  setUseFixedHashtags: (use: boolean) => void
+  setVanityLinkCode: (code: string) => void
   setVideoUrl: (url: string) => void
   setSrtContent: (content: string) => void
   setBriefUsps: (usps: string[]) => void
@@ -147,6 +163,13 @@ const initialState = {
   productName: null,
   campaignTag: '',
   launchDate: null as Date | null,
+  // Samsung Standard Fields (P1) - defaults
+  contentType: 'intro' as ContentType,
+  videoFormat: 'feed_16x9' as VideoFormat,
+  inputMethod: 'youtube_url' as InputMethod,
+  fixedHashtags: [] as string[],
+  useFixedHashtags: true, // Samsung prefers fixed hashtags
+  vanityLinkCode: '',
   videoUrl: '',
   srtContent: '',
   briefUsps: [],
@@ -180,6 +203,19 @@ export const useGenerationStore = create<GenerationState>()(
   setCampaignTag: (campaignTag) => set({ campaignTag }),
 
   setLaunchDate: (launchDate) => set({ launchDate }),
+
+  // Samsung Standard Actions (P1)
+  setContentType: (contentType) => set({ contentType }),
+
+  setVideoFormat: (videoFormat) => set({ videoFormat }),
+
+  setInputMethod: (inputMethod) => set({ inputMethod }),
+
+  setFixedHashtags: (fixedHashtags) => set({ fixedHashtags }),
+
+  setUseFixedHashtags: (useFixedHashtags) => set({ useFixedHashtags }),
+
+  setVanityLinkCode: (vanityLinkCode) => set({ vanityLinkCode }),
 
   setVideoUrl: (videoUrl) => set({ videoUrl }),
 
@@ -252,6 +288,13 @@ export const useGenerationStore = create<GenerationState>()(
         productName: state.productName,
         campaignTag: state.campaignTag,
         launchDate: state.launchDate,
+        // Samsung Standard Fields (P1)
+        contentType: state.contentType,
+        videoFormat: state.videoFormat,
+        inputMethod: state.inputMethod,
+        fixedHashtags: state.fixedHashtags,
+        useFixedHashtags: state.useFixedHashtags,
+        vanityLinkCode: state.vanityLinkCode,
         videoUrl: state.videoUrl,
         srtContent: state.srtContent,
         briefUsps: state.briefUsps,

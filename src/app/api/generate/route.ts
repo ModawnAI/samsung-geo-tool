@@ -600,7 +600,7 @@ Evaluate this generated content for a ${productName} video:
 Be critical but constructive. Identify specific issues and provide actionable suggestions.`
 
     const response = await ai.models.generateContent({
-      model: 'gemini-flash-latest',
+      model: 'gemini-3-flash-preview',
       contents: critiquePrompt,
       config: {
         responseMimeType: 'application/json',
@@ -662,7 +662,7 @@ Refine the content addressing ALL identified issues. Focus especially on areas s
 Keep the same structure but improve quality. Output must be in Korean.`
 
     const response = await ai.models.generateContent({
-      model: 'gemini-flash-latest',
+      model: 'gemini-3-flash-preview',
       contents: refinePrompt,
       config: {
         responseMimeType: 'application/json',
@@ -776,7 +776,7 @@ Generate JSON with:
     // ==========================================
     console.log('[Generate] Starting initial generation...')
     const response = await ai.models.generateContent({
-      model: 'gemini-flash-latest',
+      model: 'gemini-3-flash-preview',
       contents: userPrompt,
       config: {
         systemInstruction,

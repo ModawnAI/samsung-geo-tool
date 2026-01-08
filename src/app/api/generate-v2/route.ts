@@ -5,7 +5,11 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenAI } from '@google/genai'
-import { multiQuerySearch, getSectionContext } from '@/lib/rag/search'
+import {
+  multiQuerySearch,
+  getSectionContext,
+  fetchContentGenerationContext,
+} from '@/lib/rag/search'
 import { isPineconeConfigured } from '@/lib/pinecone/client'
 import { safeJsonParse } from '@/lib/utils'
 import {
@@ -49,7 +53,13 @@ import type {
   CaseStudy,
   CaseStudyResult,
 } from '@/types/geo-v2'
-import type { ProductCategory, PlaybookSearchResult, PlaybookSection } from '@/types/playbook'
+import type {
+  ProductCategory,
+  PlaybookSection,
+  SamsungContentType,
+  VideoFormat,
+  PlaybookSearchResult,
+} from '@/types/playbook'
 import { calculateContentQualityScores } from '@/lib/scoring/content-quality'
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
@@ -251,6 +261,12 @@ interface GEOv2GenerateRequest {
   pipelineConfig?: 'full' | 'quick' | 'grounded'
   language?: 'ko' | 'en'
   regenerationConfig?: RegenerationConfig
+  // Samsung Standard Fields (Part 5.4)
+  contentType?: 'intro' | 'unboxing' | 'how_to' | 'shorts' | 'teaser' | 'brand' | 'esg' | 'documentary' | 'official_replay'
+  videoFormat?: 'feed_16x9' | 'shorts_9x16'
+  fixedHashtags?: string[]
+  useFixedHashtags?: boolean
+  vanityLinkCode?: string
 }
 
 interface GroundingSignal {
@@ -417,6 +433,12 @@ export async function POST(request: NextRequest) {
       pipelineConfig = 'full',
       language = 'ko',
       regenerationConfig,
+      // Samsung Standard Fields (Part 5.4)
+      contentType = 'intro',
+      videoFormat = 'feed_16x9',
+      fixedHashtags = [],
+      useFixedHashtags = false,
+      vanityLinkCode = '',
     } = body
 
     // Validation
@@ -484,15 +506,33 @@ export async function POST(request: NextRequest) {
     const enhancedGrounding = regenerationConfig?.enhanceGrounding || regenerationConfig?.deeperWebSearch
     const enhancedUSP = regenerationConfig?.enhanceUSPs || regenerationConfig?.prioritizePlaybook
 
-    const [groundingSignals, playbookContext] = await Promise.all([
+    // Fetch all context in parallel: grounding signals, playbook context, AND Samsung-specific RAG context
+    const [groundingSignals, playbookContext, samsungRAGContext] = await Promise.all([
       fetchGroundingSignals(productName, keywords, launchDate, enhancedGrounding),
       (usePlaybook && isPineconeConfigured())
         ? fetchPlaybookContext(productName, keywords, productCategory, enhancedUSP)
         : Promise.resolve([]),
+      // Fetch Samsung content-type-specific RAG context for style examples
+      isPineconeConfigured()
+        ? fetchContentGenerationContext({
+            productName,
+            keywords,
+            contentType: contentType as SamsungContentType,
+            videoFormat: videoFormat as VideoFormat,
+            productCategory,
+          })
+        : Promise.resolve({
+            contentTypeExamples: [],
+            qaFormatExamples: [],
+            hashtagExamples: [],
+            openerExamples: [],
+            correctedExamples: [],
+          }),
     ])
 
     console.log(`[GEO v2] Data fetched in ${Date.now() - startTime}ms`)
     console.log(`[GEO v2] Grounding signals: ${groundingSignals.length}, Playbook chunks: ${playbookContext.length}`)
+    console.log(`[GEO v2] Samsung RAG context: ${samsungRAGContext.contentTypeExamples.length} content type, ${samsungRAGContext.qaFormatExamples.length} Q&A format, ${samsungRAGContext.hashtagExamples.length} hashtag examples`)
     if (isRegeneration) {
       console.log(`[GEO v2] Regeneration mode: enhancedGrounding=${enhancedGrounding}, enhancedUSP=${enhancedUSP}`)
     }
@@ -512,7 +552,15 @@ export async function POST(request: NextRequest) {
       groundingSignals,
       playbookContext,
       language,
-      tuningConfig
+      tuningConfig,
+      // Samsung Standard Fields (Part 5.4)
+      { contentType, videoFormat, vanityLinkCode },
+      // Samsung RAG context for style examples
+      {
+        openerExamples: samsungRAGContext.openerExamples,
+        correctedExamples: samsungRAGContext.correctedExamples,
+        contentTypeExamples: samsungRAGContext.contentTypeExamples,
+      }
     )
 
     // Extract grounding sources from description generation
@@ -550,8 +598,8 @@ export async function POST(request: NextRequest) {
     const [chaptersResult, faqResult, stepByStepResult, caseStudiesResult, keywordsResult] = await Promise.all([
       // Stage 2: Chapters (depends only on srtContent)
       generateChapters(srtContent, productName, tuningConfig),
-      // Stage 3: FAQ (depends on USPs)
-      generateFAQ(productName, srtContent, uspResult.usps, groundingSignals, language, tuningConfig),
+      // Stage 3: FAQ (depends on USPs) - with Q&A format examples from RAG
+      generateFAQ(productName, srtContent, uspResult.usps, groundingSignals, language, tuningConfig, samsungRAGContext.qaFormatExamples),
       // Stage 4: Step-by-step (optional, depends on srtContent)
       isTutorialContent
         ? generateStepByStep(srtContent, productName, language, tuningConfig)
@@ -573,17 +621,30 @@ export async function POST(request: NextRequest) {
     // ==========================================
     // STAGE 6.5: HASHTAG GENERATION
     // ==========================================
-    const hashtagResult = await generateHashtags(
-      productName,
-      descriptionResult.description.full,
-      uspResult.usps,
-      keywordsResult,
-      language,
-      tuningConfig
-    )
+    // Use fixed hashtags if provided, otherwise AI-generate (Samsung Standard Part 5.4)
+    const hashtagResult = useFixedHashtags && fixedHashtags.length > 0
+      ? {
+          hashtags: fixedHashtags,
+          categories: {
+            brand: fixedHashtags.filter(h => h.includes('Galaxy') || h.includes('Samsung')),
+            features: fixedHashtags.filter(h => h.includes('AI') || h.includes('Camera')),
+            industry: [],
+          },
+          reasoning: 'Using pre-defined hashtags as per Samsung standard',
+        }
+      : await generateHashtags(
+          productName,
+          descriptionResult.description.full,
+          uspResult.usps,
+          keywordsResult,
+          language,
+          tuningConfig,
+          // Samsung hashtag order examples from RAG (P0-2: #GalaxyAI first, #Samsung last)
+          samsungRAGContext.hashtagExamples
+        )
 
     console.log(`[GEO v2] Keywords: ${keywordsResult.product.length + keywordsResult.generic.length}`)
-    console.log(`[GEO v2] Hashtags: ${hashtagResult.hashtags.length} (categorized)`)
+    console.log(`[GEO v2] Hashtags: ${hashtagResult.hashtags.length} (${useFixedHashtags ? 'fixed' : 'AI-generated'})`)
 
     // ==========================================
     // STAGE 7: GROUNDING AGGREGATION
@@ -845,7 +906,19 @@ async function generateDescription(
   groundingSignals: GroundingSignal[],
   playbookContext: PlaybookSearchResult[],
   language: 'ko' | 'en',
-  tuningConfig: TuningConfig
+  tuningConfig: TuningConfig,
+  // Samsung Standard Fields (Part 5.4)
+  samsungOptions?: {
+    contentType?: string
+    videoFormat?: string
+    vanityLinkCode?: string
+  },
+  // Samsung RAG context for style examples
+  samsungRAGContext?: {
+    openerExamples: PlaybookSearchResult[]
+    correctedExamples: PlaybookSearchResult[]
+    contentTypeExamples: PlaybookSearchResult[]
+  }
 ): Promise<{
   description: { preview: string; full: string; vanityLinks: string[] }
   groundingChunks: Array<{ web?: { uri: string; title: string } }>
@@ -857,6 +930,10 @@ async function generateDescription(
     engine: 'gemini',
     language,
     antiFabricationLevel: 'high',
+    // Samsung Standard Fields (Part 5.4) - pass to prompt composition
+    contentType: samsungOptions?.contentType as 'intro' | 'unboxing' | 'how_to' | 'shorts' | 'teaser' | 'brand' | 'esg' | 'documentary' | 'official_replay' | undefined,
+    videoFormat: samsungOptions?.videoFormat as 'feed_16x9' | 'shorts_9x16' | undefined,
+    vanityLinkCode: samsungOptions?.vanityLinkCode,
     variables: {
       product_name: productName,
       keywords: keywords.join(', '),
@@ -864,6 +941,27 @@ async function generateDescription(
   })
 
   console.log(`[Stage:Description] Using ${source} prompt${promptVersionId ? ` (v${promptVersionId.slice(-8)})` : ''}`)
+
+  // Build Samsung RAG examples section if available
+  const ragExamplesSection = samsungRAGContext && (
+    samsungRAGContext.openerExamples.length > 0 ||
+    samsungRAGContext.correctedExamples.length > 0 ||
+    samsungRAGContext.contentTypeExamples.length > 0
+  ) ? `
+
+## SAMSUNG STYLE EXAMPLES (from RAG - follow these patterns)
+${samsungRAGContext.openerExamples.length > 0 ? `
+### Opener Patterns for ${samsungOptions?.contentType || 'intro'}:
+${samsungRAGContext.openerExamples.slice(0, 2).map((ex, i) => `Example ${i + 1}: ${ex.content.slice(0, 300)}...`).join('\n')}
+` : ''}
+${samsungRAGContext.contentTypeExamples.length > 0 ? `
+### Content Type Examples:
+${samsungRAGContext.contentTypeExamples.slice(0, 2).map((ex, i) => `Example ${i + 1}: ${ex.content.slice(0, 300)}...`).join('\n')}
+` : ''}
+${samsungRAGContext.correctedExamples.length > 0 ? `
+### Samsung Style Corrections (IMPORTANT - follow corrected format):
+${samsungRAGContext.correctedExamples.slice(0, 2).map((ex, i) => `Corrected Example ${i + 1}: ${ex.content.slice(0, 300)}...`).join('\n')}
+` : ''}` : ''
 
   // User prompt contains ONLY runtime context - all instructions are in systemInstruction
   const userPrompt = `Generate optimized description for ${productName}:
@@ -879,7 +977,7 @@ ${keywords.join(', ')}
 
 ## USER INTENT SIGNALS
 ${groundingSignals.slice(0, 5).map(s => `- ${s.term} (${s.score}%)`).join('\n')}
-
+${ragExamplesSection}
 OUTPUT FORMAT (JSON):
 {
   "preview": "exact first 130 characters (110-130 chars, must contain product name + key feature + benefit)",
@@ -890,7 +988,7 @@ OUTPUT FORMAT (JSON):
   try {
     const response = await withRetry(
       () => ai.models.generateContent({
-        model: 'gemini-flash-latest',
+        model: 'gemini-3-flash-preview',
         contents: userPrompt,
         config: {
           systemInstruction,
@@ -991,7 +1089,7 @@ async function generateChapters(
   try {
     const response = await withRetry(
       () => ai.models.generateContent({
-        model: 'gemini-flash-latest',
+        model: 'gemini-3-flash-preview',
         contents: `Generate GEO/AEO-optimized timestamp chapters for ${productName}:
 
 ## SRT TRANSCRIPT
@@ -1050,7 +1148,9 @@ async function generateFAQ(
   usps: UniqueSellingPoint[],
   groundingSignals: GroundingSignal[],
   language: 'ko' | 'en',
-  tuningConfig: TuningConfig
+  tuningConfig: TuningConfig,
+  // Samsung Q&A format examples from RAG (P0-1: Q:/A: format)
+  qaFormatExamples: PlaybookSearchResult[] = []
 ): Promise<{ faqs: FAQItem[]; queryPatternOptimization: boolean }> {
   // Get complete stage prompt from tuning configuration
   // This includes all Query Fan-Out methodology from prompt-loader.ts
@@ -1070,10 +1170,21 @@ async function generateFAQ(
     `USP ${i + 1}: ${usp.feature} - ${usp.userBenefit}`
   ).join('\n')
 
+  // Build Q&A format examples section from RAG
+  const qaExamplesSection = qaFormatExamples.length > 0 ? `
+
+## SAMSUNG Q&A FORMAT EXAMPLES (CRITICAL - follow this exact format)
+IMPORTANT: Use "Q:" and "A:" with COLON (not period). This is Samsung standard.
+${qaFormatExamples.slice(0, 2).map((ex, i) => `
+Example ${i + 1}:
+${ex.content.slice(0, 400)}
+`).join('\n')}
+` : ''
+
   try {
     const response = await withRetry(
       () => ai.models.generateContent({
-        model: 'gemini-flash-latest',
+        model: 'gemini-3-flash-preview',
         contents: `Generate FAQ for ${productName}:
 
 ## UNIQUE SELLING POINTS (from grounded research)
@@ -1084,10 +1195,11 @@ ${groundingSignals.slice(0, 5).map(s => `- ${s.term}`).join('\n')}
 
 ## VIDEO TRANSCRIPT
 ${srtContent.slice(0, 3000)}
-
+${qaExamplesSection}
 ## TASK
 Generate 5-7 Q&A pairs optimized for AEO (Answer Engine Optimization) using Query Fan-Out methodology.
-Each question must be 10-15 words, conversational, and cover different query fan-out angles.`,
+Each question must be 10-15 words, conversational, and cover different query fan-out angles.
+IMPORTANT: Questions MUST start with "Q:" (colon) and answers MUST start with "A:" (colon) - this is Samsung standard format.`,
         config: {
           systemInstruction,
           responseMimeType: 'application/json',
@@ -1156,7 +1268,7 @@ async function generateStepByStep(
   try {
     const response = await withRetry(
       () => ai.models.generateContent({
-        model: 'gemini-flash-latest',
+        model: 'gemini-3-flash-preview',
         contents: `Analyze this video content for ${productName} and determine if step-by-step instructions are needed:
 
 ## VIDEO TRANSCRIPT
@@ -1242,7 +1354,7 @@ async function generateCaseStudies(
   try {
     const response = await withRetry(
       () => ai.models.generateContent({
-        model: 'gemini-flash-latest',
+        model: 'gemini-3-flash-preview',
         contents: `Generate realistic case studies for ${productName}:
 
 ## USPs TO DEMONSTRATE
@@ -1320,7 +1432,7 @@ async function generateKeywords(
   try {
     const response = await withRetry(
       () => ai.models.generateContent({
-        model: 'gemini-flash-latest',
+        model: 'gemini-3-flash-preview',
         contents: `Extract and analyze keywords for ${productName}:
 
 ## VIDEO TRANSCRIPT
@@ -1801,7 +1913,9 @@ async function generateHashtags(
   usps: UniqueSellingPoint[],
   keywords: { product: string[]; generic: string[] },
   language: 'ko' | 'en',
-  tuningConfig: TuningConfig
+  tuningConfig: TuningConfig,
+  // Samsung hashtag order examples from RAG (P0-2: #GalaxyAI first, #Samsung last)
+  hashtagOrderExamples: PlaybookSearchResult[] = []
 ): Promise<{
   hashtags: string[]
   categories: {
@@ -1825,6 +1939,17 @@ async function generateHashtags(
 
   console.log(`[Stage:Hashtags] Using ${source} prompt${promptVersionId ? ` (v${promptVersionId.slice(-8)})` : ''}`)
 
+  // Build hashtag order examples section from RAG
+  const hashtagExamplesSection = hashtagOrderExamples.length > 0 ? `
+
+## SAMSUNG HASHTAG ORDER EXAMPLES (CRITICAL - follow this exact order)
+IMPORTANT: #GalaxyAI MUST be first (if AI features present), #Samsung MUST be last. Max 3-5 hashtags.
+${hashtagOrderExamples.slice(0, 2).map((ex, i) => `
+Example ${i + 1}:
+${ex.content.slice(0, 300)}
+`).join('\n')}
+` : ''
+
   const userPrompt = `Generate strategic hashtags for this Samsung product:
 
 ## PRODUCT
@@ -1841,8 +1966,9 @@ ${keywords.product.join(', ')}
 
 ## GENERIC KEYWORDS
 ${keywords.generic.join(', ')}
-
-Generate 5-8 strategic hashtags following the categorization strategy.`
+${hashtagExamplesSection}
+Generate 5-8 strategic hashtags following the categorization strategy.
+IMPORTANT: If product has AI features, #GalaxyAI MUST be first. #Samsung MUST always be last. Max 3-5 hashtags total.`
 
   const hashtagSchema = {
     type: 'object',
@@ -1886,7 +2012,7 @@ Generate 5-8 strategic hashtags following the categorization strategy.`
   try {
     const response = await withRetry(
       () => ai.models.generateContent({
-        model: 'gemini-flash-latest',
+        model: 'gemini-3-flash-preview',
         contents: userPrompt,
         config: {
           systemInstruction,

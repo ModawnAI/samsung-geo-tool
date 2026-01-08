@@ -20,6 +20,48 @@ export type USPCategory =
   | 'Software'
   | 'Other'
 
+// ==========================================
+// Content Type & Video Format (Samsung Standard)
+// ==========================================
+
+export type ContentType =
+  | 'intro'           // Introduction Film
+  | 'unboxing'        // Unboxing
+  | 'how_to'          // How-to Guide
+  | 'shorts'          // Shorts (9:16)
+  | 'teaser'          // Teaser
+  | 'brand'           // Brand Campaign
+  | 'esg'             // ESG/Sustainability
+  | 'documentary'     // Documentary
+  | 'official_replay' // Official Replay (Events)
+
+export const CONTENT_TYPE_LABELS: Record<ContentType, string> = {
+  intro: 'Introduction Film',
+  unboxing: 'Unboxing',
+  how_to: 'How-to Guide',
+  shorts: 'Shorts',
+  teaser: 'Teaser',
+  brand: 'Brand Campaign',
+  esg: 'ESG/Sustainability',
+  documentary: 'Documentary',
+  official_replay: 'Official Replay',
+}
+
+export type VideoFormat = 'feed_16x9' | 'shorts_9x16'
+
+export const VIDEO_FORMAT_LABELS: Record<VideoFormat, string> = {
+  feed_16x9: 'Feed (16:9)',
+  shorts_9x16: 'Shorts (9:16)',
+}
+
+export type InputMethod = 'youtube_url' | 'srt_upload' | 'text_input'
+
+export const INPUT_METHOD_LABELS: Record<InputMethod, string> = {
+  youtube_url: 'YouTube URL',
+  srt_upload: 'SRT Upload',
+  text_input: 'Text Input',
+}
+
 export type ConfidenceLevel = 'high' | 'medium' | 'low'
 
 export interface USPEvidence {

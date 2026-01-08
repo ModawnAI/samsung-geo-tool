@@ -131,6 +131,10 @@ interface StagePromptOptions {
   language: 'ko' | 'en'
   antiFabricationLevel?: 'low' | 'medium' | 'high'
   variables?: Record<string, string | string[]>
+  // Samsung Standard Fields (Part 5.4)
+  contentType?: 'intro' | 'unboxing' | 'how_to' | 'shorts' | 'teaser' | 'brand' | 'esg' | 'documentary' | 'official_replay'
+  videoFormat?: 'feed_16x9' | 'shorts_9x16'
+  vanityLinkCode?: string
 }
 
 /**
@@ -145,17 +149,31 @@ export function getStagePrompt(
   promptVersionId: string | null
   source: 'database' | 'default'
 } {
-  const { stage, engine, language, antiFabricationLevel = 'medium', variables } = options
+  const {
+    stage,
+    engine,
+    language,
+    antiFabricationLevel = 'medium',
+    variables,
+    // Samsung Standard Fields (Part 5.4)
+    contentType,
+    videoFormat,
+    vanityLinkCode,
+  } = options
 
   const promptResult = config.prompts[engine]
   const basePrompt = promptResult.prompt?.systemPrompt || getDefaultPrompt(engine)
 
-  // Compose with stage-specific instructions
+  // Compose with stage-specific instructions (including Samsung fields)
   const composed = composeStagePrompt({
     stage,
     basePrompt,
     antiFabricationLevel,
     language,
+    // Samsung Standard Fields (Part 5.4)
+    contentType,
+    videoFormat,
+    vanityLinkCode,
   })
 
   // Interpolate variables if provided

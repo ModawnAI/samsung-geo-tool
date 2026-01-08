@@ -267,7 +267,7 @@ Extract 2-8 USPs that:
   try {
     const response = await withRetry(
       () => ai.models.generateContent({
-        model: 'gemini-flash-latest',
+        model: 'gemini-3-flash-preview',
         contents: userPrompt,
         config: {
           systemInstruction,

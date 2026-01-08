@@ -250,6 +250,89 @@ export interface TranslationDictionary {
       keywords: string
       output: string
     }
+    // Product selector
+    productSelector: {
+      quickStart: string
+      loadTemplate: string
+      searchTemplates: string
+      noTemplatesFound: string
+      templateApplied: string
+      productCategory: string
+      product: string
+      selectProduct: string
+      searchProducts: string
+      noProductFound: string
+      productsAvailable: string
+      campaignTag: string
+      campaignTagHint: string
+      launchDate: string
+      launchDateHint: string
+      selectLaunchDate: string
+      searchResultsAfterDate: string
+      loadingBrief: string
+      briefLoadFailed: string
+      briefLoadError: string
+      retry: string
+      continueWithoutBrief: string
+      activeBrief: string
+      noBriefFound: string
+      nonProductSelected: string
+    }
+    // SRT Input
+    srtInput: {
+      inputMethod: string
+      youtubeUrl: string
+      youtubeUrlLabel: string
+      youtubeUrlHint: string
+      srtUpload: string
+      textInput: string
+      orPasteSrt: string
+      clickToUpload: string
+      acceptsFormats: string
+      pastePlaceholder: string
+      pasteHint: string
+      validationError: string
+      recommendations: string
+      contentAnalysis: string
+      validSrt: string
+      words: string
+      segments: string
+      duration: string
+      avgWordsPerSeg: string
+      wordsTip: string
+      preview: string
+      moreLines: string
+    }
+    // Keyword selector
+    keywordSelector: {
+      briefUsps: string
+      samsungPriority: string
+      noBriefFound: string
+      groundingResults: string
+      userInterest: string
+      runGrounding: string
+      groundingHint: string
+      selectKeywords: string
+      humanDecisionRequired: string
+      selectionTips: string
+      tipPrioritize: string
+      tipHighScore: string
+      tipBalance: string
+      tipEmphasis: string
+      groundingInsights: string
+      highInterestTopics: string
+      includesOfficialSources: string
+      selectAlignWithBrief: string
+      selected: string
+      runGroundingOrAddBrief: string
+      highlyRecommended: string
+      goodCandidate: string
+      considerIfRelevant: string
+      official: string
+      techMedia: string
+      community: string
+      other: string
+    }
   }
 
   // History
@@ -1069,5 +1152,84 @@ export interface TranslationDictionary {
     loading: string
     error: string
     success: string
+  }
+
+  // Samsung Standards
+  samsung: {
+    // Content Settings
+    contentSettings: string
+    contentType: string
+    videoFormat: string
+    vanityLinkCode: string
+    vanityLinkPreview: string
+    // Hashtag validation
+    hashtags: {
+      title: string
+      fixedHashtags: string
+      useFixedHashtags: string
+      placeholder: string
+      orderHint: string
+      valid: string
+      invalid: string
+      atLeast3: string
+      atMost5: string
+      galaxyAIFirst: string
+      samsungLast: string
+      countWarning: string
+    }
+    // Compliance
+    compliance: {
+      title: string
+      qnaFormat: string
+      hashtagOrder: string
+      hashtagCount: string
+      shortsLength: string
+      compliant: string
+      notCompliant: string
+      fixedHashtagsUsed: string
+      aiHashtagsUsed: string
+    }
+    // YouTube Preview
+    youtubePreview: {
+      title: string
+      characterCount: string
+      exceedsLimit: string
+      withinLimit: string
+    }
+    // Validation Dialog
+    validation: {
+      title: string
+      hashtagCountLow: string
+      hashtagCountHigh: string
+      samsungLastRequired: string
+      galaxyAIFirstRecommended: string
+      shortsTranscriptLong: string
+      fixIssues: string
+      generateAnyway: string
+    }
+    // Content Types
+    contentTypes: {
+      intro: string
+      unboxing: string
+      how_to: string
+      shorts: string
+      teaser: string
+      brand: string
+      esg: string
+      documentary: string
+      official_replay: string
+    }
+    // Video Formats
+    videoFormats: {
+      feed_16x9: string
+      shorts_9x16: string
+    }
+    // Non-product content
+    nonProductContent: string
+    categories: {
+      esg: string
+      documentary: string
+      brandCampaign: string
+    }
   }
 }

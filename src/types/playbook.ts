@@ -181,7 +181,44 @@ export interface IngestRequest {
   version?: string
 }
 
-// Search request for RAG
+// Samsung content type for video descriptions (aligned with Implementation Plan Section 5.1)
+export type SamsungContentType =
+  | 'intro'           // Introduction Film
+  | 'unboxing'        // Unboxing
+  | 'how_to'          // How-to Guide
+  | 'shorts'          // Shorts (9:16)
+  | 'teaser'          // Teaser
+  | 'brand'           // Brand Campaign
+  | 'esg'             // ESG/Sustainability
+  | 'documentary'     // Documentary
+  | 'official_replay' // Official Replay
+
+// Video format (aligned with Implementation Plan Section 1.3)
+export type VideoFormat = 'feed_16x9' | 'shorts_9x16'
+
+// Description section (aligned with Implementation Plan Section 1.1)
+export type DescriptionSection =
+  | 'opening'     // Opening patterns
+  | 'body'        // Feature descriptions
+  | 'timestamps'  // Timestamp format
+  | 'steps'       // How-to steps
+  | 'qa'          // Q&A section
+  | 'hashtags'    // Hashtag section
+  | 'disclaimer'  // Legal disclaimers
+  | 'full'        // Full description
+
+// Style element (aligned with Implementation Plan Section 1.4)
+export type StyleElement =
+  | 'qa_format'       // Q:/A: format examples
+  | 'hashtag_order'   // #GalaxyAI first, #Samsung last
+  | 'opener_pattern'  // Opening sentence patterns
+  | 'emoji_usage'     // Approved emojis
+  | 'spacing'         // Unit spacing (76.1 Wh)
+  | 'capitalization'  // Product name capitalization
+  | 'vanity_link'     // smsng.co link format
+  | 'general'         // General content
+
+// Search request for RAG (extended for Samsung content metadata)
 export interface PlaybookSearchRequest {
   query: string
   productCategory?: ProductCategory | 'all'
@@ -190,6 +227,14 @@ export interface PlaybookSearchRequest {
   rerankTopN?: number
   language?: 'en' | 'ko'
   includeScores?: boolean
+  // Samsung content-specific filters (Implementation Plan aligned)
+  samsungContentType?: SamsungContentType
+  videoFormat?: VideoFormat
+  descriptionSection?: DescriptionSection
+  styleElement?: StyleElement
+  hasCorrections?: boolean // Filter for Samsung-corrected examples
+  hasQASection?: boolean
+  hasHashtags?: boolean
 }
 
 // Search result with reranking

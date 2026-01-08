@@ -7,6 +7,10 @@ import type {
   PlaybookMetadata,
   PlaybookSection,
   ProductCategory,
+  SamsungContentType,
+  VideoFormat,
+  DescriptionSection,
+  StyleElement,
 } from '@/types/playbook'
 
 // Type for Pinecone search hit fields
@@ -62,10 +66,29 @@ export async function searchPlaybook(
     rerankTopN = 5,
     language,
     includeScores = true,
+    // Samsung content-specific filters
+    samsungContentType,
+    videoFormat,
+    descriptionSection,
+    styleElement,
+    hasCorrections,
+    hasQASection,
+    hasHashtags,
   } = request
 
-  // Build metadata filter
-  const filter = buildMetadataFilter({ productCategory, section, language })
+  // Build metadata filter with all supported options
+  const filter = buildMetadataFilter({
+    productCategory,
+    section,
+    language,
+    samsungContentType,
+    videoFormat,
+    descriptionSection,
+    styleElement,
+    hasCorrections,
+    hasQASection,
+    hasHashtags,
+  })
 
   // Get the playbook index with integrated inference
   const pinecone = getPineconeClient()
@@ -156,6 +179,14 @@ export async function multiQuerySearch(
     deduplicateByContent?: boolean
     minRelevanceScore?: number
     relevanceMode?: RelevanceMode
+    // Samsung content-specific filters
+    samsungContentType?: SamsungContentType
+    videoFormat?: VideoFormat
+    descriptionSection?: DescriptionSection
+    styleElement?: StyleElement
+    hasCorrections?: boolean
+    hasQASection?: boolean
+    hasHashtags?: boolean
   } = {}
 ): Promise<RAGContext> {
   const startTime = Date.now()
@@ -168,12 +199,20 @@ export async function multiQuerySearch(
     deduplicateByContent = true,
     minRelevanceScore,
     relevanceMode = 'default',
+    // Samsung content-specific filters
+    samsungContentType,
+    videoFormat,
+    descriptionSection,
+    styleElement,
+    hasCorrections,
+    hasQASection,
+    hasHashtags,
   } = options
 
   // Determine effective minimum relevance score
   const effectiveMinScore = minRelevanceScore ?? RELEVANCE_THRESHOLDS[relevanceMode]
 
-  // Execute all queries in parallel
+  // Execute all queries in parallel with all filter options
   const searchPromises = queries.map((query) =>
     searchPlaybook({
       query,
@@ -181,6 +220,14 @@ export async function multiQuerySearch(
       section,
       topK: topKPerQuery,
       rerankTopN: 0, // Skip individual reranking, do final rerank
+      // Pass through Samsung content-specific filters
+      samsungContentType,
+      videoFormat,
+      descriptionSection,
+      styleElement,
+      hasCorrections,
+      hasQASection,
+      hasHashtags,
     })
   )
 
@@ -307,14 +354,24 @@ async function rerankResults(
 
 /**
  * Build Pinecone metadata filter from search options
+ * Extended to support Samsung content metadata (Implementation Plan aligned)
  */
 function buildMetadataFilter(options: {
   productCategory?: ProductCategory | 'all'
   section?: PlaybookSection
   language?: 'en' | 'ko'
+  // Samsung content-specific filters
+  samsungContentType?: SamsungContentType
+  videoFormat?: VideoFormat
+  descriptionSection?: DescriptionSection
+  styleElement?: StyleElement
+  hasCorrections?: boolean
+  hasQASection?: boolean
+  hasHashtags?: boolean
 }): Record<string, unknown> {
   const filter: Record<string, unknown> = {}
 
+  // Core filters
   if (options.productCategory && options.productCategory !== 'all') {
     filter.productCategory = { $eq: options.productCategory }
   }
@@ -325,6 +382,35 @@ function buildMetadataFilter(options: {
 
   if (options.language) {
     filter.language = { $eq: options.language }
+  }
+
+  // Samsung content-specific filters (aligned with ingested data metadata)
+  if (options.samsungContentType) {
+    filter.contentType = { $eq: options.samsungContentType }
+  }
+
+  if (options.videoFormat) {
+    filter.videoFormat = { $eq: options.videoFormat }
+  }
+
+  if (options.descriptionSection) {
+    filter.descriptionSection = { $eq: options.descriptionSection }
+  }
+
+  if (options.styleElement) {
+    filter.styleElement = { $eq: options.styleElement }
+  }
+
+  if (options.hasCorrections !== undefined) {
+    filter.hasCorrections = { $eq: options.hasCorrections }
+  }
+
+  if (options.hasQASection !== undefined) {
+    filter.hasQASection = { $eq: options.hasQASection }
+  }
+
+  if (options.hasHashtags !== undefined) {
+    filter.hasHashtags = { $eq: options.hasHashtags }
   }
 
   return filter
@@ -424,4 +510,239 @@ export async function getSectionContext(
  */
 export function isCohereConfigured(): boolean {
   return !!process.env.COHERE_API_KEY
+}
+
+// ============================================================================
+// SAMSUNG CONTENT-TYPE SPECIFIC SEARCH FUNCTIONS
+// Aligned with SAMSUNG_GEO_IMPLEMENTATION_PLAN.md
+// ============================================================================
+
+/**
+ * Search for Samsung content examples by content type
+ * Returns examples matching the specified content type (intro, how_to, shorts, etc.)
+ */
+export async function searchByContentType(
+  contentType: SamsungContentType,
+  options: {
+    productCategory?: ProductCategory | 'all'
+    videoFormat?: VideoFormat
+    topK?: number
+  } = {}
+): Promise<PlaybookSearchResult[]> {
+  const contentTypeQueries: Record<SamsungContentType, string> = {
+    intro: 'Samsung introduction video official film product launch',
+    unboxing: 'Samsung unboxing whats inside box contents',
+    how_to: 'Samsung how to guide tutorial steps instructions',
+    shorts: 'Samsung shorts hook brief 9:16 vertical video',
+    teaser: 'Samsung teaser coming soon announcement mystery',
+    brand: 'Samsung brand campaign marketing initiative',
+    esg: 'Samsung sustainability ESG environment documentary',
+    documentary: 'Samsung documentary film story brand narrative',
+    official_replay: 'Samsung unpacked event replay official live',
+  }
+
+  const result = await searchPlaybook({
+    query: contentTypeQueries[contentType],
+    samsungContentType: contentType,
+    productCategory: options.productCategory,
+    videoFormat: options.videoFormat,
+    topK: options.topK || 5,
+    rerankTopN: options.topK || 5,
+  })
+
+  return result.results
+}
+
+/**
+ * Search for Q&A format examples
+ * Returns Samsung-corrected examples with proper Q:/A: format
+ * Critical for P0-1 implementation (Q&A format fix)
+ */
+export async function searchQAFormatExamples(
+  options: {
+    productCategory?: ProductCategory | 'all'
+    contentType?: SamsungContentType
+    topK?: number
+  } = {}
+): Promise<PlaybookSearchResult[]> {
+  const result = await searchPlaybook({
+    query: 'Samsung Q&A format question answer FAQ colon',
+    styleElement: 'qa_format',
+    hasQASection: true,
+    productCategory: options.productCategory,
+    samsungContentType: options.contentType,
+    topK: options.topK || 5,
+    rerankTopN: options.topK || 5,
+  })
+
+  return result.results
+}
+
+/**
+ * Search for hashtag order examples
+ * Returns examples showing correct hashtag ordering (#GalaxyAI first, #Samsung last)
+ * Critical for P0-2 implementation (hashtag order fix)
+ */
+export async function searchHashtagOrderExamples(
+  options: {
+    productCategory?: ProductCategory | 'all'
+    topK?: number
+  } = {}
+): Promise<PlaybookSearchResult[]> {
+  const result = await searchPlaybook({
+    query: 'Samsung hashtag order GalaxyAI Samsung Galaxy',
+    styleElement: 'hashtag_order',
+    hasHashtags: true,
+    productCategory: options.productCategory,
+    topK: options.topK || 5,
+    rerankTopN: options.topK || 5,
+  })
+
+  return result.results
+}
+
+/**
+ * Search for opener pattern examples by content type
+ * Returns examples of Samsung opening patterns
+ * Critical for P1-3 implementation (Samsung opener patterns)
+ */
+export async function searchOpenerPatterns(
+  contentType: SamsungContentType,
+  options: {
+    productCategory?: ProductCategory | 'all'
+    topK?: number
+  } = {}
+): Promise<PlaybookSearchResult[]> {
+  const openerQueries: Record<SamsungContentType, string> = {
+    intro: 'This is the official introduction video introducing Samsung',
+    unboxing: 'Unbox the discover whats inside Samsung',
+    how_to: 'This is the official video guide how to use Samsung',
+    shorts: 'Samsung shorts hook opening brief',
+    teaser: 'Something is coming get ready Samsung',
+    brand: 'Samsung campaign brand opening',
+    esg: 'Samsung sustainability voices of galaxy',
+    documentary: 'Samsung documentary film opening',
+    official_replay: 'Samsung unpacked event replay',
+  }
+
+  const result = await searchPlaybook({
+    query: openerQueries[contentType],
+    styleElement: 'opener_pattern',
+    samsungContentType: contentType,
+    productCategory: options.productCategory,
+    topK: options.topK || 5,
+    rerankTopN: options.topK || 5,
+  })
+
+  return result.results
+}
+
+/**
+ * Search for Samsung-corrected examples
+ * Returns examples that have been corrected to follow Samsung style guidelines
+ */
+export async function searchCorrectedExamples(
+  options: {
+    productCategory?: ProductCategory | 'all'
+    contentType?: SamsungContentType
+    topK?: number
+  } = {}
+): Promise<PlaybookSearchResult[]> {
+  const result = await searchPlaybook({
+    query: 'Samsung corrected style guidelines format',
+    hasCorrections: true,
+    productCategory: options.productCategory,
+    samsungContentType: options.contentType,
+    topK: options.topK || 5,
+    rerankTopN: options.topK || 5,
+  })
+
+  return result.results
+}
+
+/**
+ * Search for video format-specific examples
+ * Returns examples for either Feed (16:9) or Shorts (9:16) format
+ */
+export async function searchByVideoFormat(
+  videoFormat: VideoFormat,
+  options: {
+    productCategory?: ProductCategory | 'all'
+    contentType?: SamsungContentType
+    topK?: number
+  } = {}
+): Promise<PlaybookSearchResult[]> {
+  const formatQueries: Record<VideoFormat, string> = {
+    feed_16x9: 'Samsung YouTube feed video full description timestamps Q&A hashtags',
+    shorts_9x16: 'Samsung shorts 9:16 vertical brief hook under 200 characters',
+  }
+
+  const result = await searchPlaybook({
+    query: formatQueries[videoFormat],
+    videoFormat,
+    productCategory: options.productCategory,
+    samsungContentType: options.contentType,
+    topK: options.topK || 5,
+    rerankTopN: options.topK || 5,
+  })
+
+  return result.results
+}
+
+/**
+ * Combined search for content generation context
+ * Fetches examples relevant to the specific content generation task
+ * Used by generate-v2 pipeline for RAG context
+ */
+export async function fetchContentGenerationContext(
+  options: {
+    productName: string
+    keywords: string[]
+    contentType: SamsungContentType
+    videoFormat: VideoFormat
+    productCategory?: ProductCategory | 'all'
+  }
+): Promise<{
+  contentTypeExamples: PlaybookSearchResult[]
+  qaFormatExamples: PlaybookSearchResult[]
+  hashtagExamples: PlaybookSearchResult[]
+  openerExamples: PlaybookSearchResult[]
+  correctedExamples: PlaybookSearchResult[]
+}> {
+  const { productName, keywords, contentType, videoFormat, productCategory } = options
+
+  // Fetch all relevant context in parallel
+  const [
+    contentTypeExamples,
+    qaFormatExamples,
+    hashtagExamples,
+    openerExamples,
+    correctedExamples,
+  ] = await Promise.all([
+    // Content type examples
+    searchByContentType(contentType, { productCategory, videoFormat, topK: 3 }),
+    // Q&A format examples (for FAQ generation)
+    searchQAFormatExamples({ productCategory, contentType, topK: 2 }),
+    // Hashtag order examples (for hashtag generation)
+    searchHashtagOrderExamples({ productCategory, topK: 2 }),
+    // Opener pattern examples (for description generation)
+    searchOpenerPatterns(contentType, { productCategory, topK: 2 }),
+    // Samsung-corrected examples (for style reference)
+    searchCorrectedExamples({ productCategory, contentType, topK: 2 }),
+  ])
+
+  console.log(`[RAG] Content generation context fetched:`)
+  console.log(`  - Content type (${contentType}): ${contentTypeExamples.length} examples`)
+  console.log(`  - Q&A format: ${qaFormatExamples.length} examples`)
+  console.log(`  - Hashtag order: ${hashtagExamples.length} examples`)
+  console.log(`  - Opener patterns: ${openerExamples.length} examples`)
+  console.log(`  - Corrected examples: ${correctedExamples.length} examples`)
+
+  return {
+    contentTypeExamples,
+    qaFormatExamples,
+    hashtagExamples,
+    openerExamples,
+    correctedExamples,
+  }
 }

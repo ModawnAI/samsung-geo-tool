@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useGenerationStore } from '@/store/generation-store'
+import { useTranslation } from '@/lib/i18n/context'
 import { MOTION_VARIANTS, ICON_SIZES } from '@/lib/constants/ui'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -38,7 +39,14 @@ import {
   Lightning,
   ShareNetwork,
   Link as LinkIcon,
+  Warning,
+  YoutubeLogo,
+  Info,
 } from '@phosphor-icons/react'
+import {
+  VIDEO_FORMAT_LABELS,
+  CONTENT_TYPE_LABELS,
+} from '@/types/geo-v2'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 
@@ -97,6 +105,7 @@ const REGENERATION_LABELS: Record<string, { label: string; description: string }
 }
 
 export function OutputDisplay() {
+  const { t } = useTranslation()
   // Selective Zustand subscriptions for better performance
   const description = useGenerationStore((state) => state.description)
   const timestamps = useGenerationStore((state) => state.timestamps)
@@ -121,6 +130,11 @@ export function OutputDisplay() {
   const videoUrl = useGenerationStore((state) => state.videoUrl)
   const categoryId = useGenerationStore((state) => state.categoryId)
   const launchDate = useGenerationStore((state) => state.launchDate)
+  // Samsung Standard Fields (P0-2)
+  const videoFormat = useGenerationStore((state) => state.videoFormat)
+  const contentType = useGenerationStore((state) => state.contentType)
+  const useFixedHashtags = useGenerationStore((state) => state.useFixedHashtags)
+  const vanityLinkCode = useGenerationStore((state) => state.vanityLinkCode)
 
   // AbortController for cancelable requests
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -142,6 +156,89 @@ export function OutputDisplay() {
   }, [])
 
   const hashtagsText = hashtags.join(' ')
+
+  // Samsung Compliance Calculation (P0-2)
+  const samsungCompliance = useMemo(() => {
+    const checks: { labelKey: string; valid: boolean; tip: string }[] = []
+
+    // Q&A format check - validate Q: and A: format (not Q. or Q/)
+    const faqLines = faq.split('\n').filter(line => line.trim())
+    const qaFormatValid = faqLines.length === 0 || faqLines.every(line => {
+      const trimmed = line.trim()
+      if (!trimmed) return true
+      // Valid lines start with Q: or A: or are continuation lines
+      if (trimmed.startsWith('Q:') || trimmed.startsWith('A:')) return true
+      // Check for invalid patterns
+      if (/^[QA][./]/.test(trimmed)) return false
+      return true // Allow continuation lines
+    })
+    checks.push({
+      labelKey: 'qnaFormat',
+      valid: qaFormatValid,
+      tip: 'Q: / A:'
+    })
+
+    // Hashtag order check
+    const hashtagOrderValid = hashtags.length === 0 || (
+      // If #GalaxyAI is present, it should be first
+      (hashtags.findIndex(h => h.toLowerCase().includes('galaxyai')) <= 0) &&
+      // #Samsung should be last (if present)
+      (hashtags.findIndex(h => h.toLowerCase() === '#samsung') === -1 ||
+       hashtags.findIndex(h => h.toLowerCase() === '#samsung') === hashtags.length - 1)
+    )
+    checks.push({
+      labelKey: 'hashtagOrder',
+      valid: hashtagOrderValid,
+      tip: '#GalaxyAI → #Samsung'
+    })
+
+    // Hashtag count check (Samsung standard: 3-5)
+    const hashtagCountValid = hashtags.length === 0 || (hashtags.length >= 3 && hashtags.length <= 5)
+    checks.push({
+      labelKey: 'hashtagCount',
+      valid: hashtagCountValid,
+      tip: `3-5 (${hashtags.length})`
+    })
+
+    // Shorts format check
+    if (videoFormat === 'shorts_9x16') {
+      const shortsLengthValid = description.length <= 200
+      checks.push({
+        labelKey: 'shortsLength',
+        valid: shortsLengthValid,
+        tip: `<200 (${description.length})`
+      })
+    }
+
+    return checks
+  }, [faq, hashtags, description, videoFormat])
+
+  // Combined YouTube-ready content (P0-2)
+  const youtubeReadyContent = useMemo(() => {
+    let content = description || ''
+
+    // Add vanity link if set
+    if (vanityLinkCode) {
+      content += `\n\nLearn more: http://smsng.co/${vanityLinkCode}_yt`
+    }
+
+    // For non-Shorts, add timestamps
+    if (videoFormat !== 'shorts_9x16' && timestamps) {
+      content += `\n\n⏱️ Timestamps:\n${timestamps}`
+    }
+
+    // For non-Shorts, add FAQ
+    if (videoFormat !== 'shorts_9x16' && faq) {
+      content += `\n\n${faq}`
+    }
+
+    // Add hashtags
+    if (hashtags.length > 0) {
+      content += `\n\n${hashtags.join(' ')}`
+    }
+
+    return content
+  }, [description, timestamps, faq, hashtags, vanityLinkCode, videoFormat])
 
   const handleSave = useCallback(async (status: 'draft' | 'confirmed') => {
     if (!productId) {
@@ -595,6 +692,88 @@ export function OutputDisplay() {
         </div>
       </motion.div>
 
+      {/* Samsung Compliance Indicators (P0-2) */}
+      <motion.div variants={MOTION_VARIANTS.staggerItem}>
+        <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2 text-blue-900 dark:text-blue-100">
+              <Info className="h-4 w-4" />
+              {t.samsung.compliance.title}
+              <Badge variant="outline" className="ml-auto text-xs">
+                {t.samsung.videoFormats[videoFormat]} · {t.samsung.contentTypes[contentType]}
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="flex flex-wrap gap-2">
+              {samsungCompliance.map((check, i) => (
+                <Badge
+                  key={i}
+                  variant={check.valid ? "outline" : "destructive"}
+                  className={`gap-1.5 ${check.valid ? 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800' : ''}`}
+                  title={check.tip}
+                >
+                  {check.valid ? (
+                    <Check className="h-3 w-3" weight="bold" />
+                  ) : (
+                    <Warning className="h-3 w-3" weight="fill" />
+                  )}
+                  {t.samsung.compliance[check.labelKey as keyof typeof t.samsung.compliance]}
+                </Badge>
+              ))}
+              {/* Fixed vs AI hashtags indicator */}
+              <Badge variant="secondary" className="gap-1.5">
+                <Hash className="h-3 w-3" />
+                {useFixedHashtags ? t.samsung.compliance.fixedHashtagsUsed : t.samsung.compliance.aiHashtagsUsed}
+              </Badge>
+            </div>
+            {/* Show non-compliant tips */}
+            {samsungCompliance.some(c => !c.valid) && (
+              <div className="mt-3 p-2 rounded bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                <p className="text-xs text-amber-700 dark:text-amber-300 flex items-start gap-1.5">
+                  <Warning className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" weight="fill" />
+                  <span>
+                    {samsungCompliance.filter(c => !c.valid).map(c => c.tip).join(' · ')}
+                  </span>
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* YouTube Ready Preview (P0-2) */}
+      <motion.div variants={MOTION_VARIANTS.staggerItem}>
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <YoutubeLogo className="h-4 w-4 text-red-500" weight="fill" />
+                {t.samsung.youtubePreview.title}
+              </CardTitle>
+              <CopyButton text={youtubeReadyContent} label="YouTube Description" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="p-4 rounded-lg bg-muted/50 border font-mono text-sm max-h-[300px] overflow-y-auto">
+              <pre className="whitespace-pre-wrap text-xs">
+                {youtubeReadyContent}
+              </pre>
+            </div>
+            <div className="flex items-center justify-between mt-2">
+              <p className="text-xs text-muted-foreground">
+                {t.samsung.youtubePreview.characterCount.replace('{count}', String(youtubeReadyContent.length))} / 5,000
+              </p>
+              {youtubeReadyContent.length > 5000 && (
+                <Badge variant="destructive" className="text-xs">
+                  {t.samsung.youtubePreview.exceedsLimit}
+                </Badge>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
       {/* Regeneration Status Indicator */}
       {isGenerating && regenerationFocus && (
         <motion.div
@@ -661,8 +840,8 @@ export function OutputDisplay() {
         </motion.div>
       )}
 
-      {/* Timestamps */}
-      {timestamps && (
+      {/* Timestamps - Hidden for Shorts format (P0-2) */}
+      {timestamps && videoFormat !== 'shorts_9x16' && (
         <motion.div variants={MOTION_VARIANTS.staggerItem}>
           <Card>
             <CardHeader className="pb-3">
@@ -713,8 +892,8 @@ export function OutputDisplay() {
         </motion.div>
       )}
 
-      {/* FAQ */}
-      {faq && (
+      {/* FAQ - Hidden for Shorts format (P0-2) */}
+      {faq && videoFormat !== 'shorts_9x16' && (
         <motion.div variants={MOTION_VARIANTS.staggerItem}>
           <Card>
             <CardHeader className="pb-3">

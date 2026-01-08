@@ -339,7 +339,7 @@ async function generateLiveResponse(
   }
 
   const model = genAI.models.generateContent({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-3-flash-preview',
     contents: userMessage,
     config: {
       systemInstruction: composedPrompt,

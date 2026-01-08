@@ -2,6 +2,7 @@
 
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react'
 import { useGenerationStore } from '@/store/generation-store'
+import { useTranslation } from '@/lib/i18n/context'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
@@ -57,6 +58,7 @@ function getScoreRecommendation(score: number): { level: 'high' | 'medium' | 'lo
 }
 
 export function KeywordSelector() {
+  const { t } = useTranslation()
   // Selective subscriptions for better performance
   const productName = useGenerationStore((state) => state.productName)
   const launchDate = useGenerationStore((state) => state.launchDate)
@@ -147,9 +149,9 @@ export function KeywordSelector() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <FileText className="h-4 w-4" />
-              Brief USPs
+              {t.generate.keywordSelector.briefUsps}
               <span className="text-muted-foreground font-normal text-sm">
-                (Samsung priority)
+                ({t.generate.keywordSelector.samsungPriority})
               </span>
             </CardTitle>
           </CardHeader>
@@ -170,7 +172,7 @@ export function KeywordSelector() {
               </ul>
             ) : (
               <p className="text-sm text-muted-foreground">
-                No brief found for this product
+                {t.generate.keywordSelector.noBriefFound}
               </p>
             )}
           </CardContent>
@@ -181,9 +183,9 @@ export function KeywordSelector() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <TrendUp className="h-4 w-4" />
-              Grounding Results
+              {t.generate.keywordSelector.groundingResults}
               <span className="text-muted-foreground font-normal text-sm">
-                (user interest)
+                ({t.generate.keywordSelector.userInterest})
               </span>
             </CardTitle>
           </CardHeader>
@@ -264,21 +266,21 @@ export function KeywordSelector() {
                 <div className="mt-4 p-3 rounded-lg bg-muted/50 text-xs space-y-1">
                   <div className="flex items-center gap-2 font-medium">
                     <Sparkle className="h-4 w-4 text-primary" />
-                    Grounding Insights
+                    {t.generate.keywordSelector.groundingInsights}
                   </div>
                   <p className="text-muted-foreground">
                     {groundingKeywords.filter(k => k.score >= 80).length > 0 && (
                       <span className="text-green-600 dark:text-green-400">
-                        {groundingKeywords.filter(k => k.score >= 80).length} high-interest topics found.{' '}
+                        {groundingKeywords.filter(k => k.score >= 80).length} {t.generate.keywordSelector.highInterestTopics}{' '}
                       </span>
                     )}
                     {groundingKeywords.some(k => k.sources.some(s => getSourceTier(s) === 1)) && (
                       <span className="text-blue-600 dark:text-blue-400">
-                        Includes official Samsung sources.{' '}
+                        {t.generate.keywordSelector.includesOfficialSources}{' '}
                       </span>
                     )}
                     <span>
-                      Select keywords that align with your brief USPs for best results.
+                      {t.generate.keywordSelector.selectAlignWithBrief}
                     </span>
                   </p>
                 </div>
@@ -292,10 +294,10 @@ export function KeywordSelector() {
                   className="gap-2"
                 >
                   <MagnifyingGlass className="h-4 w-4" />
-                  Run Grounding
+                  {t.generate.keywordSelector.runGrounding}
                 </Button>
                 <p className="text-xs text-muted-foreground mt-2">
-                  Searches Reddit, Google for user interests
+                  {t.generate.keywordSelector.groundingHint}
                 </p>
               </div>
             )}
@@ -307,23 +309,23 @@ export function KeywordSelector() {
       <div className="space-y-4">
         <div className="space-y-2">
           <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-            <Label className="text-sm sm:text-base">Select up to 3 keywords to emphasize</Label>
+            <Label className="text-sm sm:text-base">{t.generate.keywordSelector.selectKeywords}</Label>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <Info className="h-3 w-3" />
-              Human decision required
+              {t.generate.keywordSelector.humanDecisionRequired}
             </div>
           </div>
           {/* Keyword Selection Guidance */}
           <div className="p-3 rounded-lg border border-dashed bg-muted/30 text-xs space-y-2">
             <p className="font-medium flex items-center gap-1">
               <Lightning className="h-3 w-3 text-primary" />
-              Selection Tips:
+              {t.generate.keywordSelector.selectionTips}
             </p>
             <ul className="space-y-1 text-muted-foreground pl-4">
-              <li>• Prioritize keywords that appear in <span className="text-foreground font-medium">both Brief USPs and Grounding</span></li>
-              <li>• High-score keywords (80+) indicate strong user search interest</li>
-              <li>• Balance <span className="text-blue-600 dark:text-blue-400">official sources</span> with <span className="text-orange-600 dark:text-orange-400">community sentiment</span></li>
-              <li>• Selected keywords will be emphasized throughout generated content</li>
+              <li>• {t.generate.keywordSelector.tipPrioritize}</li>
+              <li>• {t.generate.keywordSelector.tipHighScore}</li>
+              <li>• {t.generate.keywordSelector.tipBalance}</li>
+              <li>• {t.generate.keywordSelector.tipEmphasis}</li>
             </ul>
           </div>
         </div>
@@ -365,7 +367,7 @@ export function KeywordSelector() {
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Run grounding or add brief USPs to see keywords
+            {t.generate.keywordSelector.runGroundingOrAddBrief}
           </p>
         )}
 
@@ -376,7 +378,7 @@ export function KeywordSelector() {
             role="status"
             aria-live="polite"
           >
-            Selected: {selectedKeywords.length}/3
+            {t.generate.keywordSelector.selected}: {selectedKeywords.length}/3
             {selectedKeywords.length >= 3 && (
               <span className="sr-only"> - maximum reached</span>
             )}

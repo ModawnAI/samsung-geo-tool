@@ -2,13 +2,15 @@
 
 import { useCallback, useState } from 'react'
 import { useGenerationStore } from '@/store/generation-store'
+import { useTranslation } from '@/lib/i18n/context'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { UploadSimple, FileText, Warning, CheckCircle, Clock, TextAa, Hash, Info } from '@phosphor-icons/react'
+import { UploadSimple, FileText, Warning, CheckCircle, Clock, TextAa, Hash, Info, YoutubeLogo, TextT } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
+import type { InputMethod } from '@/types/geo-v2'
 
 // Minimum requirements for meaningful content generation
 const MIN_WORD_COUNT = 50
@@ -29,11 +31,11 @@ interface SrtValidationResult {
 }
 
 export function SrtInput() {
-  const { videoUrl, srtContent, setVideoUrl, setSrtContent } = useGenerationStore()
+  const { t } = useTranslation()
+  const { videoUrl, srtContent, inputMethod, setVideoUrl, setSrtContent, setInputMethod } = useGenerationStore()
   const [parseError, setParseError] = useState<string | null>(null)
   const [parseWarnings, setParseWarnings] = useState<string[]>([])
   const [contentStats, setContentStats] = useState<SrtValidationResult['stats']>(null)
-  const [inputMode, setInputMode] = useState<'upload' | 'paste'>('upload')
 
   const parseSrt = useCallback((content: string): SrtValidationResult => {
     const lines = content.trim().split('\n')
@@ -204,42 +206,89 @@ export function SrtInput() {
     .slice(0, 15)
     .join('\n')
 
+  // Helper to convert inputMethod to tab value
+  const getTabValue = (method: InputMethod): string => {
+    switch (method) {
+      case 'youtube_url': return 'url'
+      case 'srt_upload': return 'upload'
+      case 'text_input': return 'text'
+      default: return 'upload'
+    }
+  }
+
+  const handleTabChange = (value: string) => {
+    switch (value) {
+      case 'url': setInputMethod('youtube_url'); break
+      case 'upload': setInputMethod('srt_upload'); break
+      case 'text': setInputMethod('text_input'); break
+    }
+  }
+
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div>
-        <Label htmlFor="video-url" className="text-sm sm:text-base">
-          Video URL
-          <span className="text-muted-foreground font-normal ml-2">(optional)</span>
-        </Label>
-        <Input
-          id="video-url"
-          type="url"
-          value={videoUrl}
-          onChange={(e) => setVideoUrl(e.target.value)}
-          placeholder="https://youtube.com/watch?v=..."
-          className="mt-1.5"
-        />
-      </div>
-
+      {/* Input Method Selection - Samsung P2 Feature */}
       <div>
         <Label className="mb-3 block text-sm sm:text-base">
-          SRT Subtitle File <span className="text-destructive">*</span>
+          {t.generate.srtInput.inputMethod} <span className="text-destructive">*</span>
         </Label>
 
-        <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as 'upload' | 'paste')}>
-          <TabsList className="mb-4">
+        <Tabs value={getTabValue(inputMethod)} onValueChange={handleTabChange}>
+          <TabsList className="mb-4 grid w-full grid-cols-3">
+            <TabsTrigger value="url" className="gap-1.5 sm:gap-2 min-h-[40px]">
+              <YoutubeLogo className="h-4 w-4" />
+              <span className="hidden sm:inline">{t.generate.srtInput.youtubeUrl}</span>
+              <span className="sm:hidden">URL</span>
+            </TabsTrigger>
             <TabsTrigger value="upload" className="gap-1.5 sm:gap-2 min-h-[40px]">
               <UploadSimple className="h-4 w-4" />
-              <span className="hidden xs:inline">Upload File</span>
-              <span className="xs:hidden">Upload</span>
+              <span className="hidden sm:inline">{t.generate.srtInput.srtUpload}</span>
+              <span className="sm:hidden">SRT</span>
             </TabsTrigger>
-            <TabsTrigger value="paste" className="gap-1.5 sm:gap-2 min-h-[40px]">
-              <FileText className="h-4 w-4" />
-              <span className="hidden xs:inline">Paste Text</span>
-              <span className="xs:hidden">Paste</span>
+            <TabsTrigger value="text" className="gap-1.5 sm:gap-2 min-h-[40px]">
+              <TextT className="h-4 w-4" />
+              <span className="hidden sm:inline">{t.generate.srtInput.textInput}</span>
+              <span className="sm:hidden">Text</span>
             </TabsTrigger>
           </TabsList>
 
+          {/* YouTube URL Input */}
+          <TabsContent value="url">
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="video-url" className="text-sm">
+                  {t.generate.srtInput.youtubeUrlLabel}
+                </Label>
+                <Input
+                  id="video-url"
+                  type="url"
+                  value={videoUrl}
+                  onChange={(e) => setVideoUrl(e.target.value)}
+                  placeholder="https://youtube.com/watch?v=..."
+                  className="mt-1.5"
+                />
+                <p className="text-xs text-muted-foreground mt-1.5 flex items-start gap-1">
+                  <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                  <span>{t.generate.srtInput.youtubeUrlHint}</span>
+                </p>
+              </div>
+
+              {/* Optional SRT for URL mode */}
+              <div className="p-4 rounded-lg bg-muted/50 border">
+                <Label htmlFor="srt-optional" className="text-sm text-muted-foreground">
+                  {t.generate.srtInput.orPasteSrt}
+                </Label>
+                <Textarea
+                  id="srt-optional"
+                  value={srtContent}
+                  onChange={(e) => handlePaste(e.target.value)}
+                  placeholder="Paste SRT if you have it..."
+                  className="mt-1.5 min-h-[100px] font-mono text-sm"
+                />
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* SRT File Upload */}
           <TabsContent value="upload">
             <div className="border-2 border-dashed rounded-lg p-4 sm:p-8 text-center hover:border-primary/50 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
               <input
@@ -253,29 +302,28 @@ export function SrtInput() {
               />
               <label htmlFor="srt-upload" className="cursor-pointer block">
                 <UploadSimple className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-3 sm:mb-4 text-muted-foreground" aria-hidden="true" />
-                <p className="font-medium text-sm sm:text-base">Click to upload SRT file</p>
+                <p className="font-medium text-sm sm:text-base">{t.generate.srtInput.clickToUpload}</p>
                 <p id="upload-hint" className="text-xs sm:text-sm text-muted-foreground mt-1">
-                  Accepts .srt and .txt files
+                  {t.generate.srtInput.acceptsFormats}
                 </p>
               </label>
             </div>
           </TabsContent>
 
-          <TabsContent value="paste">
-            <Textarea
-              value={srtContent}
-              onChange={(e) => handlePaste(e.target.value)}
-              placeholder="Paste SRT content here...
-
-1
-00:00:00,000 --> 00:00:05,000
-First subtitle text
-
-2
-00:00:05,000 --> 00:00:10,000
-Second subtitle text"
-              className="min-h-[200px] font-mono text-sm"
-            />
+          {/* Direct Text Input */}
+          <TabsContent value="text">
+            <div className="space-y-2">
+              <Textarea
+                value={srtContent}
+                onChange={(e) => handlePaste(e.target.value)}
+                placeholder={t.generate.srtInput.pastePlaceholder}
+                className="min-h-[250px] font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground flex items-start gap-1">
+                <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                <span>{t.generate.srtInput.pasteHint}</span>
+              </p>
+            </div>
           </TabsContent>
         </Tabs>
 
@@ -289,14 +337,14 @@ Second subtitle text"
             <div className="flex items-start gap-2 text-destructive">
               <Warning className="h-5 w-5 mt-0.5 flex-shrink-0" weight="fill" aria-hidden="true" />
               <div>
-                <p className="font-medium">Validation Error</p>
+                <p className="font-medium">{t.generate.srtInput.validationError}</p>
                 <p className="mt-1">{parseError}</p>
               </div>
             </div>
             {contentStats && (
               <div className="mt-3 pt-3 border-t border-destructive/20 flex flex-wrap gap-4 text-xs text-destructive/80">
-                <span><TextAa className="h-3.5 w-3.5 inline mr-1" />{contentStats.wordCount} words</span>
-                <span><Hash className="h-3.5 w-3.5 inline mr-1" />{contentStats.segmentCount} segments</span>
+                <span><TextAa className="h-3.5 w-3.5 inline mr-1" />{contentStats.wordCount} {t.generate.srtInput.words}</span>
+                <span><Hash className="h-3.5 w-3.5 inline mr-1" />{contentStats.segmentCount} {t.generate.srtInput.segments}</span>
                 <span><Clock className="h-3.5 w-3.5 inline mr-1" />{contentStats.duration}</span>
               </div>
             )}
@@ -312,7 +360,7 @@ Second subtitle text"
             <div className="flex items-start gap-2 text-amber-800 dark:text-amber-200">
               <Info className="h-5 w-5 mt-0.5 flex-shrink-0" weight="fill" aria-hidden="true" />
               <div>
-                <p className="font-medium">Recommendations</p>
+                <p className="font-medium">{t.generate.srtInput.recommendations}</p>
                 <ul className="mt-1 space-y-1">
                   {parseWarnings.map((warning, i) => (
                     <li key={i} className="text-amber-700 dark:text-amber-300">• {warning}</li>
@@ -328,10 +376,10 @@ Second subtitle text"
       {srtContent && contentStats && !parseError && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <Label className="block">Content Analysis</Label>
+            <Label className="block">{t.generate.srtInput.contentAnalysis}</Label>
             <div className="flex items-center gap-1.5 text-sm text-green-600 dark:text-green-400">
               <CheckCircle className="h-4 w-4" weight="fill" />
-              Valid SRT
+              {t.generate.srtInput.validSrt}
             </div>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -345,28 +393,28 @@ Second subtitle text"
               )}>
                 {contentStats.wordCount}
               </p>
-              <p className="text-xs text-muted-foreground">Words</p>
+              <p className="text-xs text-muted-foreground">{t.generate.srtInput.words}</p>
             </div>
             <div className="p-3 rounded-lg bg-muted/50 border text-center">
               <Hash className="h-5 w-5 mx-auto text-muted-foreground" />
               <p className="text-lg font-bold mt-1">{contentStats.segmentCount}</p>
-              <p className="text-xs text-muted-foreground">Segments</p>
+              <p className="text-xs text-muted-foreground">{t.generate.srtInput.segments}</p>
             </div>
             <div className="p-3 rounded-lg bg-muted/50 border text-center">
               <Clock className="h-5 w-5 mx-auto text-muted-foreground" />
               <p className="text-lg font-bold mt-1">{contentStats.duration}</p>
-              <p className="text-xs text-muted-foreground">Duration</p>
+              <p className="text-xs text-muted-foreground">{t.generate.srtInput.duration}</p>
             </div>
             <div className="p-3 rounded-lg bg-muted/50 border text-center">
               <TextAa className="h-5 w-5 mx-auto text-muted-foreground" />
               <p className="text-lg font-bold mt-1">{contentStats.avgWordsPerSegment}</p>
-              <p className="text-xs text-muted-foreground">Avg Words/Seg</p>
+              <p className="text-xs text-muted-foreground">{t.generate.srtInput.avgWordsPerSeg}</p>
             </div>
           </div>
           {contentStats.wordCount < RECOMMENDED_WORD_COUNT && (
             <p className="text-xs text-muted-foreground flex items-center gap-1">
               <Info className="h-3.5 w-3.5" />
-              Tip: {RECOMMENDED_WORD_COUNT}+ words provides best AI generation quality
+              {t.generate.srtInput.wordsTip.replace('{count}', String(RECOMMENDED_WORD_COUNT))}
             </p>
           )}
         </div>
@@ -375,12 +423,12 @@ Second subtitle text"
       {/* Preview */}
       {srtContent && !parseError && (
         <div>
-          <Label className="mb-2 block">Preview</Label>
+          <Label className="mb-2 block">{t.generate.srtInput.preview}</Label>
           <div className="p-4 rounded-lg bg-muted/50 border font-mono text-sm max-h-[200px] overflow-y-auto">
             <pre className="whitespace-pre-wrap">{previewLines}</pre>
             {srtContent.split('\n').length > 15 && (
               <p className="text-muted-foreground mt-2">
-                ... ({srtContent.split('\n').length - 15} more lines)
+                ... {t.generate.srtInput.moreLines.replace('{count}', String(srtContent.split('\n').length - 15))}
               </p>
             )}
           </div>

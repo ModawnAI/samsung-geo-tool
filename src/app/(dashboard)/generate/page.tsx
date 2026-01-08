@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useCallback, useRef } from 'react'
+import { useEffect, useCallback, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGenerationStore } from '@/store/generation-store'
@@ -8,8 +8,18 @@ import { ProductSelector } from '@/components/features/product-selector'
 import { SrtInput } from '@/components/features/srt-input'
 import { GenerationProgress } from '@/components/features/generation-progress'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 // Lazy load heavy components that aren't immediately visible
 const KeywordSelector = dynamic(
@@ -89,6 +99,14 @@ export default function GeneratePage() {
   const setIsGenerating = useGenerationStore((state) => state.setIsGenerating)
   const setOutput = useGenerationStore((state) => state.setOutput)
   const generationStatus = useGenerationStore((state) => state.generationStatus)
+  // Samsung Standard Fields (P0-3)
+  const videoFormat = useGenerationStore((state) => state.videoFormat)
+  const fixedHashtags = useGenerationStore((state) => state.fixedHashtags)
+  const useFixedHashtags = useGenerationStore((state) => state.useFixedHashtags)
+
+  // Validation dialog state (P0-3)
+  const [validationIssues, setValidationIssues] = useState<string[]>([])
+  const [showValidationDialog, setShowValidationDialog] = useState(false)
 
   // AbortController for cancelable requests
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -140,7 +158,42 @@ export default function GeneratePage() {
     }
   }, [step, productId, srtContent, selectedKeywords])
 
-  const handleGenerate = useCallback(async () => {
+  // Samsung Standard Validation (P0-3)
+  const validateBeforeGeneration = useCallback((): string[] => {
+    const issues: string[] = []
+
+    // Validate fixed hashtags if enabled
+    if (useFixedHashtags && fixedHashtags.length > 0) {
+      // Check hashtag count (Samsung standard: 3-5)
+      if (fixedHashtags.length < 3) {
+        issues.push(t.samsung.validation.hashtagCountLow.replace('{count}', String(fixedHashtags.length)))
+      } else if (fixedHashtags.length > 5) {
+        issues.push(t.samsung.validation.hashtagCountHigh.replace('{count}', String(fixedHashtags.length)))
+      }
+
+      // Check if #Samsung is last
+      const lastHashtag = fixedHashtags[fixedHashtags.length - 1]?.toLowerCase()
+      if (lastHashtag !== '#samsung') {
+        issues.push(t.samsung.validation.samsungLastRequired)
+      }
+
+      // Check if #GalaxyAI is first (if present)
+      const galaxyAIIndex = fixedHashtags.findIndex(h => h.toLowerCase().includes('galaxyai'))
+      if (galaxyAIIndex > 0) {
+        issues.push(t.samsung.validation.galaxyAIFirstRecommended)
+      }
+    }
+
+    // Validate Shorts content length
+    if (videoFormat === 'shorts_9x16' && srtContent.length > 1000) {
+      issues.push(t.samsung.validation.shortsTranscriptLong)
+    }
+
+    return issues
+  }, [useFixedHashtags, fixedHashtags, videoFormat, srtContent, t])
+
+  // Execute generation (called directly or after validation confirmation)
+  const executeGeneration = useCallback(async () => {
     // Cancel any pending request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
@@ -156,6 +209,12 @@ export default function GeneratePage() {
         videoUrl,
         categoryId,
         launchDate,
+        // Samsung Standard Fields (Part 5.4)
+        contentType,
+        videoFormat,
+        fixedHashtags,
+        useFixedHashtags,
+        vanityLinkCode,
       } = useGenerationStore.getState()
 
       // Use v2 API with full GEO pipeline (RAG, Perplexity grounding, tuning)
@@ -172,6 +231,12 @@ export default function GeneratePage() {
           launchDate: launchDate?.toISOString(),
           pipelineConfig: 'full',
           language: 'ko',
+          // Samsung Standard Fields (Part 5.4)
+          contentType,
+          videoFormat,
+          fixedHashtags,
+          useFixedHashtags,
+          vanityLinkCode,
         }),
         signal: abortControllerRef.current.signal,
       })
@@ -246,6 +311,26 @@ export default function GeneratePage() {
       setIsGenerating(false)
     }
   }, [setIsGenerating, setOutput, setStep])
+
+  // Validation-aware generation handler (P0-3)
+  const handleGenerate = useCallback(async () => {
+    const issues = validateBeforeGeneration()
+
+    if (issues.length > 0) {
+      // Show validation dialog with issues
+      setValidationIssues(issues)
+      setShowValidationDialog(true)
+    } else {
+      // No issues, proceed directly
+      await executeGeneration()
+    }
+  }, [validateBeforeGeneration, executeGeneration])
+
+  // Handle confirmation from validation dialog
+  const handleValidationConfirm = useCallback(async () => {
+    setShowValidationDialog(false)
+    await executeGeneration()
+  }, [executeGeneration])
 
   const handleBack = useCallback(() => {
     if (currentStepIndex > 0) {
@@ -369,31 +454,11 @@ export default function GeneratePage() {
         </ol>
       </nav>
 
-      {/* Step Requirements Indicator */}
-      {step !== 'output' && (
-        <div className={cn(
-          "flex items-center gap-2 px-4 py-3 rounded-lg text-sm transition-colors",
-          canProceed()
-            ? "bg-green-50 text-green-800 dark:bg-green-900/30 dark:text-green-200 border border-green-200 dark:border-green-800"
-            : "bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200 border border-amber-200 dark:border-amber-800"
-        )}>
-          {canProceed() ? (
-            <>
-              <CheckCircle className="h-4 w-4 flex-shrink-0" weight="fill" />
-              <span>{t.generate.readyToProceed}</span>
-            </>
-          ) : (
-            <>
-              <Warning className="h-4 w-4 flex-shrink-0" weight="fill" />
-              <span>
-                <span className="font-medium">{t.common.required}: </span>
-                {steps.find(s => s.id === step)?.requirement}
-                {step === 'keywords' && selectedKeywords.length > 0 && selectedKeywords.length < 1 && (
-                  <span className="ml-1 text-muted-foreground">({selectedKeywords.length}/1 {t.generate.minimum})</span>
-                )}
-              </span>
-            </>
-          )}
+      {/* Step Requirements Indicator - only show success state when ready */}
+      {step !== 'output' && canProceed() && (
+        <div className="flex items-center gap-2 px-4 py-3 rounded-lg text-sm transition-colors bg-green-50 text-green-800 dark:bg-green-900/30 dark:text-green-200 border border-green-200 dark:border-green-800">
+          <CheckCircle className="h-4 w-4 flex-shrink-0" weight="fill" />
+          <span>{t.generate.readyToProceed}</span>
         </div>
       )}
 
@@ -452,6 +517,33 @@ export default function GeneratePage() {
           </Button>
         )}
       </div>
+
+      {/* Samsung Standard Validation Dialog (P0-3) */}
+      <AlertDialog open={showValidationDialog} onOpenChange={setShowValidationDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Warning className="h-5 w-5 text-amber-500" weight="fill" />
+              {t.samsung.validation.title}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <ul className="list-disc pl-5 space-y-1 text-sm">
+                  {validationIssues.map((issue, i) => (
+                    <li key={i} className="text-amber-700 dark:text-amber-300">{issue}</li>
+                  ))}
+                </ul>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t.samsung.validation.fixIssues}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleValidationConfirm}>
+              {t.samsung.validation.generateAnyway}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

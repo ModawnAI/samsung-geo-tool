@@ -162,14 +162,16 @@ Example: "Introducing the all-new Galaxy Z Flip7. Capture stunning 50 MP selfies
 - 2-5 word titles, keyword-optimized
 - Include feature names in titles
 
-### 5. FAQ Section
-- Q:/A: format with Query Fan-Out methodology
-- 5-7 items covering different user intents
-- 10-15 word questions, 50-100 word answers
+### 5. FAQ Section (Samsung Standard)
+- Q: and A: format (use COLON, not period or slash)
+- 2-4 Q&A pairs (not 5-7)
+- 10-20 word questions, 50-100 word answers
+- No blank line between Q and A
 
-### 6. Hashtags
-- 5-8 strategic hashtags
-- Priority order: #ProductName #KeyFeature #Category #Brand
+### 6. Hashtags (Samsung Standard)
+- 3-5 hashtags total (not 5-8)
+- REQUIRED ORDER: #GalaxyAI (first, if AI features present) → #ProductName → #ProductSeries → #Samsung (always last)
+- Example: #GalaxyAI #GalaxyZFlip7 #GalaxyZ #Samsung
 - No generic tags (#tech #phone)
 
 ## AUTHORITY TIERS FOR SOURCE RANKING
@@ -480,14 +482,21 @@ export interface StagePromptConfig {
   basePrompt: string
   antiFabricationLevel?: 'low' | 'medium' | 'high'
   language: 'ko' | 'en'
+  // Samsung Standard Fields (Part 5.4)
+  contentType?: 'intro' | 'unboxing' | 'how_to' | 'shorts' | 'teaser' | 'brand' | 'esg' | 'documentary' | 'official_replay'
+  videoFormat?: 'feed_16x9' | 'shorts_9x16'
+  vanityLinkCode?: string
 }
 
 export function composeStagePrompt(config: StagePromptConfig): string {
-  const { stage, basePrompt, language } = config
+  const { stage, basePrompt, language, contentType, videoFormat, vanityLinkCode } = config
 
   const languageInstruction = language === 'ko'
     ? '\n\nOutput in Korean (한국어).'
     : '\n\nOutput in English.'
+
+  // Content-type-specific instructions (Samsung Standard Part 5.4)
+  const contentTypeInstructions = getContentTypeInstructions(contentType, videoFormat, vanityLinkCode)
 
   const stageInstructions: Record<string, string> = {
     description: `
@@ -530,7 +539,32 @@ Generate 10-15 search queries based ONLY on features mentioned in the video cont
 - Include primary differentiating feature
 - End with user-focused benefit
 
+## SAMSUNG OPENING PATTERNS (Use based on Content Type)
+
+### INTRO Content:
+"This is the official introduction video for [Product Name]."
+OR
+"Introducing the [all-new] [Product Name]."
+
+### HOW-TO Content:
+"This is the official video guide on how to use [Feature] on [Product]."
+OR
+"Learn how to [action] with [Product]."
+
+### UNBOXING Content:
+"Unbox the [all-new] [Product Name] and discover what's inside."
+
+### SHORTS Content:
+[No opener - start with hook directly, 1-2 sentences max]
+
+### TEASER Content:
+"Something [big/new/exciting] is coming..."
+
+### OFFICIAL REPLAY Content:
+"Watch the full [Event Name] replay featuring [Product highlights]."
+
 **Examples**:
+✅ GOOD: "This is the official introduction video for Galaxy Z Flip7. Capture stunning 50 MP selfies with FlexWindow for hands-free content creation." (142 chars)
 ✅ GOOD: "Introducing the all-new Galaxy Z Flip7. Capture stunning 50 MP selfies with FlexWindow for hands-free content creation." (123 chars)
 ❌ BAD: "Check out the new Samsung phone with amazing features and innovative technology." (too vague, 80 chars)
 
@@ -755,9 +789,21 @@ Use grounding ONLY if Stage 1 provides insufficient detail:
 
     faq: `
 ## TASK
-Generate 5-7 Q&A pairs optimized for AEO (Answer Engine Optimization) using Query Fan-Out methodology.
+Generate 2-4 Q&A pairs optimized for AEO (Answer Engine Optimization) using Query Fan-Out methodology.
 
 Your goal: Create FAQ content that AI assistants (ChatGPT, Claude, Gemini, Perplexity) will cite when answering user questions about {{product_name}}.
+
+## CRITICAL: SAMSUNG Q&A FORMAT STANDARD
+Format MUST be:
+Q: [question]
+A: [answer]
+
+RULES:
+- Use COLON (:) after Q and A, NOT period (.) or slash (/)
+- NO blank line between Q and A
+- 2-4 Q&A pairs total (NOT 5-7)
+- Question length: 10-20 words
+- Answer length: 50-100 words
 
 ## WHY FAQs MATTER FOR GEO/AEO
 
@@ -891,12 +937,17 @@ QUERY GENERATION per USP/Feature from Video (MANDATORY - use all 5 site types):
   "faqs": [
     {
       "question": "How does [specific question 10-20 words with How/What/Why/When/Where]?",
-      "answer": "[Direct answer 50-150 words with specs and user benefit]"
+      "answer": "[Direct answer 50-100 words with specs and user benefit]"
     }
   ],
-  "count": 5-7,
-  "query_fan_out_coverage": ["core_feature", "benefit", "how_to", "specification", "comparison"]
-}`,
+  "count": 2-4,
+  "query_fan_out_coverage": ["core_feature", "benefit", "how_to", "specification"]
+}
+
+## SAMSUNG Q&A OUTPUT EXAMPLE
+Correct format:
+Q: How does the Galaxy Z Flip7 FlexWindow camera feature work for taking high-quality selfies?
+A: The Galaxy Z Flip7 uses its 50 MP rear camera for selfies through the 3.4-inch FlexWindow cover display. Simply close the phone and tap the cover screen to activate camera mode. The rear camera's larger sensor delivers sharper, more detailed selfies compared to traditional front cameras.`,
 
     chapters: `
 ## TASK
@@ -1419,9 +1470,21 @@ TOTAL: 50/100
 
     hashtags: `
 ## TASK
-Generate 5-8 strategic hashtags optimized for YouTube discovery, Google search, and AI citation.
+Generate 3-5 strategic hashtags following Samsung's standard hashtag order.
 
-Your goal: Create hashtags that maximize content discoverability across YouTube search, Google video results, and AI-powered search engines.
+Your goal: Create hashtags that maximize content discoverability while following Samsung's brand guidelines.
+
+## CRITICAL: SAMSUNG HASHTAG STANDARD
+REQUIRED ORDER (Must follow exactly):
+1. #GalaxyAI (ALWAYS FIRST if AI features present)
+2. #[ProductName] (e.g., #GalaxyZFlip7, #GalaxyS25Ultra)
+3. #[ProductSeries] (e.g., #GalaxyZ, #GalaxyS, #GalaxyBook)
+4. #Samsung (ALWAYS LAST)
+
+COUNT: 3-5 hashtags total (NOT 5-8)
+
+EXAMPLE:
+#GalaxyAI #GalaxyZFlip7 #GalaxyZ #Samsung
 
 ## WHY HASHTAGS MATTER FOR GEO/AEO
 
@@ -1444,49 +1507,32 @@ Your goal: Create hashtags that maximize content discoverability across YouTube 
 - Category hashtags connect to trending topics
 - Brand hashtags build channel recognition
 
-## HASHTAG TAXONOMY (5-8 Total)
+## SAMSUNG HASHTAG TAXONOMY (3-5 Total)
 
-### TIER 1: BRAND HASHTAGS (1-2 required, Position 1-2)
-**Purpose**: Product identification, brand association
+### POSITION 1: #GalaxyAI (Required if AI features present)
+**Purpose**: Galaxy AI brand prominence - Samsung's AI-first positioning
 
-| Type | Format | Examples | Priority |
-|------|--------|----------|----------|
-| Product Name | #[ProductName] | #GalaxyZFlip7, #GalaxyS25Ultra | CRITICAL |
-| Brand Tags | #Samsung, #Galaxy | #Samsung, #GalaxyAI, #WithGalaxy | HIGH |
-| Campaign Tags | #[CampaignName] | #UnfoldYourWorld, #DoWhatYouCant | MEDIUM |
+### POSITION 2: Product Name Hashtag
+**Purpose**: Product identification
+| Format | Examples |
+|--------|----------|
+| #Galaxy[Series][Model] | #GalaxyZFlip7, #GalaxyS25Ultra, #GalaxyBook5Pro |
 
-**Product Name Rules**:
+**Rules**:
 - Remove spaces: "Galaxy Z Flip7" → #GalaxyZFlip7
-- Use official capitalization: #GalaxyZFlip7 not #galaxyzflip7
-- Keep full name for specificity: #GalaxyZFlip7 not #ZFlip7
+- Use official capitalization
+- Keep full name for specificity
 
-### TIER 2: FEATURE HASHTAGS (2-3 required, Position 3-5)
-**Purpose**: Feature discoverability, technical queries
+### POSITION 3: Product Series Hashtag (Optional)
+**Purpose**: Series-level discovery
+| Examples |
+|----------|
+| #GalaxyZ, #GalaxyS, #GalaxyBook, #GalaxyWatch, #GalaxyBuds |
 
-| Type | Format | Examples | Search Volume |
-|------|--------|----------|---------------|
-| Key USPs | #[FeatureName] | #FlexWindow, #ProVisualEngine | HIGH |
-| Specifications | #[SpecValue] | #50MPCamera, #AICamera | MEDIUM |
-| Capabilities | #[Capability] | #FoldablePhone, #FlipPhone | HIGH |
-
-**Feature Selection Priority**:
-1. Differentiated features unique to this product
-2. High-search-volume specifications
-3. Category-defining capabilities
-
-### TIER 3: INDUSTRY HASHTAGS (2-3 required, Position 6-8)
-**Purpose**: Broader discovery, trending topic connection
-
-| Type | Format | Examples | Reach |
-|------|--------|----------|-------|
-| Category | #[Category] | #Smartphone, #Android | VERY HIGH |
-| Use Case | #[UseCase] | #MobilePhotography, #ContentCreator | HIGH |
-| Trending | #[Trend] | #TechReview, #Tech2025 | VARIABLE |
-
-**Industry Selection Guidelines**:
-- Balance niche (high relevance) with broad (high reach)
-- Avoid oversaturated generic tags
-- Connect to current trends when relevant
+### POSITION 4 (LAST): #Samsung
+**Purpose**: Brand anchor - ALWAYS place last
+- This is MANDATORY for all Samsung content
+- Must be the final hashtag in the sequence
 
 ## HASHTAG QUALITY STANDARDS
 
@@ -1515,25 +1561,35 @@ Your goal: Create hashtags that maximize content discoverability across YouTube 
 
 ## HASHTAG EXAMPLES
 
-### ✅ EXCELLENT Hashtag Set (Galaxy Z Flip7):
+### ✅ CORRECT Samsung Hashtag Set (Galaxy Z Flip7):
 \`\`\`json
 {
   "hashtags": [
-    "#GalaxyZFlip7",
-    "#FlexWindow",
-    "#FoldablePhone",
-    "#Samsung",
     "#GalaxyAI",
-    "#50MPCamera",
-    "#MobilePhotography",
-    "#TechReview"
+    "#GalaxyZFlip7",
+    "#GalaxyZ",
+    "#Samsung"
   ],
   "analysis": {
-    "total_count": 8,
-    "total_characters": 95,
-    "tier_distribution": {"brand": 2, "feature": 3, "industry": 3},
-    "position_1": "#GalaxyZFlip7 - Product identity, most specific",
-    "first_3_strategy": "Product → Key USP → Category for maximum relevance"
+    "total_count": 4,
+    "order": "#GalaxyAI (first) → #ProductName → #Series → #Samsung (last)",
+    "samsung_compliant": true
+  }
+}
+\`\`\`
+
+### ✅ Alternative (No AI features):
+\`\`\`json
+{
+  "hashtags": [
+    "#GalaxyBuds3Pro",
+    "#GalaxyBuds",
+    "#Samsung"
+  ],
+  "analysis": {
+    "total_count": 3,
+    "note": "No #GalaxyAI since product has no AI features",
+    "samsung_compliant": true
   }
 }
 \`\`\`
@@ -1581,27 +1637,28 @@ Your goal: Create hashtags that maximize content discoverability across YouTube 
 - Verify character limits
 - Ensure tier distribution balance
 
-## OUTPUT FORMAT (JSON)
+## OUTPUT FORMAT (JSON) - SAMSUNG STANDARD
 \`\`\`json
 {
-  "hashtags": ["#GalaxyZFlip7", "#FlexWindow", "#FoldablePhone", "#Samsung", "#GalaxyAI", "#50MPCamera", "#MobilePhotography", "#TechReview"],
+  "hashtags": ["#GalaxyAI", "#GalaxyZFlip7", "#GalaxyZ", "#Samsung"],
   "categories": {
-    "brand": ["#GalaxyZFlip7", "#Samsung", "#GalaxyAI"],
-    "features": ["#FlexWindow", "#50MPCamera", "#FoldablePhone"],
-    "industry": ["#MobilePhotography", "#TechReview", "#Smartphone"]
+    "ai_brand": "#GalaxyAI",
+    "product": "#GalaxyZFlip7",
+    "series": "#GalaxyZ",
+    "brand": "#Samsung"
   },
   "metadata": {
-    "total_count": 8,
-    "total_characters": 95,
-    "average_length": 11.9,
-    "tier_distribution": {"brand": 3, "feature": 3, "industry": 2}
+    "total_count": 4,
+    "samsung_order_compliant": true,
+    "has_ai_features": true
   },
-  "position_strategy": {
-    "position_1": {"hashtag": "#GalaxyZFlip7", "purpose": "Product identification"},
-    "position_2": {"hashtag": "#FlexWindow", "purpose": "Key differentiator USP"},
-    "position_3": {"hashtag": "#FoldablePhone", "purpose": "Category connection"}
+  "order_verification": {
+    "position_1": "#GalaxyAI (AI brand - first if AI features)",
+    "position_2": "#GalaxyZFlip7 (Product name)",
+    "position_3": "#GalaxyZ (Product series)",
+    "position_4": "#Samsung (Brand - always last)"
   },
-  "reasoning": "Prioritized product name and key USP (FlexWindow) in first positions for maximum relevance. Balanced brand recognition (Samsung, GalaxyAI) with feature discoverability (50MPCamera) and industry reach (MobilePhotography, TechReview). All hashtags under 20 characters with total under 100 characters."
+  "reasoning": "Following Samsung standard: #GalaxyAI first (product has AI features), product name second, series third, #Samsung always last. Total 3-5 hashtags as per Samsung guidelines."
 }
 \`\`\``,
   }
@@ -1609,5 +1666,130 @@ Your goal: Create hashtags that maximize content discoverability across YouTube 
   return `${basePrompt}
 
 ## STAGE-SPECIFIC INSTRUCTIONS
-${stageInstructions[stage] || ''}${languageInstruction}`
+${stageInstructions[stage] || ''}${contentTypeInstructions}${languageInstruction}`
+}
+
+/**
+ * Get content-type-specific instructions (Samsung Standard Part 5.4)
+ * Returns content-type-specific templates based on video format
+ */
+function getContentTypeInstructions(
+  contentType?: string,
+  videoFormat?: string,
+  vanityLinkCode?: string
+): string {
+  if (!contentType) return ''
+
+  // Shorts format has very different constraints
+  if (videoFormat === 'shorts_9x16') {
+    return `
+
+## SHORTS FORMAT CONSTRAINTS (9:16 Vertical)
+- Total description: Under 200 characters
+- Hook only (1-2 sentences maximum)
+- NO timestamps
+- NO Q&A section
+- 1-2 hashtags only: #GalaxyAI #Samsung
+- Focus on single key message`
+  }
+
+  const vanityLink = vanityLinkCode ? `Learn more: http://smsng.co/${vanityLinkCode}_yt` : ''
+
+  const templates: Record<string, string> = {
+    intro: `
+
+## INTRO CONTENT STRUCTURE (Samsung Standard)
+1. Opening: "This is the official introduction video for [Product]." OR "Introducing the [all-new] [Product]."
+2. Feature paragraph (3-4 sentences with key specs)
+3. ${vanityLink || 'Learn more CTA with vanity link'}
+4. Timestamps section
+5. Q&A section (2-4 pairs, Q: and A: format)
+6. Hashtags (#GalaxyAI first if AI features, #Samsung last, 3-5 total)`,
+
+    how_to: `
+
+## HOW-TO CONTENT STRUCTURE (Samsung Standard)
+1. Opening: "This is the official video guide on how to use [Feature] on [Product]." OR "Learn how to [action] with [Product]."
+2. Brief intro sentence
+3. ${vanityLink || 'Learn more CTA'}
+4. Timestamps section
+5. "Follow these simple steps to use [Feature]:"
+   - Step 1: [Instruction]
+   - Step 2: [Instruction]
+   - Step 3: [Instruction]
+6. Q&A section (2-3 pairs)
+7. Hashtags
+8. *Disclaimer if needed`,
+
+    unboxing: `
+
+## UNBOXING CONTENT STRUCTURE (Samsung Standard)
+1. Opening: "Unbox the [all-new] [Product] and discover what's inside."
+2. Feature highlights paragraph
+3. ${vanityLink || 'Learn more CTA'}
+4. Timestamps section
+5. "What's new in [Product]?" numbered list:
+   1. [Feature]: [Description]
+   2. [Feature]: [Description]
+   3. [Feature]: [Description]
+6. Q&A section
+7. Hashtags`,
+
+    shorts: `
+
+## SHORTS CONTENT STRUCTURE (Samsung Standard)
+- Hook only (1-2 sentences maximum)
+- NO timestamps
+- NO Q&A
+- 1-2 hashtags only: #GalaxyAI #Samsung
+- Total length: Under 200 characters`,
+
+    teaser: `
+
+## TEASER CONTENT STRUCTURE (Samsung Standard)
+1. Opening: "Something [big/new/exciting] is coming..."
+2. Mystery-focused hook (15-30 seconds content)
+3. Minimal details - create anticipation
+4. ${vanityLink || 'Learn more CTA if applicable'}
+5. 2-3 hashtags only`,
+
+    official_replay: `
+
+## OFFICIAL REPLAY CONTENT STRUCTURE (Samsung Standard)
+1. Opening: "Watch the full [Event Name] replay featuring [Product highlights]."
+2. Event context and highlights
+3. ${vanityLink || 'Learn more CTA'}
+4. Comprehensive timestamps (event is long-form)
+5. Q&A section if applicable
+6. Hashtags`,
+
+    esg: `
+
+## ESG/SUSTAINABILITY CONTENT STRUCTURE
+1. Mission-focused opening
+2. Environmental/social impact highlights
+3. Data and commitment statements
+4. ${vanityLink || 'Learn more CTA'}
+5. Hashtags (may not include #GalaxyAI)`,
+
+    documentary: `
+
+## DOCUMENTARY CONTENT STRUCTURE
+1. Story-focused opening
+2. Narrative context
+3. ${vanityLink || 'Learn more CTA'}
+4. Timestamps for major sections
+5. Limited Q&A (if applicable)
+6. Hashtags`,
+
+    brand: `
+
+## BRAND CAMPAIGN CONTENT STRUCTURE
+1. Campaign message opening
+2. Brand story/values content
+3. ${vanityLink || 'Learn more CTA'}
+4. Campaign-specific hashtags`,
+  }
+
+  return templates[contentType] || ''
 }
