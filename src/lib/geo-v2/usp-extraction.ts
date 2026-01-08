@@ -14,6 +14,7 @@ import type {
   SOURCE_AUTHORITY_TIERS,
 } from '@/types/geo-v2'
 import { safeJsonParse } from '@/lib/utils'
+import { USP_CONFIG, meetsConfidenceThreshold } from '@/lib/scoring/scoring-config'
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
 
@@ -118,8 +119,8 @@ const uspExtractionSchema = {
           },
           confidence: {
             type: 'string',
-            enum: ['high'],
-            description: 'Confidence level - ALWAYS high per 2-Stage strategy',
+            enum: ['high', 'medium'],
+            description: 'Confidence level - high for video-confirmed, medium for grounding-supplemented',
           },
         },
         required: ['feature', 'category', 'differentiation', 'userBenefit', 'confidence'],
@@ -225,10 +226,11 @@ Use grounding ONLY if Stage 1 provides insufficient detail:
 - Software: One UI, updates, ecosystem features
 - Other: Anything not fitting above categories
 
-## CONFIDENCE LEVEL RULES
-✅ Video content-based USPs: ALWAYS set confidence: "high"
-✅ Grounding-supplemented USPs: Set confidence: "high"
-🔴 CRITICAL: There is NO "low" or "medium" confidence. ALL USPs must be "high".
+## CONFIDENCE LEVEL RULES (Updated 2026-01-08)
+✅ Video content-based USPs: Set confidence: "high" (directly from video)
+✅ Grounding-supplemented USPs: Set confidence: "medium" (supplemented with external data)
+🔴 CRITICAL: "low" confidence is NOT allowed. USPs must be "high" or "medium" only.
+📌 Priority: Video USPs (high) > Grounding USPs (medium)
 
 ## ANTI-FABRICATION RULES
 - NEVER invent percentages or statistics without evidence
@@ -354,6 +356,7 @@ ${signalLines.join('\n') || 'No signals available'}`
 
 /**
  * Enrich USPs with evidence from grounding sources
+ * Updated 2026-01-08: Support configurable confidence thresholds
  */
 function enrichUSPsWithEvidence(
   usps: Array<{
@@ -366,34 +369,48 @@ function enrichUSPsWithEvidence(
   groundingSources: GroundingSource[],
   groundingSignals: GroundingSignal[]
 ): UniqueSellingPoint[] {
-  return usps.map(usp => {
-    // Find relevant sources for this USP
-    const relevantSources = findRelevantSources(usp.feature, usp.category, groundingSources)
-    const relevantSignals = groundingSignals.filter(signal =>
-      usp.feature.toLowerCase().includes(signal.term.toLowerCase()) ||
-      usp.category.toLowerCase().includes(signal.term.toLowerCase())
-    )
+  return usps
+    .filter(usp => {
+      // Filter USPs based on configurable confidence threshold
+      const meetsThreshold = meetsConfidenceThreshold(usp.confidence, USP_CONFIG.MIN_CONFIDENCE_LEVEL)
+      if (!meetsThreshold) {
+        console.log(`[USP Extraction] Filtered out USP "${usp.feature}" (confidence: ${usp.confidence}, min required: ${USP_CONFIG.MIN_CONFIDENCE_LEVEL})`)
+      }
+      return meetsThreshold
+    })
+    .map(usp => {
+      // Find relevant sources for this USP
+      const relevantSources = findRelevantSources(usp.feature, usp.category, groundingSources)
+      const relevantSignals = groundingSignals.filter(signal =>
+        usp.feature.toLowerCase().includes(signal.term.toLowerCase()) ||
+        usp.category.toLowerCase().includes(signal.term.toLowerCase())
+      )
 
-    const evidence: USPEvidence = {
-      sources: relevantSources.map(s => s.uri),
-      quotes: [], // Would be populated from actual source content
-      searchQueries: relevantSignals.map(s => s.term),
-    }
+      const evidence: USPEvidence = {
+        sources: relevantSources.map(s => s.uri),
+        quotes: [], // Would be populated from actual source content
+        searchQueries: relevantSignals.map(s => s.term),
+      }
 
-    // Per 2-Stage Content Prioritization: ALL USPs must have HIGH confidence
-    // Video content = ground truth, so if USP was extracted, it's high confidence
-    // Grounding only supplements - never downgrades confidence
-    const adjustedConfidence: ConfidenceLevel = 'high'
+      // Preserve original confidence from LLM extraction
+      // Video-based USPs = high, Grounding-supplemented = medium
+      // Only upgrade confidence if evidence is found, never downgrade
+      let adjustedConfidence: ConfidenceLevel = usp.confidence
+      if (usp.confidence === 'medium' && relevantSources.length >= 2) {
+        // Upgrade to high if sufficient evidence found
+        adjustedConfidence = 'high'
+        console.log(`[USP Extraction] Upgraded USP "${usp.feature}" confidence: medium -> high (${relevantSources.length} sources found)`)
+      }
 
-    return {
-      feature: usp.feature,
-      category: usp.category,
-      differentiation: usp.differentiation,
-      userBenefit: usp.userBenefit,
-      evidence,
-      confidence: adjustedConfidence,
-    }
-  })
+      return {
+        feature: usp.feature,
+        category: usp.category,
+        differentiation: usp.differentiation,
+        userBenefit: usp.userBenefit,
+        evidence,
+        confidence: adjustedConfidence,
+      }
+    })
 }
 
 /**

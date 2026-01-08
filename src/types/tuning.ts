@@ -142,13 +142,15 @@ export const WEIGHT_LABELS: Record<keyof WeightValues, { label: string; descript
 }
 
 // Default weight values
+// Updated 2026-01-08: Increased USP coverage (30%), decreased grounding (15%)
+// Rationale: Brand USP should take priority over external grounding data
 export const DEFAULT_WEIGHTS: WeightValues = {
-  usp_coverage: 0.25,
-  grounding_score: 0.2,
-  semantic_similarity: 0.15,
-  anti_fabrication: 0.15,
-  keyword_density: 0.15,
-  structure_quality: 0.1,
+  usp_coverage: 0.30,           // USP 우선순위 증가 (25% → 30%)
+  grounding_score: 0.15,        // 그라운딩 점수 감소 (20% → 15%)
+  semantic_similarity: 0.15,    // 유지
+  anti_fabrication: 0.15,       // 유지
+  keyword_density: 0.15,        // 유지
+  structure_quality: 0.10,      // 유지
 }
 
 // Engine labels and colors for display

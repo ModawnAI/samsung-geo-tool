@@ -1,6 +1,8 @@
 /**
  * Grounding Quality Scoring (10pt metric)
  * Evaluates the quality and authority of grounding sources
+ *
+ * Updated 2026-01-08: Improved tier scoring with configurable weights
  */
 
 import type {
@@ -10,6 +12,7 @@ import type {
   UniqueSellingPoint,
 } from '@/types/geo-v2'
 import { SOURCE_AUTHORITY_TIERS } from '@/types/geo-v2'
+import { GROUNDING_CONFIG, getTierScoreConfig } from '@/lib/scoring/scoring-config'
 
 /**
  * Calculate comprehensive grounding quality score (0-10 points)
@@ -90,26 +93,38 @@ function calculateCitationDensityScore(citationPercentage: number): number {
 /**
  * Source Authority Score (0-4 points)
  * Based on quality tier of sources used
+ *
+ * Updated 2026-01-08: Use configurable tier scores for better balance
+ * - Tier 1 (Official Samsung): 1.2pts each, max 2.5pts
+ * - Tier 2 (Tech Media): 0.6pts each, max 1.2pts
+ * - Tier 3 (Community): 0.3pts each, max 0.5pts
  */
 function calculateSourceAuthorityScore(
   tier1Count: number,
   tier2Count: number,
   tier3Count: number
 ): number {
+  const tier1Config = GROUNDING_CONFIG.TIER_SCORES.tier1
+  const tier2Config = GROUNDING_CONFIG.TIER_SCORES.tier2
+  const tier3Config = GROUNDING_CONFIG.TIER_SCORES.tier3
+
   let score = 0
 
-  // Tier 1 sources (samsung.com, news.samsung.com) - 1.5pts each, max 3pts
-  score += Math.min(3, tier1Count * 1.5)
+  // Tier 1 sources (samsung.com, news.samsung.com)
+  const tier1Score = Math.min(tier1Config.maxPoints, tier1Count * tier1Config.pointsPerSource)
+  score += tier1Score
 
-  // Tier 2 sources (gsmarena, theverge, etc.) - 0.5pts each, max 1pt (if not already at 4)
-  if (score < 4) {
-    score += Math.min(1, tier2Count * 0.5)
-  }
+  // Tier 2 sources (gsmarena, theverge, etc.)
+  const tier2Score = Math.min(tier2Config.maxPoints, tier2Count * tier2Config.pointsPerSource)
+  score += tier2Score
 
-  // Tier 3 sources provide no additional score but don't penalize
-  // Having only tier 3 sources caps at 0.5pts
-  if (tier1Count === 0 && tier2Count === 0 && tier3Count > 0) {
-    score = 0.5
+  // Tier 3 sources (reddit, youtube, etc.) - now contributes points
+  const tier3Score = Math.min(tier3Config.maxPoints, tier3Count * tier3Config.pointsPerSource)
+  score += tier3Score
+
+  // Log source breakdown for debugging
+  if (tier1Count > 0 || tier2Count > 0 || tier3Count > 0) {
+    console.log(`[Grounding] Source Authority: T1=${tier1Count}(${tier1Score.toFixed(1)}pts) T2=${tier2Count}(${tier2Score.toFixed(1)}pts) T3=${tier3Count}(${tier3Score.toFixed(1)}pts) Total=${score.toFixed(1)}pts`)
   }
 
   // No sources = 0 points
@@ -151,6 +166,7 @@ function calculateCoverageScore(
 
 /**
  * Tier metadata for UI display and transparency
+ * Updated 2026-01-08: Reflects new configurable scoring
  */
 export const TIER_DESCRIPTIONS = {
   1: {
@@ -158,21 +174,21 @@ export const TIER_DESCRIPTIONS = {
     description: 'Direct Samsung sources with highest authority',
     icon: '🏢',
     color: 'green',
-    points: '1.5pts each (max 3pts)',
+    points: `${GROUNDING_CONFIG.TIER_SCORES.tier1.pointsPerSource}pts each (max ${GROUNDING_CONFIG.TIER_SCORES.tier1.maxPoints}pts)`,
   },
   2: {
     label: 'Tech Media',
     description: 'Trusted technology publications and news outlets',
     icon: '📰',
     color: 'blue',
-    points: '0.5pts each (max 1pt)',
+    points: `${GROUNDING_CONFIG.TIER_SCORES.tier2.pointsPerSource}pts each (max ${GROUNDING_CONFIG.TIER_SCORES.tier2.maxPoints}pts)`,
   },
   3: {
     label: 'Community',
     description: 'Social media and community-driven content',
     icon: '👥',
     color: 'yellow',
-    points: '0.5pts if no other sources',
+    points: `${GROUNDING_CONFIG.TIER_SCORES.tier3.pointsPerSource}pts each (max ${GROUNDING_CONFIG.TIER_SCORES.tier3.maxPoints}pts)`,
   },
   4: {
     label: 'Other',

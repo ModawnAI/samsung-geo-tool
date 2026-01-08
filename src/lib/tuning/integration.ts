@@ -25,6 +25,7 @@ import {
   type ScoreBreakdown,
 } from './weights-loader'
 import type { Engine, WeightValues } from '@/types/tuning'
+import { GEO_SCORE_CONFIG } from '@/lib/scoring/scoring-config'
 
 // ==========================================
 // CONFIGURATION TYPES
@@ -232,45 +233,49 @@ export interface RawGenerationScores {
 /**
  * Calculate final GEO score using loaded weights
  * Normalizes raw generation scores to weight metrics
+ *
+ * Updated 2026-01-08: Use centralized GEO_SCORE_CONFIG for normalization
  */
 export function calculateGEOScore(
   rawScores: RawGenerationScores,
   config: TuningConfig
 ): GEOScoreResult {
   const weights = config.weights.weights?.weights || getDefaultWeights()
+  const { NORMALIZATION, DEFAULT_ESTIMATES, OUTPUT_SCALE } = GEO_SCORE_CONFIG
 
   // Normalize raw scores to 0-1 scale and map to weight metrics
-  // Current scoring is out of various maxes, normalize to 0-1
+  // Using centralized configuration for normalization denominators
   const normalizedScores: Partial<Record<keyof WeightValues, number>> = {
     // Keyword density: 0-20 points -> 0-1
-    keyword_density: Math.min(1, (rawScores.keywordDensity || 0) / 20),
+    keyword_density: Math.min(1, (rawScores.keywordDensity || 0) / NORMALIZATION.keywordDensity),
 
     // Grounding: combine aiExposure (0-30) and groundingQuality (0-20)
     grounding_score: Math.min(1,
-      ((rawScores.aiExposure || 0) / 30 + (rawScores.groundingQuality || 0) / 20) / 2
+      ((rawScores.aiExposure || 0) / NORMALIZATION.aiExposure +
+       (rawScores.groundingQuality || 0) / NORMALIZATION.groundingQuality) / 2
     ),
 
     // Structure quality: combine question, sentence, length (each 0-15/20)
     structure_quality: Math.min(1,
-      ((rawScores.questionPatterns || 0) / 20 +
-       (rawScores.sentenceStructure || 0) / 15 +
-       (rawScores.lengthCompliance || 0) / 15) / 3
+      ((rawScores.questionPatterns || 0) / NORMALIZATION.questionPatterns +
+       (rawScores.sentenceStructure || 0) / NORMALIZATION.sentenceStructure +
+       (rawScores.lengthCompliance || 0) / NORMALIZATION.lengthCompliance) / 3
     ),
 
-    // USP coverage: direct if available, estimate from content otherwise
+    // USP coverage: direct if available, use configurable default estimate otherwise
     usp_coverage: rawScores.uspCoverage !== undefined
       ? Math.min(1, rawScores.uspCoverage)
-      : 0.7, // default estimate
+      : DEFAULT_ESTIMATES.uspCoverage,
 
     // Semantic similarity: direct if available
     semantic_similarity: rawScores.semanticSimilarity !== undefined
       ? Math.min(1, rawScores.semanticSimilarity)
-      : 0.75, // default estimate
+      : DEFAULT_ESTIMATES.semanticSimilarity,
 
     // Anti-fabrication: direct if available
     anti_fabrication: rawScores.antiFabrication !== undefined
       ? Math.min(1, rawScores.antiFabrication)
-      : 0.8, // default estimate (high because of guardrails)
+      : DEFAULT_ESTIMATES.antiFabrication,
   }
 
   const { breakdown, finalScore } = calculateScoreBreakdown(normalizedScores, weights)
@@ -278,7 +283,7 @@ export function calculateGEOScore(
   return {
     scores: normalizedScores,
     breakdown,
-    finalScore: Math.round(finalScore * 100), // Convert to 0-100 scale
+    finalScore: Math.round(finalScore * OUTPUT_SCALE), // Convert to 0-100 scale
     weightsVersionId: config.weights.weights?.id || null,
     weightsSource: config.weights.source,
   }
