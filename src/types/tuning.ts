@@ -133,12 +133,12 @@ export interface PromptTestResponse {
 
 // Weight labels for display
 export const WEIGHT_LABELS: Record<keyof WeightValues, { label: string; description: string }> = {
-  usp_coverage: { label: 'USP Coverage', description: 'How well key selling points are covered' },
-  grounding_score: { label: 'Grounding Score', description: 'Factual accuracy and citation quality' },
-  semantic_similarity: { label: 'Semantic Similarity', description: 'Content relevance to brief' },
-  anti_fabrication: { label: 'Anti-Fabrication', description: 'Prevention of hallucinated content' },
-  keyword_density: { label: 'Keyword Density', description: 'Target keyword presence' },
-  structure_quality: { label: 'Structure Quality', description: 'Content organization and format' },
+  usp_coverage: { label: 'USP 커버리지', description: '핵심 셀링 포인트가 얼마나 잘 다뤄지는지' },
+  grounding_score: { label: '그라운딩 점수', description: '사실 정확성과 인용 품질' },
+  semantic_similarity: { label: '의미적 유사성', description: '브리프에 대한 콘텐츠 관련성' },
+  anti_fabrication: { label: '허위 정보 방지', description: '허위 콘텐츠 생성 방지' },
+  keyword_density: { label: '키워드 밀도', description: '타겟 키워드 존재 여부' },
+  structure_quality: { label: '구조 품질', description: '콘텐츠 구성 및 형식' },
 }
 
 // Default weight values

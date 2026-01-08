@@ -468,7 +468,7 @@ export async function POST(request: NextRequest) {
       const cachedResult = getCachedGeneration<GEOv2GenerateResponse>(cacheKey)
       if (cachedResult) {
         const cacheStats = getGenerationCacheStats()
-        console.log(`[GEO v2] Cache HIT (${cacheStats.hitRate} rate, ${cacheStats.size}/${cacheStats.maxSize} entries)`)
+        console.log(`[GEO v2] 캐시 HIT (${cacheStats.hitRate} 비율, ${cacheStats.size}/${cacheStats.maxSize} 항목)`)
         return NextResponse.json({
           ...cachedResult,
           cached: true,
@@ -478,19 +478,19 @@ export async function POST(request: NextRequest) {
           },
         })
       }
-      console.log(`[GEO v2] Cache MISS - generating fresh content`)
+      console.log(`[GEO v2] 캐시 MISS - 새 콘텐츠 생성 중`)
     }
 
-    console.log(`[GEO v2] Starting pipeline: ${pipelineConfig}${isRegeneration ? ` (regeneration: ${regenerationFocus})` : ''}`)
-    console.log(`[GEO v2] Product: ${productName}, Keywords: ${keywords.length}`)
+    console.log(`[GEO v2] 파이프라인 시작: ${pipelineConfig}${isRegeneration ? ` (재생성: ${regenerationFocus})` : ''}`)
+    console.log(`[GEO v2] 제품: ${productName}, 키워드: ${keywords.length}개`)
 
     // ==========================================
     // LOAD TUNING CONFIGURATION
     // ==========================================
     const tuningConfig = await loadTuningConfig()
     const tuningConfigSummary = getTuningConfigSummary(tuningConfig)
-    console.log(`[GEO v2] Tuning config loaded: ${tuningConfig.source}`)
-    console.log(`[GEO v2] Prompts: ${tuningConfigSummary.promptsLoaded} from DB, Weights: ${tuningConfigSummary.weightsSource}`)
+    console.log(`[GEO v2] 튜닝 설정 로드됨: ${tuningConfig.source}`)
+    console.log(`[GEO v2] 프롬프트: DB에서 ${tuningConfigSummary.promptsLoaded}개, 가중치: ${tuningConfigSummary.weightsSource}`)
 
     // Track which prompt version was used for this generation
     let activePromptVersionId: string | null = null
@@ -530,11 +530,11 @@ export async function POST(request: NextRequest) {
           }),
     ])
 
-    console.log(`[GEO v2] Data fetched in ${Date.now() - startTime}ms`)
-    console.log(`[GEO v2] Grounding signals: ${groundingSignals.length}, Playbook chunks: ${playbookContext.length}`)
-    console.log(`[GEO v2] Samsung RAG context: ${samsungRAGContext.contentTypeExamples.length} content type, ${samsungRAGContext.qaFormatExamples.length} Q&A format, ${samsungRAGContext.hashtagExamples.length} hashtag examples`)
+    console.log(`[GEO v2] 데이터 가져오기 완료: ${Date.now() - startTime}ms`)
+    console.log(`[GEO v2] 그라운딩 신호: ${groundingSignals.length}개, 플레이북 청크: ${playbookContext.length}개`)
+    console.log(`[GEO v2] 삼성 RAG 컨텍스트: 콘텐츠 유형 ${samsungRAGContext.contentTypeExamples.length}개, Q&A 형식 ${samsungRAGContext.qaFormatExamples.length}개, 해시태그 예시 ${samsungRAGContext.hashtagExamples.length}개`)
     if (isRegeneration) {
-      console.log(`[GEO v2] Regeneration mode: enhancedGrounding=${enhancedGrounding}, enhancedUSP=${enhancedUSP}`)
+      console.log(`[GEO v2] 재생성 모드: enhancedGrounding=${enhancedGrounding}, enhancedUSP=${enhancedUSP}`)
     }
 
     if (!process.env.GEMINI_API_KEY) {
@@ -573,7 +573,7 @@ export async function POST(request: NextRequest) {
       ? descriptionGroundingSources
       : signalBasedSources
 
-    console.log(`[GEO v2] Description generated with ${descriptionGroundingSources.length} Gemini sources, ${signalBasedSources.length} signal-based sources`)
+    console.log(`[GEO v2] 설명 생성 완료: Gemini 소스 ${descriptionGroundingSources.length}개, 신호 기반 소스 ${signalBasedSources.length}개`)
 
     // ==========================================
     // STAGE 1.5: USP EXTRACTION
@@ -586,7 +586,7 @@ export async function POST(request: NextRequest) {
       groundingSources: combinedGroundingSources,
     })
 
-    console.log(`[GEO v2] USPs extracted: ${uspResult.usps.length}, Method: ${uspResult.extractionMethod}`)
+    console.log(`[GEO v2] USP 추출 완료: ${uspResult.usps.length}개, 방식: ${uspResult.extractionMethod}`)
 
     // ==========================================
     // STAGES 2-6: PARALLEL EXECUTION BLOCK
@@ -610,13 +610,13 @@ export async function POST(request: NextRequest) {
       generateKeywords(productName, srtContent, keywords, groundingSignals, language, tuningConfig),
     ])
 
-    console.log(`[GEO v2] Parallel stages completed in ${Date.now() - parallelStagesStart}ms`)
-    console.log(`[GEO v2] Chapters: ${chaptersResult.timestamps.split('\n').length} entries`)
-    console.log(`[GEO v2] FAQs: ${faqResult.faqs.length} Q&As`)
+    console.log(`[GEO v2] 병렬 단계 완료: ${Date.now() - parallelStagesStart}ms`)
+    console.log(`[GEO v2] 챕터: ${chaptersResult.timestamps.split('\n').length}개 항목`)
+    console.log(`[GEO v2] FAQ: ${faqResult.faqs.length}개 Q&A`)
     if (stepByStepResult) {
-      console.log(`[GEO v2] Step-by-step: ${stepByStepResult.steps.length} steps`)
+      console.log(`[GEO v2] 단계별 안내: ${stepByStepResult.steps.length}개 단계`)
     }
-    console.log(`[GEO v2] Case studies: ${caseStudiesResult.caseStudies.length} cases`)
+    console.log(`[GEO v2] 활용 사례: ${caseStudiesResult.caseStudies.length}개`)
 
     // ==========================================
     // STAGE 6.5: HASHTAG GENERATION
@@ -643,8 +643,8 @@ export async function POST(request: NextRequest) {
           samsungRAGContext.hashtagExamples
         )
 
-    console.log(`[GEO v2] Keywords: ${keywordsResult.product.length + keywordsResult.generic.length}`)
-    console.log(`[GEO v2] Hashtags: ${hashtagResult.hashtags.length} (${useFixedHashtags ? 'fixed' : 'AI-generated'})`)
+    console.log(`[GEO v2] 키워드: ${keywordsResult.product.length + keywordsResult.generic.length}개`)
+    console.log(`[GEO v2] 해시태그: ${hashtagResult.hashtags.length}개 (${useFixedHashtags ? '고정' : 'AI 생성'})`)
 
     // ==========================================
     // STAGE 7: GROUNDING AGGREGATION
@@ -710,11 +710,11 @@ export async function POST(request: NextRequest) {
     // Log keyword density details
     if (contentQualityScores.keywordDensity) {
       const kd = contentQualityScores.keywordDensity
-      console.log(`[GEO v2] Keyword density - Score: ${kd.score.toFixed(2)}, Density: ${kd.densityPercentage.toFixed(2)}%, Occurrences: ${kd.totalKeywordOccurrences}/${kd.totalWordCount} words`)
-      console.log(`[GEO v2] Keyword breakdown: ${kd.keywordBreakdown.map(k => `${k.keyword}(${k.occurrences})`).join(', ')}`)
+      console.log(`[GEO v2] 키워드 밀도 - 점수: ${kd.score.toFixed(2)}, 밀도: ${kd.densityPercentage.toFixed(2)}%, 출현: ${kd.totalKeywordOccurrences}/${kd.totalWordCount} 단어`)
+      console.log(`[GEO v2] 키워드 상세: ${kd.keywordBreakdown.map(k => `${k.keyword}(${k.occurrences})`).join(', ')}`)
     }
 
-    console.log(`[GEO v2] Content quality - Semantic similarity: ${contentQualityScores.semanticSimilarity.score.toFixed(2)}, Anti-fabrication: ${contentQualityScores.antiFabrication.score.toFixed(2)} (${contentQualityScores.antiFabrication.violationCount} violations)`)
+    console.log(`[GEO v2] 콘텐츠 품질 - 의미 유사도: ${contentQualityScores.semanticSimilarity.score.toFixed(2)}, 허위 정보 방지: ${contentQualityScores.antiFabrication.score.toFixed(2)} (${contentQualityScores.antiFabrication.violationCount}개 위반)`)
 
     // Calculate GEO score using tuning weights
     const rawGenerationScores: RawGenerationScores = {
@@ -753,9 +753,9 @@ export async function POST(request: NextRequest) {
           ) / 100,
     }
 
-    console.log(`[GEO v2] Final score: ${finalScore.total}/100 (${geoScoreResult.weightsSource} weights)`)
-    console.log(`[GEO v2] GEO breakdown: ${geoScoreResult.breakdown.map(b => `${b.label}: ${b.weightedScore.toFixed(2)}`).join(', ')}`)
-    console.log(`[GEO v2] Pipeline completed in ${Date.now() - startTime}ms`)
+    console.log(`[GEO v2] 최종 점수: ${finalScore.total}/100 (${geoScoreResult.weightsSource} 가중치)`)
+    console.log(`[GEO v2] GEO 상세: ${geoScoreResult.breakdown.map(b => `${b.label}: ${b.weightedScore.toFixed(2)}`).join(', ')}`)
+    console.log(`[GEO v2] 파이프라인 완료: ${Date.now() - startTime}ms`)
 
     // ==========================================
     // BUILD RESPONSE
@@ -849,12 +849,12 @@ export async function POST(request: NextRequest) {
     // ==========================================
     if (!isRegeneration) {
       cacheGeneration(cacheKey, response)
-      console.log(`[GEO v2] Result cached for future requests`)
+      console.log(`[GEO v2] 결과가 캐시에 저장됨`)
     }
 
     return NextResponse.json(response)
   } catch (error) {
-    console.error('[GEO v2] Pipeline error:', error)
+    console.error('[GEO v2] 파이프라인 오류:', error)
 
     // Log failed generation
     const totalDurationMs = Date.now() - startTime
@@ -940,7 +940,7 @@ async function generateDescription(
     },
   })
 
-  console.log(`[Stage:Description] Using ${source} prompt${promptVersionId ? ` (v${promptVersionId.slice(-8)})` : ''}`)
+  console.log(`[단계:설명] ${source} 프롬프트 사용${promptVersionId ? ` (v${promptVersionId.slice(-8)})` : ''}`)
 
   // Build Samsung RAG examples section if available
   const ragExamplesSection = samsungRAGContext && (
@@ -1002,21 +1002,21 @@ OUTPUT FORMAT (JSON):
     )
 
     // Debug: Log raw response structure
-    console.log('[Description] Raw response keys:', Object.keys(response))
-    console.log('[Description] Response text type:', typeof response.text)
-    console.log('[Description] Response text length:', response.text?.length || 0)
-    console.log('[Description] Response text preview:', response.text?.slice(0, 200))
+    console.log('[설명] 응답 키:', Object.keys(response))
+    console.log('[설명] 응답 텍스트 유형:', typeof response.text)
+    console.log('[설명] 응답 텍스트 길이:', response.text?.length || 0)
+    console.log('[설명] 응답 미리보기:', response.text?.slice(0, 200))
 
     // Check for candidates and error information
     const responseAny = response as unknown as Record<string, unknown>
     if (responseAny.candidates) {
-      console.log('[Description] Candidates:', JSON.stringify(responseAny.candidates, null, 2).slice(0, 500))
+      console.log('[설명] 후보:', JSON.stringify(responseAny.candidates, null, 2).slice(0, 500))
     }
     if (responseAny.promptFeedback) {
-      console.log('[Description] Prompt feedback:', JSON.stringify(responseAny.promptFeedback))
+      console.log('[설명] 프롬프트 피드백:', JSON.stringify(responseAny.promptFeedback))
     }
     if (responseAny.error) {
-      console.error('[Description] API Error:', JSON.stringify(responseAny.error))
+      console.error('[설명] API 오류:', JSON.stringify(responseAny.error))
     }
 
     const content = response.text
@@ -1030,7 +1030,7 @@ OUTPUT FORMAT (JSON):
     // Sanitize for fabrications
     const sanitized = sanitizeContent(fullDescription)
     if (sanitized.wasModified) {
-      console.log(`[Description] Sanitized ${sanitized.modifications.length} potential fabrications`)
+      console.log(`[설명] ${sanitized.modifications.length}개의 잠재적 허위 정보 수정됨`)
     }
 
     // Extract grounding chunks from response
@@ -1051,7 +1051,7 @@ OUTPUT FORMAT (JSON):
       groundingChunks,
     }
   } catch (error) {
-    console.error('[Description] Generation failed:', error)
+    console.error('[설명] 생성 실패:', error)
     return {
       description: {
         preview: `${productName}의 모든 것을 알아보세요.`,
@@ -1084,7 +1084,7 @@ async function generateChapters(
     },
   })
 
-  console.log(`[Stage:Chapters] Using ${source} prompt${promptVersionId ? ` (v${promptVersionId.slice(-8)})` : ''}`)
+  console.log(`[단계:챕터] ${source} 프롬프트 사용${promptVersionId ? ` (v${promptVersionId.slice(-8)})` : ''}`)
 
   try {
     const response = await withRetry(
@@ -1116,10 +1116,10 @@ OUTPUT FORMAT (JSON):
     )
 
     // Debug: Log raw response structure
-    console.log('[Chapters] Raw response keys:', Object.keys(response))
-    console.log('[Chapters] Response text type:', typeof response.text)
-    console.log('[Chapters] Response text length:', response.text?.length || 0)
-    console.log('[Chapters] Response text preview:', response.text?.slice(0, 200))
+    console.log('[챕터] 응답 키:', Object.keys(response))
+    console.log('[챕터] 응답 텍스트 유형:', typeof response.text)
+    console.log('[챕터] 응답 텍스트 길이:', response.text?.length || 0)
+    console.log('[챕터] 응답 미리보기:', response.text?.slice(0, 200))
 
     const content = response.text
     if (!content) throw new Error('No chapters generated')
@@ -1130,7 +1130,7 @@ OUTPUT FORMAT (JSON):
       autoGenerated: true,
     }
   } catch (error) {
-    console.error('[Chapters] Generation failed:', error)
+    console.error('[챕터] 생성 실패:', error)
     return {
       timestamps: `0:00 ${productName} 소개\n0:30 주요 기능\n1:00 상세 리뷰\n2:00 총평`,
       autoGenerated: true,
