@@ -1,0 +1,21 @@
+Save Configuration as Template
+Save your current settings for quick reuse in future generations.
+
+e.g., Galaxy S25 Launch Campaign
+Brief description of when to use this template...
+
+Product
+Galaxy S25 Ultra
+
+
+Keywords
+ProVisual Engine with 200MP main sensor and advanced AI photo processing
+S Pen with Air Command gestures and 2.8ms latency for natural writing experience
+Titanium frame with Corning Gorilla Armor 2 for ultimate durability
+
+Campaign Tag
+Spring
+
+Templates can be loaded from the Product Selection step to quickly apply saved configurations.
+
+Cancel

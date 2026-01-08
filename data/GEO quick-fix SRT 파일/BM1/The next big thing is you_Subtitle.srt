@@ -1,0 +1,3 @@
+﻿1
+00:00:43,500 --> 00:00:47.000
+"Move my next schedule to tomorrow noon and send it to Jin."

@@ -1,0 +1,31 @@
+﻿1
+00:00:08,320 --> 00:00:10,280
+Can you help me study this?
+
+2
+00:00:13,240 --> 00:00:14,920
+Happy to! Let’s start.
+
+3
+00:00:14,920 --> 00:00:16,040
+What are mutations?
+
+4
+00:00:16,640 --> 00:00:17,880
+I… don’t know.
+
+5
+00:00:17,880 --> 00:00:19,600
+Can you explain it to me in a simple way?
+
+6
+00:00:20,120 --> 00:00:23,000
+Imagine mutations as typos in your body’s DNA.
+
+7
+00:00:23,360 --> 00:00:24,400
+What causes mutations?
+
+8
+00:00:24,400 --> 00:00:27,000
+Mutations happen for a few reasons…

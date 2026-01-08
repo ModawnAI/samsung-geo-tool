@@ -1,0 +1,15 @@
+﻿1
+00:00:09,240 --> 00:00:10,120
+Easy.
+
+2
+00:00:10,120 --> 00:00:12,160
+Find a pet-friendly Italian restaurant
+
+3
+00:00:12,160 --> 00:00:13,760
+with outdoor seating nearby
+
+4
+00:00:13,760 --> 00:00:15,520
+and text it to Luca.

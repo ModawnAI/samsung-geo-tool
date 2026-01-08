@@ -1,0 +1,19 @@
+﻿1
+00:00:00,720 --> 00:00:03,560
+... and that's ten fun rainy day activities in the city. 
+
+2
+00:00:03,560 --> 00:00:05,360
+Where's that?
+
+3
+00:00:09,080 --> 00:00:12,240
+List the places mentioned in this video and save it as a note.
+
+4
+00:00:26,720 --> 00:00:28,400
+Wow... Cool!
+
+5
+00:00:30,200 --> 00:00:31,400
+Museum sounds good!
