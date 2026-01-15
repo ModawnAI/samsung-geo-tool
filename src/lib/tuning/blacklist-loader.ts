@@ -38,8 +38,8 @@ export async function loadActiveBlacklist(): Promise<BlacklistLoaderResult> {
     const supabase = await createClient()
 
     // Fetch active blacklist config
-    const { data, error } = await supabase
-      .from('domain_blacklist')
+    const { data, error } = await (supabase
+      .from('domain_blacklist') as any)
       .select('*')
       .eq('is_active', true)
       .limit(1)
@@ -191,8 +191,8 @@ export async function getAllBlacklistConfigs(): Promise<{
   try {
     const supabase = await createClient()
 
-    const { data, error } = await supabase
-      .from('domain_blacklist')
+    const { data, error } = await (supabase
+      .from('domain_blacklist') as any)
       .select('*')
       .order('created_at', { ascending: false })
 
@@ -220,8 +220,8 @@ export async function createBlacklistConfig(
   try {
     const supabase = await createClient()
 
-    const { data, error } = await supabase
-      .from('domain_blacklist')
+    const { data, error } = await (supabase
+      .from('domain_blacklist') as any)
       .insert({
         name,
         version,
@@ -254,14 +254,14 @@ export async function activateBlacklistConfig(
     const supabase = await createClient()
 
     // Deactivate all existing configs
-    await supabase
-      .from('domain_blacklist')
+    await (supabase
+      .from('domain_blacklist') as any)
       .update({ is_active: false })
       .neq('id', configId)
 
     // Activate the selected config
-    const { error } = await supabase
-      .from('domain_blacklist')
+    const { error } = await (supabase
+      .from('domain_blacklist') as any)
       .update({ is_active: true, updated_at: new Date().toISOString() })
       .eq('id', configId)
 
@@ -289,8 +289,8 @@ export async function deactivateBlacklistConfig(
   try {
     const supabase = await createClient()
 
-    const { error } = await supabase
-      .from('domain_blacklist')
+    const { error } = await (supabase
+      .from('domain_blacklist') as any)
       .update({ is_active: false, updated_at: new Date().toISOString() })
       .eq('id', configId)
 
@@ -318,8 +318,8 @@ export async function deleteBlacklistConfig(
   try {
     const supabase = await createClient()
 
-    const { error } = await supabase
-      .from('domain_blacklist')
+    const { error } = await (supabase
+      .from('domain_blacklist') as any)
       .delete()
       .eq('id', configId)
 
@@ -348,8 +348,8 @@ export async function updateBlacklistDomains(
   try {
     const supabase = await createClient()
 
-    const { error } = await supabase
-      .from('domain_blacklist')
+    const { error } = await (supabase
+      .from('domain_blacklist') as any)
       .update({ domains, updated_at: new Date().toISOString() })
       .eq('id', configId)
 

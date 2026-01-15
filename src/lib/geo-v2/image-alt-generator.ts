@@ -102,20 +102,21 @@ export async function generateImageAltTexts(
     })
 
     const responseText = response.text || ''
-    const parsed = safeJsonParse(responseText)
+    const parsed = safeJsonParse<{ templates?: unknown[] }>(responseText, { templates: [] }, 'ImageAltGenerator')
 
-    if (!parsed || !parsed.templates || !Array.isArray(parsed.templates)) {
+    if (!parsed || !parsed.templates || !Array.isArray(parsed.templates) || parsed.templates.length === 0) {
       console.error('[ImageAlt] Invalid response structure:', responseText.slice(0, 200))
       return createFallbackResult(productName, keywords)
     }
 
     // Process and score templates
-    const templates: ImageAltTemplate[] = parsed.templates.map((template: {
+    interface RawTemplate {
       category: ImageCategory
       altTextKo: string
       altTextEn: string
       keywords: string[]
-    }) => {
+    }
+    const templates: ImageAltTemplate[] = (parsed.templates as RawTemplate[]).map((template) => {
       const altTextKo = template.altTextKo || ''
       const altTextEn = template.altTextEn || ''
 

@@ -277,6 +277,12 @@ export interface TranslationDictionary {
       activeBrief: string
       noBriefFound: string
       nonProductSelected: string
+      productContent: string
+      productsFiltered: string
+      source: string
+      useAutoExtraction: string
+      selectBrief: string
+      selectCategory: string
     }
     // SRT Input
     srtInput: {
@@ -302,6 +308,38 @@ export interface TranslationDictionary {
       wordsTip: string
       preview: string
       moreLines: string
+      contentInputs: string
+      atLeastOneRequired: string
+      oneInputProvided: string
+      multipleInputsProvided: string
+      noInputYet: string
+      howToUse: string
+      scenario1Title: string
+      scenario1Desc: string
+      scenario2Title: string
+      scenario2Desc: string
+      scenario3Title: string
+      scenario3Desc: string
+      priorityInfo: string
+      youtubeUrlPurpose: string
+      inputComplete: string
+      optional: string
+      srtUploadPurpose: string
+      uploaded: string
+      clickToReupload: string
+      textInputPurpose: string
+      fileUsed: string
+      textInputHint: string
+      validText: string
+      inputSummary: string
+      youtubeUrlProvided: string
+      youtubeUrlNotProvided: string
+      srtProvided: string
+      textProvided: string
+      srtTextNotProvided: string
+      bestQualityHint: string
+      urlOnlyHint: string
+      textOnlyHint: string
     }
     // Keyword selector
     keywordSelector: {

@@ -448,6 +448,12 @@ export function ProductSelector() {
       return
     }
 
+    // Validate category is selected
+    if (!categoryId) {
+      toast.error('카테고리를 먼저 선택해주세요')
+      return
+    }
+
     setAddingToQueue(true)
 
     try {
@@ -603,7 +609,7 @@ export function ProductSelector() {
       <div className="relative">
         <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder={t.generate.productSelector.searchAllProducts || '전체 제품 검색...'}
+          placeholder={t.generate.productSelector.searchProducts || '전체 제품 검색...'}
           value={globalSearch}
           onChange={(e) => setGlobalSearch(e.target.value)}
           className="pl-9 h-11"

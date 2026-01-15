@@ -80,8 +80,8 @@ export async function POST(request: NextRequest) {
       created_by: user.id,
     }
 
-    const { data, error } = await supabase
-      .from('domain_blacklist')
+    const { data, error } = await (supabase
+      .from('domain_blacklist') as any)
       .insert(insertData)
       .select()
       .single()
@@ -120,8 +120,8 @@ export async function PATCH(request: NextRequest) {
 
     // If setting this config as active, deactivate all others
     if (is_active === true) {
-      await supabase
-        .from('domain_blacklist')
+      await (supabase
+        .from('domain_blacklist') as any)
         .update({ is_active: false })
         .eq('is_active', true)
         .neq('id', id)
@@ -145,8 +145,8 @@ export async function PATCH(request: NextRequest) {
       updateData.domains = validatedDomains
     }
 
-    const { data, error } = await supabase
-      .from('domain_blacklist')
+    const { data, error } = await (supabase
+      .from('domain_blacklist') as any)
       .update(updateData)
       .eq('id', id)
       .select()
