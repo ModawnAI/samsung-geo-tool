@@ -38,7 +38,8 @@ const navItemsConfig = [
   { href: '/history', labelKey: 'history' as const, icon: ClockCounterClockwise },
   { href: '/briefs', labelKey: 'briefs' as const, icon: FileText },
   { href: '/analytics', labelKey: 'analytics' as const, icon: ChartLineUp },
-  { href: '/tuning', labelKey: 'tuning' as const, icon: Sliders },
+  // Hidden until after Unpacked - may re-enable later
+  // { href: '/tuning', labelKey: 'tuning' as const, icon: Sliders },
   { href: '/activity-logs', labelKey: 'activityLogs' as const, icon: ListBullets },
 ]
 

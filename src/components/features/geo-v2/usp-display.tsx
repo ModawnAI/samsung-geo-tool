@@ -16,7 +16,7 @@ import {
   CaretUp,
 } from '@phosphor-icons/react'
 import { useState } from 'react'
-import { cn } from '@/lib/utils'
+import { cn, normalizeUrl } from '@/lib/utils'
 
 interface USPDisplayProps {
   uspResult: USPExtractionResult
@@ -185,11 +185,16 @@ function USPCard({
                 </h5>
                 <div className="flex flex-wrap gap-1">
                   {usp.evidence.sources.slice(0, 5).map((source, i) => {
-                    const domain = new URL(source).hostname.replace('www.', '')
+                    let domain = source
+                    try {
+                      domain = new URL(normalizeUrl(source)).hostname.replace('www.', '')
+                    } catch {
+                      // Keep original if not a valid URL
+                    }
                     return (
                       <a
                         key={i}
-                        href={source}
+                        href={normalizeUrl(source)}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={() => onSourceClick?.(source, domain)}
@@ -233,28 +238,7 @@ export function USPDisplay({ uspResult, onSourceClick }: USPDisplayProps) {
             >
               {uspResult.extractionMethod === 'grounded' ? '🔍 Grounded' : '✨ Generative'}
             </Badge>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      'text-xs',
-                      uspResult.groundingQuality >= 70
-                        ? 'text-green-600'
-                        : uspResult.groundingQuality >= 40
-                        ? 'text-amber-600'
-                        : 'text-red-600'
-                    )}
-                  >
-                    품질: {uspResult.groundingQuality}%
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Grounding quality score based on source verification</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            {/* groundingQuality badge hidden - simplifying UI before Unpacked */}
           </div>
         </div>
       </CardHeader>

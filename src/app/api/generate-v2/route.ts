@@ -61,6 +61,7 @@ import type {
   PlaybookSearchResult,
 } from '@/types/playbook'
 import { calculateContentQualityScores } from '@/lib/scoring/content-quality'
+import { generateImageAltTexts } from '@/lib/geo-v2/image-alt-generator'
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
 
@@ -647,6 +648,19 @@ export async function POST(request: NextRequest) {
     console.log(`[GEO v2] 해시태그: ${hashtagResult.hashtags.length}개 (${useFixedHashtags ? '고정' : 'AI 생성'})`)
 
     // ==========================================
+    // STAGE 6.6: IMAGE ALT TEXT GENERATION
+    // ==========================================
+    const imageAltResult = await generateImageAltTexts({
+      productName,
+      productDescription: descriptionResult.description.full,
+      usps: uspResult.usps,
+      keywords,
+      language,
+    })
+
+    console.log(`[GEO v2] 이미지 Alt 텍스트: ${imageAltResult.totalTemplates}개 템플릿, 평균 SEO 점수: ${imageAltResult.metadata.avgSeoScore}`)
+
+    // ==========================================
     // STAGE 7: GROUNDING AGGREGATION
     // ==========================================
     const stageGroundingData = [
@@ -769,9 +783,11 @@ export async function POST(request: NextRequest) {
       caseStudies: caseStudiesResult,
       keywords: keywordsResult,
       hashtags: hashtagResult.hashtags,
+      isFixedHashtags: useFixedHashtags && fixedHashtags.length > 0,
       hashtagCategories: hashtagResult.categories,
       finalScore,
       groundingMetadata,
+      imageAltResult,
       // Include programmatic keyword density breakdown for transparency
       keywordDensityDetails: contentQualityScores.keywordDensity ? {
         score: contentQualityScores.keywordDensity.score,
@@ -966,7 +982,7 @@ ${samsungRAGContext.correctedExamples.slice(0, 2).map((ex, i) => `Corrected Exam
   // User prompt contains ONLY runtime context - all instructions are in systemInstruction
   const userPrompt = `Generate optimized description for ${productName}:
 
-## VIDEO TRANSCRIPT
+## VIDEO TRANSCRIPT (CRITICAL: PRESERVE ORIGINAL TONE & MANNER)
 ${srtContent.slice(0, 3000)}
 
 ## EXISTING DESCRIPTION (if any)
@@ -978,10 +994,28 @@ ${keywords.join(', ')}
 ## USER INTENT SIGNALS
 ${groundingSignals.slice(0, 5).map(s => `- ${s.term} (${s.score}%)`).join('\n')}
 ${ragExamplesSection}
+
+## CRITICAL INSTRUCTIONS
+1. **톤 & 매너 보존 (TONE & MANNER PRESERVATION)**:
+   - 원본 SRT의 말투, 문체, 어조를 **그대로** 유지하세요
+   - 형식적/비형식적 언어 스타일을 변경하지 마세요
+   - 오직 GEO 강화 요소(키워드, 검색 최적화)만 자연스럽게 추가하세요
+   - 원본의 감정적 톤(친근함, 전문적임, 열정적임 등)을 유지하세요
+
+2. **줄바꿈 (LINE BREAKS)**:
+   - 가독성을 위해 문단별로 적절히 줄바꿈(\\n\\n)을 포함하세요
+   - 3-4문장마다 새 문단으로 구분하세요
+   - 주요 특징/기능 소개 전후로 줄바꿈을 넣으세요
+
+3. **GEO 강화 요소만 추가**:
+   - 타겟 키워드를 자연스럽게 포함
+   - 검색 의도에 맞는 문구 추가
+   - 원본 내용을 과도하게 변경하지 마세요
+
 OUTPUT FORMAT (JSON):
 {
   "preview": "exact first 130 characters (110-130 chars, must contain product name + key feature + benefit)",
-  "full": "complete description without timestamps/FAQ/hashtags (300-1000 chars)",
+  "full": "complete description with proper line breaks (\\n\\n between paragraphs), preserving original tone, 300-1000 chars",
   "vanityLinks": ["suggested vanity link name (e.g., ZFlip7_Intro_yt)"]
 }`
 

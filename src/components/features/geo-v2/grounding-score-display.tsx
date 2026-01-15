@@ -14,7 +14,7 @@ import {
   Globe,
   ArrowSquareOut,
 } from '@phosphor-icons/react'
-import { cn } from '@/lib/utils'
+import { cn, normalizeUrl } from '@/lib/utils'
 import { trackSourceClick } from '@/lib/geo-v2/analytics'
 
 interface GroundingScoreDisplayProps {
@@ -110,9 +110,16 @@ function SourceLink({
     trackSourceClick(source.uri, source.title, section)
   }
 
+  let hostname = source.uri
+  try {
+    hostname = new URL(normalizeUrl(source.uri)).hostname.replace('www.', '')
+  } catch {
+    // Keep original if not a valid URL
+  }
+
   return (
     <a
-      href={source.uri}
+      href={normalizeUrl(source.uri)}
       target="_blank"
       rel="noopener noreferrer"
       onClick={handleClick}
@@ -138,7 +145,7 @@ function SourceLink({
           </div>
           <p className="text-sm font-medium truncate">{source.title}</p>
           <p className="text-xs text-muted-foreground truncate">
-            {new URL(source.uri).hostname.replace('www.', '')}
+            {hostname}
           </p>
         </div>
         <ArrowSquareOut className="h-4 w-4 text-muted-foreground flex-shrink-0" />

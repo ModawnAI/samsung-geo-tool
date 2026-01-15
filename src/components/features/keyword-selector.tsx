@@ -29,14 +29,21 @@ import {
   Globe,
   CheckCircle,
   Lightning,
+  CaretDown,
+  CaretUp,
+  ArrowSquareOut,
+  Copy,
+  Check,
 } from '@phosphor-icons/react'
-import { cn } from '@/lib/utils'
+import { cn, normalizeUrl } from '@/lib/utils'
 import { ICON_SIZES } from '@/lib/constants/ui'
 import { SOURCE_AUTHORITY_TIERS } from '@/types/geo-v2'
 import { SaveTemplateDialog } from './template-manager'
+import { TierExplanationDialog } from './geo-v2/tier-explanation-dialog'
 
 // Source tier utilities
-function getSourceTier(domain: string): 1 | 2 | 3 | 4 {
+function getSourceTier(domain: string | undefined | null): 1 | 2 | 3 | 4 {
+  if (!domain || typeof domain !== 'string') return 4
   const domainLower = domain.toLowerCase()
   if (SOURCE_AUTHORITY_TIERS.tier1.some(d => domainLower.includes(d))) return 1
   if (SOURCE_AUTHORITY_TIERS.tier2.some(d => domainLower.includes(d))) return 2
@@ -71,7 +78,31 @@ export function KeywordSelector() {
   const setIsGroundingLoading = useGenerationStore((state) => state.setIsGroundingLoading)
 
   const [error, setError] = useState<string | null>(null)
+  const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set())
+  const [copiedUrl, setCopiedUrl] = useState<string | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
+
+  const toggleExpanded = useCallback((index: number) => {
+    setExpandedItems(prev => {
+      const next = new Set(prev)
+      if (next.has(index)) {
+        next.delete(index)
+      } else {
+        next.add(index)
+      }
+      return next
+    })
+  }, [])
+
+  const handleCopyUrl = useCallback(async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopiedUrl(url)
+      setTimeout(() => setCopiedUrl(null), 2000)
+    } catch (err) {
+      console.error('Failed to copy:', err)
+    }
+  }, [])
 
   // Track if we've auto-run grounding this session
   const hasAutoRun = useRef(false)
@@ -181,13 +212,16 @@ export function KeywordSelector() {
         {/* Grounding Results */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <TrendUp className="h-4 w-4" />
-              {t.generate.keywordSelector.groundingResults}
-              <span className="text-muted-foreground font-normal text-sm">
-                ({t.generate.keywordSelector.userInterest})
-              </span>
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <TrendUp className="h-4 w-4" />
+                {t.generate.keywordSelector.groundingResults}
+                <span className="text-muted-foreground font-normal text-sm">
+                  ({t.generate.keywordSelector.userInterest})
+                </span>
+              </CardTitle>
+              <TierExplanationDialog language="ko" />
+            </div>
           </CardHeader>
           <CardContent>
             {isGroundingLoading ? (
@@ -201,63 +235,158 @@ export function KeywordSelector() {
                 <div className="space-y-3">
                   {groundingKeywords.map((kw, i) => {
                     const recommendation = getScoreRecommendation(kw.score)
-                    const bestTier = Math.min(...kw.sources.map(s => getSourceTier(s))) as 1 | 2 | 3 | 4
+                    // Use pre-computed tier from GroundingSource objects
+                    const bestTier = kw.sources.length > 0
+                      ? Math.min(...kw.sources.map(s => s.tier)) as 1 | 2 | 3 | 4
+                      : 4
                     const tierConfig = TIER_CONFIG[bestTier]
                     const TierIcon = tierConfig.icon
+
+                    const isExpanded = expandedItems.has(i)
 
                     return (
                       <div
                         key={i}
                         className={cn(
-                          "p-3 rounded-lg border transition-all",
+                          "rounded-lg border transition-all",
                           recommendation.level === 'high' && "border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-900/20",
                           recommendation.level === 'medium' && "border-yellow-200 bg-yellow-50/50 dark:border-yellow-800 dark:bg-yellow-900/20",
                           recommendation.level === 'low' && "border-gray-200 bg-gray-50/50 dark:border-gray-700 dark:bg-gray-800/20"
                         )}
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className={cn(
-                              "flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
-                              recommendation.level === 'high' && "bg-green-500 text-white",
-                              recommendation.level === 'medium' && "bg-yellow-500 text-white",
-                              recommendation.level === 'low' && "bg-gray-400 text-white"
-                            )}>
-                              {i + 1}
-                            </span>
-                            <span className="font-medium truncate">{kw.term}</span>
+                        <button
+                          type="button"
+                          onClick={() => toggleExpanded(i)}
+                          className="w-full p-3 text-left"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className={cn(
+                                "flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
+                                recommendation.level === 'high' && "bg-green-500 text-white",
+                                recommendation.level === 'medium' && "bg-yellow-500 text-white",
+                                recommendation.level === 'low' && "bg-gray-400 text-white"
+                              )}>
+                                {i + 1}
+                              </span>
+                              <span className="font-medium truncate">{kw.term}</span>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant="outline" className={cn("text-xs", tierConfig.color)}>
+                                    <TierIcon className="h-3 w-3 mr-1" />
+                                    {tierConfig.label}
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="font-medium">{tierConfig.description}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                              <span className={cn(
+                                "text-sm font-bold tabular-nums",
+                                recommendation.level === 'high' && "text-green-600 dark:text-green-400",
+                                recommendation.level === 'medium' && "text-yellow-600 dark:text-yellow-400",
+                                recommendation.level === 'low' && "text-gray-500"
+                              )}>
+                                {kw.score}
+                              </span>
+                              {isExpanded ? (
+                                <CaretUp className="h-4 w-4 text-muted-foreground" />
+                              ) : (
+                                <CaretDown className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Badge variant="outline" className={cn("text-xs", tierConfig.color)}>
-                                  <TierIcon className="h-3 w-3 mr-1" />
-                                  {tierConfig.label}
-                                </Badge>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p className="font-medium">{tierConfig.description}</p>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  Sources: {kw.sources.slice(0, 2).join(', ')}
-                                </p>
-                              </TooltipContent>
-                            </Tooltip>
-                            <span className={cn(
-                              "text-sm font-bold tabular-nums",
-                              recommendation.level === 'high' && "text-green-600 dark:text-green-400",
-                              recommendation.level === 'medium' && "text-yellow-600 dark:text-yellow-400",
-                              recommendation.level === 'low' && "text-gray-500"
-                            )}>
-                              {kw.score}
+                          <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
+                            {recommendation.level === 'high' && <Lightning className="h-3 w-3 text-green-500" weight="fill" />}
+                            {recommendation.level === 'medium' && <CheckCircle className="h-3 w-3 text-yellow-500" />}
+                            {recommendation.level === 'low' && <Info className="h-3 w-3" />}
+                            <span>{recommendation.message}</span>
+                            <span className="ml-auto text-muted-foreground">
+                              {kw.sources.length}개 소스
                             </span>
                           </div>
-                        </div>
-                        <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
-                          {recommendation.level === 'high' && <Lightning className="h-3 w-3 text-green-500" weight="fill" />}
-                          {recommendation.level === 'medium' && <CheckCircle className="h-3 w-3 text-yellow-500" />}
-                          {recommendation.level === 'low' && <Info className="h-3 w-3" />}
-                          <span>{recommendation.message}</span>
-                        </div>
+                        </button>
+
+                        {/* Expanded Source List */}
+                        {isExpanded && kw.sources.length > 0 && (
+                          <div className="px-3 pb-3 pt-0 border-t border-dashed mt-1">
+                            <p className="text-xs font-medium text-muted-foreground mt-2 mb-2">
+                              그라운딩 소스 ({kw.sources.length})
+                            </p>
+                            <div className="space-y-1.5">
+                              {kw.sources.map((source, sIdx) => {
+                                // source is now GroundingSource object with {uri, title, tier}
+                                const sourceTierConfig = TIER_CONFIG[source.tier]
+                                const SourceTierIcon = sourceTierConfig.icon
+                                let hostname = source.uri
+                                try {
+                                  hostname = new URL(source.uri).hostname.replace('www.', '')
+                                } catch {
+                                  // Keep original if not a valid URL
+                                }
+
+                                return (
+                                  <div
+                                    key={sIdx}
+                                    className="flex items-center gap-2 p-2 rounded bg-background/50 text-xs group"
+                                  >
+                                    <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0", sourceTierConfig.color)}>
+                                      <SourceTierIcon className="h-2.5 w-2.5" />
+                                    </Badge>
+                                    <div className="flex flex-col flex-1 min-w-0">
+                                      {source.title && (
+                                        <span className="truncate text-muted-foreground">{source.title}</span>
+                                      )}
+                                      <span className="font-mono truncate">{hostname}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-6 w-6"
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              handleCopyUrl(source.uri)
+                                            }}
+                                          >
+                                            {copiedUrl === source.uri ? (
+                                              <Check className="h-3 w-3 text-green-600" />
+                                            ) : (
+                                              <Copy className="h-3 w-3" />
+                                            )}
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>{copiedUrl === source.uri ? '복사됨' : 'URL 복사'}</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <a
+                                            href={normalizeUrl(source.uri)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="h-6 w-6 inline-flex items-center justify-center rounded-md hover:bg-accent"
+                                          >
+                                            <ArrowSquareOut className="h-3 w-3" />
+                                          </a>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>새 탭에서 열기</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )
                   })}
@@ -274,7 +403,7 @@ export function KeywordSelector() {
                         {groundingKeywords.filter(k => k.score >= 80).length} {t.generate.keywordSelector.highInterestTopics}{' '}
                       </span>
                     )}
-                    {groundingKeywords.some(k => k.sources.some(s => getSourceTier(s) === 1)) && (
+                    {groundingKeywords.some(k => k.sources.some(s => s.tier === 1)) && (
                       <span className="text-blue-600 dark:text-blue-400">
                         {t.generate.keywordSelector.includesOfficialSources}{' '}
                       </span>

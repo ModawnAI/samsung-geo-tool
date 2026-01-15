@@ -143,50 +143,61 @@ export function GenerationBreakdown({
             )}
           </motion.div>
 
-          {/* Grounding Influence */}
+          {/* Grounding Influence - Top Keywords/Trends (HIGHLIGHTED) */}
           <motion.div
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
-            className="space-y-2"
+            className="space-y-3 p-3 rounded-lg bg-[#040523]/5 dark:bg-[#040523]/20 border border-[#040523]/10"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <MagnifyingGlass className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">사용자 의도 신호</span>
-                <Badge variant="outline" className="text-xs">
-                  {SIGNAL_WEIGHTS.grounding}%
-                </Badge>
+                <TrendUp className="h-4 w-4 text-[#040523] dark:text-slate-200" weight="bold" />
+                <span className="text-sm font-semibold text-[#040523] dark:text-slate-100">상위 키워드 & 트렌드</span>
               </div>
-              <span className="text-xs text-muted-foreground">
-                {groundingInfluence.signalsApplied}개 신호
-              </span>
+              <Badge variant="default" className="text-xs bg-[#040523] dark:bg-slate-200 dark:text-[#040523]">
+                {groundingInfluence.signalsApplied}개 신호 분석
+              </Badge>
             </div>
             {groundingInfluence.topSignals.length > 0 ? (
-              <div className="space-y-1.5">
-                {groundingInfluence.topSignals.slice(0, 3).map((signal, i) => (
+              <div className="space-y-2">
+                {groundingInfluence.topSignals.slice(0, 5).map((signal, i) => (
                   <div
                     key={signal.term}
-                    className="flex items-center gap-2 text-xs"
+                    className="flex items-center gap-3 text-sm"
                   >
-                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                      <TrendUp
-                        className={`h-3 w-3 flex-shrink-0 ${
-                          i === 0
-                            ? 'text-foreground'
-                            : i === 1
-                              ? 'text-muted-foreground'
-                              : 'text-muted-foreground/60'
-                        }`}
-                      />
-                      <span className="truncate font-medium">{signal.term}</span>
+                    <div className={`flex items-center justify-center w-6 h-6 rounded-full flex-shrink-0 ${
+                      i === 0
+                        ? 'bg-[#040523] dark:bg-slate-200 text-white dark:text-[#040523]'
+                        : i === 1
+                          ? 'bg-[#040523]/80 dark:bg-slate-300 text-white dark:text-[#040523]'
+                          : 'bg-[#040523]/40 dark:bg-slate-500 text-white dark:text-slate-100'
+                    }`}>
+                      <span className="text-xs font-bold">{i + 1}</span>
                     </div>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <span className={`truncate ${
+                        i === 0
+                          ? 'font-bold text-[#040523] dark:text-slate-100'
+                          : i === 1
+                            ? 'font-semibold text-[#040523]/90 dark:text-slate-200'
+                            : 'font-medium text-[#040523]/70 dark:text-slate-300'
+                      }`}>{signal.term}</span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       <Progress
                         value={signal.score}
-                        className="h-1.5 w-16 [&>div]:bg-[#040523]/70 dark:[&>div]:bg-slate-400"
+                        className={`h-2 w-20 ${
+                          i === 0
+                            ? '[&>div]:bg-[#040523] dark:[&>div]:bg-slate-200'
+                            : i === 1
+                              ? '[&>div]:bg-[#040523]/80 dark:[&>div]:bg-slate-300'
+                              : '[&>div]:bg-[#040523]/50 dark:[&>div]:bg-slate-500'
+                        }`}
                       />
-                      <span className="text-muted-foreground w-8 text-right">
+                      <span className={`w-10 text-right text-xs ${
+                        i === 0 ? 'font-bold text-[#040523] dark:text-slate-100' : 'text-muted-foreground'
+                      }`}>
                         {signal.score}%
                       </span>
                     </div>
@@ -194,7 +205,7 @@ export function GenerationBreakdown({
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground italic">
+              <p className="text-sm text-muted-foreground italic">
                 사용 가능한 그라운딩 신호 없음
               </p>
             )}
@@ -245,115 +256,8 @@ export function GenerationBreakdown({
             )}
           </motion.div>
 
-          {/* Quality Scores */}
-          {breakdown.qualityScores && (
-            <motion.div
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.4 }}
-              className="space-y-3 pt-3 border-t"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Sparkle className="h-4 w-4 text-muted-foreground" weight="fill" />
-                  <span className="text-sm font-medium">품질 평가</span>
-                  {breakdown.qualityScores.refined && (
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                      개선됨
-                    </Badge>
-                  )}
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-lg font-bold">
-                    {breakdown.qualityScores.overall}
-                  </span>
-                  <span className="text-xs text-muted-foreground">/100</span>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <ScoreBar
-                  label="브랜드 보이스"
-                  score={breakdown.qualityScores.brandVoice}
-                  icon={<Star className="h-3 w-3 text-muted-foreground" weight="fill" />}
-                />
-                <ScoreBar
-                  label="키워드 통합"
-                  score={breakdown.qualityScores.keywordIntegration}
-                  icon={<Target className="h-3 w-3 text-muted-foreground" />}
-                />
-                <ScoreBar
-                  label="GEO 최적화"
-                  score={breakdown.qualityScores.geoOptimization}
-                  icon={<TrendUp className="h-3 w-3 text-muted-foreground" />}
-                />
-                <ScoreBar
-                  label="FAQ 품질"
-                  score={breakdown.qualityScores.faqQuality}
-                  icon={<ChatCircleText className="h-3 w-3 text-muted-foreground" />}
-                />
-              </div>
-            </motion.div>
-          )}
-
-          {/* Tuning Configuration */}
-          {tuningMetadata && (
-            <motion.div
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.5 }}
-              className="space-y-3 pt-3 border-t"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Gear className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">파이프라인 설정</span>
-                  <Badge
-                    variant={tuningMetadata.configSource === 'database' ? 'default' : 'secondary'}
-                    className="text-[10px] px-1.5 py-0"
-                  >
-                    {tuningMetadata.configSource === 'database' ? '사용자 정의' : '기본값'}
-                  </Badge>
-                </div>
-              </div>
-
-              <div className="space-y-2 text-xs">
-                {tuningMetadata.weightsName && (
-                  <div className="flex items-center gap-2">
-                    <Database className="h-3 w-3 text-muted-foreground" />
-                    <span className="text-muted-foreground">가중치:</span>
-                    <span className="font-medium">{tuningMetadata.weightsName}</span>
-                  </div>
-                )}
-
-                {tuningMetadata.promptVersionId && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <span>프롬프트 버전:</span>
-                    <code className="text-[10px] bg-muted px-1 rounded">
-                      {tuningMetadata.promptVersionId.slice(0, 8)}
-                    </code>
-                  </div>
-                )}
-
-                {tuningMetadata.scoreBreakdown && tuningMetadata.scoreBreakdown.length > 0 && (
-                  <ScoreBreakdownSection
-                    scoreBreakdown={tuningMetadata.scoreBreakdown}
-                    onAction={onAction}
-                    isRegenerating={isRegenerating}
-                  />
-                )}
-
-                {/* Weight Transparency Section */}
-                {tuningMetadata.scoreBreakdown && tuningMetadata.scoreBreakdown.length > 0 && (
-                  <div className="mt-4 pt-3 border-t">
-                    <WeightTransparencySection
-                      scoreBreakdown={tuningMetadata.scoreBreakdown}
-                    />
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
+          {/* Quality Scores - Hidden for now (simplifying before Unpacked) */}
+          {/* Tuning Configuration - Hidden for now (simplifying before Unpacked) */}
         </CardContent>
       </Card>
     </TooltipProvider>

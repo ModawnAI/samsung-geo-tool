@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { GenerationBreakdown, type ActionPayload } from './generation-breakdown'
 import { ABCompare } from './ab-compare'
+import { ImageAltDisplay } from './geo-v2/image-alt-display'
 import {
   Copy,
   Check,
@@ -42,6 +43,7 @@ import {
   Warning,
   YoutubeLogo,
   Info,
+  Image as ImageIcon,
 } from '@phosphor-icons/react'
 import {
   VIDEO_FORMAT_LABELS,
@@ -113,6 +115,7 @@ export function OutputDisplay() {
   const faq = useGenerationStore((state) => state.faq)
   const breakdown = useGenerationStore((state) => state.breakdown)
   const tuningMetadata = useGenerationStore((state) => state.tuningMetadata)
+  const imageAltResult = useGenerationStore((state) => state.imageAltResult)
   const productName = useGenerationStore((state) => state.productName)
   const productId = useGenerationStore((state) => state.productId)
   const selectedKeywords = useGenerationStore((state) => state.selectedKeywords)
@@ -156,62 +159,6 @@ export function OutputDisplay() {
   }, [])
 
   const hashtagsText = hashtags.join(' ')
-
-  // Samsung Compliance Calculation (P0-2)
-  const samsungCompliance = useMemo(() => {
-    const checks: { labelKey: string; valid: boolean; tip: string }[] = []
-
-    // Q&A format check - validate Q: and A: format (not Q. or Q/)
-    const faqLines = faq.split('\n').filter(line => line.trim())
-    const qaFormatValid = faqLines.length === 0 || faqLines.every(line => {
-      const trimmed = line.trim()
-      if (!trimmed) return true
-      // Valid lines start with Q: or A: or are continuation lines
-      if (trimmed.startsWith('Q:') || trimmed.startsWith('A:')) return true
-      // Check for invalid patterns
-      if (/^[QA][./]/.test(trimmed)) return false
-      return true // Allow continuation lines
-    })
-    checks.push({
-      labelKey: 'qnaFormat',
-      valid: qaFormatValid,
-      tip: 'Q: / A:'
-    })
-
-    // Hashtag order check
-    const hashtagOrderValid = hashtags.length === 0 || (
-      // If #GalaxyAI is present, it should be first
-      (hashtags.findIndex(h => h.toLowerCase().includes('galaxyai')) <= 0) &&
-      // #Samsung should be last (if present)
-      (hashtags.findIndex(h => h.toLowerCase() === '#samsung') === -1 ||
-       hashtags.findIndex(h => h.toLowerCase() === '#samsung') === hashtags.length - 1)
-    )
-    checks.push({
-      labelKey: 'hashtagOrder',
-      valid: hashtagOrderValid,
-      tip: '#GalaxyAI → #Samsung'
-    })
-
-    // Hashtag count check (Samsung standard: 3-5)
-    const hashtagCountValid = hashtags.length === 0 || (hashtags.length >= 3 && hashtags.length <= 5)
-    checks.push({
-      labelKey: 'hashtagCount',
-      valid: hashtagCountValid,
-      tip: `3-5 (${hashtags.length})`
-    })
-
-    // Shorts format check
-    if (videoFormat === 'shorts_9x16') {
-      const shortsLengthValid = description.length <= 200
-      checks.push({
-        labelKey: 'shortsLength',
-        valid: shortsLengthValid,
-        tip: `<200 (${description.length})`
-      })
-    }
-
-    return checks
-  }, [faq, hashtags, description, videoFormat])
 
   // Combined YouTube-ready content (P0-2)
   const youtubeReadyContent = useMemo(() => {
@@ -283,6 +230,7 @@ export function OutputDisplay() {
             faq,
             status,
             campaignTag: campaignTag || null,
+            imageAltResult: imageAltResult || null,
           }),
           signal: abortControllerRef.current.signal,
         })
@@ -302,7 +250,7 @@ export function OutputDisplay() {
     } finally {
       setIsSaving(false)
     }
-  }, [productId, generationId, srtContent, selectedKeywords, description, timestamps, hashtags, faq, campaignTag, setIsSaving, setGenerationId, setGenerationStatus])
+  }, [productId, generationId, srtContent, selectedKeywords, description, timestamps, hashtags, faq, campaignTag, imageAltResult, setIsSaving, setGenerationId, setGenerationStatus])
 
   const handleExportJSON = () => {
     const exportData = {
@@ -637,6 +585,7 @@ export function OutputDisplay() {
         faq: faqContent,
         breakdown: newBreakdown,
         tuningMetadata: data.tuningMetadata,
+        imageAltResult: data.imageAltResult,
       })
 
       console.log('[Regenerate] Success! Setting output')
@@ -690,58 +639,6 @@ export function OutputDisplay() {
             </Badge>
           )}
         </div>
-      </motion.div>
-
-      {/* Samsung Compliance Indicators (P0-2) */}
-      <motion.div variants={MOTION_VARIANTS.staggerItem}>
-        <Card className="border-[#040523]/10 dark:border-slate-700 bg-[#040523]/[0.02] dark:bg-[#040523]/10">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2 text-[#040523] dark:text-slate-100">
-              <Info className="h-4 w-4 text-[#040523]/60 dark:text-slate-400" />
-              {t.samsung.compliance.title}
-              <Badge variant="outline" className="ml-auto text-xs border-[#040523]/20 dark:border-slate-600">
-                {t.samsung.videoFormats[videoFormat]} · {t.samsung.contentTypes[contentType]}
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="flex flex-wrap gap-2">
-              {samsungCompliance.map((check, i) => (
-                <Badge
-                  key={i}
-                  variant="outline"
-                  className={`gap-1.5 ${check.valid
-                    ? 'bg-[#040523]/5 dark:bg-[#040523]/20 text-[#040523] dark:text-slate-200 border-[#040523]/15 dark:border-slate-600'
-                    : 'bg-transparent text-[#040523]/60 dark:text-slate-400 border-[#040523]/30 dark:border-slate-500'}`}
-                  title={check.tip}
-                >
-                  {check.valid ? (
-                    <Check className="h-3 w-3" weight="bold" />
-                  ) : (
-                    <Warning className="h-3 w-3" />
-                  )}
-                  {t.samsung.compliance[check.labelKey as keyof typeof t.samsung.compliance]}
-                </Badge>
-              ))}
-              {/* Fixed vs AI hashtags indicator */}
-              <Badge variant="outline" className="gap-1.5 border-[#040523]/15 dark:border-slate-600 text-[#040523]/70 dark:text-slate-300">
-                <Hash className="h-3 w-3" />
-                {useFixedHashtags ? t.samsung.compliance.fixedHashtagsUsed : t.samsung.compliance.aiHashtagsUsed}
-              </Badge>
-            </div>
-            {/* Show non-compliant tips */}
-            {samsungCompliance.some(c => !c.valid) && (
-              <div className="mt-3 p-2 rounded bg-[#040523]/5 dark:bg-[#040523]/15 border border-[#040523]/10 dark:border-slate-700">
-                <p className="text-xs text-[#040523]/70 dark:text-slate-400 flex items-start gap-1.5">
-                  <Warning className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-[#040523]/50 dark:text-slate-500" />
-                  <span>
-                    {samsungCompliance.filter(c => !c.valid).map(c => c.tip).join(' · ')}
-                  </span>
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </motion.div>
 
       {/* YouTube Ready Preview (P0-2) */}
@@ -915,6 +812,13 @@ export function OutputDisplay() {
               </div>
             </CardContent>
           </Card>
+        </motion.div>
+      )}
+
+      {/* Image Alt Text */}
+      {imageAltResult && (
+        <motion.div variants={MOTION_VARIANTS.staggerItem}>
+          <ImageAltDisplay imageAltResult={imageAltResult} language="ko" />
         </motion.div>
       )}
 

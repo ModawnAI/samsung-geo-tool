@@ -3,6 +3,7 @@
  * Evaluates the quality and authority of grounding sources
  *
  * Updated 2026-01-08: Improved tier scoring with configurable weights
+ * Updated 2026-01-15: Added domain blacklist support
  */
 
 import type {
@@ -12,7 +13,12 @@ import type {
   UniqueSellingPoint,
 } from '@/types/geo-v2'
 import { SOURCE_AUTHORITY_TIERS } from '@/types/geo-v2'
-import { GROUNDING_CONFIG, getTierScoreConfig } from '@/lib/scoring/scoring-config'
+import { GROUNDING_CONFIG } from '@/lib/scoring/scoring-config'
+import {
+  loadActiveBlacklist,
+  isUrlBlacklisted,
+} from '@/lib/tuning/blacklist-loader'
+import type { LoadedBlacklist } from '@/types/tuning'
 
 /**
  * Calculate comprehensive grounding quality score (0-10 points)
@@ -250,6 +256,7 @@ export function getSourceTier(uri: string): 1 | 2 | 3 | 4 {
 
 /**
  * Extract and categorize sources from grounding metadata
+ * Synchronous version (does not check blacklist)
  */
 export function extractGroundingSources(groundingChunks: Array<{
   web?: { uri: string; title: string }
@@ -277,6 +284,100 @@ export function extractGroundingSources(groundingChunks: Array<{
 
   return Array.from(sourceMap.values())
     .sort((a, b) => a.tier - b.tier) // Sort by tier (1 first)
+}
+
+/**
+ * Extract and categorize sources from grounding metadata with blacklist checking
+ * Async version that loads and applies domain blacklist
+ */
+export async function extractGroundingSourcesWithBlacklist(groundingChunks: Array<{
+  web?: { uri: string; title: string }
+}>): Promise<GroundingSource[]> {
+  // Load active blacklist
+  const { blacklist } = await loadActiveBlacklist()
+
+  const sourceMap = new Map<string, GroundingSource>()
+
+  for (const chunk of groundingChunks) {
+    if (!chunk.web?.uri) continue
+
+    const uri = chunk.web.uri
+    const existing = sourceMap.get(uri)
+
+    if (existing) {
+      existing.accessCount = (existing.accessCount || 1) + 1
+    } else {
+      // Check blacklist
+      const blacklistCheck = isUrlBlacklisted(uri, blacklist)
+      const tier = blacklistCheck.isBlacklisted ? 4 : getSourceTier(uri)
+
+      sourceMap.set(uri, {
+        uri,
+        title: chunk.web.title || extractTitleFromUri(uri),
+        usedIn: [],
+        accessCount: 1,
+        tier,
+        isBlacklisted: blacklistCheck.isBlacklisted,
+        blacklistReason: blacklistCheck.reason,
+      })
+    }
+  }
+
+  return Array.from(sourceMap.values())
+    .sort((a, b) => {
+      // Sort blacklisted sources last, then by tier
+      if (a.isBlacklisted && !b.isBlacklisted) return 1
+      if (!a.isBlacklisted && b.isBlacklisted) return -1
+      return a.tier - b.tier
+    })
+}
+
+/**
+ * Apply blacklist to existing sources (for re-processing)
+ */
+export async function applyBlacklistToSources(
+  sources: GroundingSource[]
+): Promise<GroundingSource[]> {
+  const { blacklist } = await loadActiveBlacklist()
+  if (!blacklist) return sources
+
+  return sources.map(source => {
+    const blacklistCheck = isUrlBlacklisted(source.uri, blacklist)
+    if (blacklistCheck.isBlacklisted) {
+      return {
+        ...source,
+        tier: 4, // Blacklisted sources become Tier 4
+        isBlacklisted: true,
+        blacklistReason: blacklistCheck.reason,
+      }
+    }
+    return source
+  })
+}
+
+/**
+ * Get source tier with blacklist consideration
+ * If a domain is blacklisted, it returns Tier 4 regardless of normal tier
+ */
+export function getSourceTierWithBlacklist(
+  uri: string,
+  blacklist: LoadedBlacklist | null
+): { tier: 1 | 2 | 3 | 4; isBlacklisted: boolean; reason?: string } {
+  // Check blacklist first
+  const blacklistCheck = isUrlBlacklisted(uri, blacklist)
+  if (blacklistCheck.isBlacklisted) {
+    return {
+      tier: 4,
+      isBlacklisted: true,
+      reason: blacklistCheck.reason,
+    }
+  }
+
+  // Otherwise, normal tier assignment
+  return {
+    tier: getSourceTier(uri),
+    isBlacklisted: false,
+  }
 }
 
 /**

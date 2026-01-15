@@ -202,6 +202,8 @@ export interface GroundingSource {
   usedIn: string[]  // Which sections used this source
   accessCount?: number
   tier: 1 | 2 | 3 | 4
+  isBlacklisted?: boolean  // Whether domain is in active blacklist
+  blacklistReason?: string // Reason for blacklisting (if applicable)
 }
 
 export interface GroundingMetadata {
@@ -386,6 +388,7 @@ export interface GEOv2GenerateResponse {
     preliminaryTotal?: number
   }
   hashtags: string[]
+  isFixedHashtags?: boolean  // True if using pre-defined fixed hashtags (Samsung Standard)
   hashtagCategories?: {
     brand: string[]
     features: string[]
@@ -393,6 +396,7 @@ export interface GEOv2GenerateResponse {
   }
   finalScore: GEOv2Score
   groundingMetadata?: GroundingMetadata
+  imageAltResult?: ImageAltResult // Image alt text templates for SEO
   keywordDensityDetails?: KeywordDensityDetails // Programmatic keyword density breakdown
   progress?: PipelineProgress[]
   tuningMetadata?: {
@@ -460,4 +464,61 @@ export interface AnalyticsData {
   totalClicks: number
   clicksBySource: Record<string, number>
   clicksBySection: Record<string, number>
+}
+
+// ==========================================
+// Image Alt Text Generation Types
+// ==========================================
+
+export type ImageCategory =
+  | 'front_view'        // 제품 전면
+  | 'back_view'         // 제품 후면
+  | 'side_view'         // 제품 측면
+  | 'camera_closeup'    // 카메라 클로즈업
+  | 'display_closeup'   // 디스플레이 클로즈업
+  | 'lifestyle'         // 라이프스타일
+  | 'color_options'     // 색상 옵션
+  | 'package_contents'  // 패키지 구성품
+  | 'feature_highlight' // 기능 하이라이트
+  | 'comparison'        // 비교 이미지
+  | 'accessories'       // 액세서리
+
+export const IMAGE_CATEGORY_LABELS: Record<ImageCategory, { ko: string; en: string; description: string }> = {
+  front_view: { ko: '제품 전면', en: 'Front View', description: '제품의 정면 이미지' },
+  back_view: { ko: '제품 후면', en: 'Back View', description: '카메라 모듈 등 후면 이미지' },
+  side_view: { ko: '제품 측면', en: 'Side View', description: '두께, 버튼 등 측면 이미지' },
+  camera_closeup: { ko: '카메라 클로즈업', en: 'Camera Close-up', description: '카메라 시스템 상세 이미지' },
+  display_closeup: { ko: '디스플레이 클로즈업', en: 'Display Close-up', description: '화면, 베젤 상세 이미지' },
+  lifestyle: { ko: '라이프스타일', en: 'Lifestyle', description: '실제 사용 환경에서의 이미지' },
+  color_options: { ko: '색상 옵션', en: 'Color Options', description: '다양한 색상 변형 이미지' },
+  package_contents: { ko: '패키지 구성품', en: 'Package Contents', description: '박스 내용물 이미지' },
+  feature_highlight: { ko: '기능 하이라이트', en: 'Feature Highlight', description: '특정 기능 강조 이미지' },
+  comparison: { ko: '비교 이미지', en: 'Comparison', description: '타 제품 또는 이전 모델과의 비교' },
+  accessories: { ko: '액세서리', en: 'Accessories', description: '케이스, 충전기 등 액세서리' },
+}
+
+export interface ImageAltTemplate {
+  category: ImageCategory
+  altTextKo: string          // Korean alt text
+  altTextEn: string          // English alt text
+  keywords: string[]         // Keywords naturally integrated
+  characterCount: {
+    ko: number
+    en: number
+  }
+  seoScore: number           // 0-100, how SEO-optimized
+  accessibilityScore: number // 0-100, how accessible
+}
+
+export interface ImageAltResult {
+  productName: string
+  templates: ImageAltTemplate[]
+  generatedAt: string
+  totalTemplates: number
+  metadata: {
+    uspsIncorporated: string[]   // Which USPs were used
+    keywordsIncorporated: string[]
+    avgCharCount: number
+    avgSeoScore: number
+  }
 }

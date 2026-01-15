@@ -38,12 +38,14 @@ import {
   CaretDown,
   CaretRight,
   CubeTransparent,
+  Prohibit,
 } from '@phosphor-icons/react'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 import type { Language } from '@/lib/i18n'
 import { PromptFlowDiagram, type NodeId } from '@/components/settings/prompt-flow-diagram'
 import { PromptEditorPanel } from '@/components/settings/prompt-editor-panel'
 import { PromptList } from '@/components/settings/prompt-list'
+import { BlacklistManager } from '@/components/settings/blacklist-manager'
 
 interface PlaybookDocument {
   id: string
@@ -388,7 +390,7 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-flex">
+        <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-flex">
           <TabsTrigger value="profile" className="gap-2">
             <User className="h-4 w-4" />
             <span className="hidden sm:inline">{t.settings.tabs.profile}</span>
@@ -400,6 +402,10 @@ export default function SettingsPage() {
           <TabsTrigger value="prompts" className="gap-2">
             <Sparkle className="h-4 w-4" />
             <span className="hidden sm:inline">{language === 'ko' ? '프롬프트' : 'Prompts'}</span>
+          </TabsTrigger>
+          <TabsTrigger value="sources" className="gap-2">
+            <Prohibit className="h-4 w-4" />
+            <span className="hidden sm:inline">{language === 'ko' ? '소스 관리' : 'Sources'}</span>
           </TabsTrigger>
           <TabsTrigger
             value="playbook"
@@ -719,6 +725,14 @@ export default function SettingsPage() {
               )}
             </div>
           </div>
+        </TabsContent>
+
+        {/* Sources Tab */}
+        <TabsContent value="sources" className="space-y-6">
+          <BlacklistManager
+            language={language}
+            getAuthToken={getAuthToken}
+          />
         </TabsContent>
 
         {/* Playbook Tab */}

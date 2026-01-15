@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { format } from 'date-fns'
 import { createClient } from '@/lib/supabase/client'
 import { useGenerationStore } from '@/store/generation-store'
+import { useQueueManager } from '@/lib/generation-queue'
 import { useTranslation } from '@/lib/i18n/context'
 import { Card, CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
@@ -16,6 +17,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
 import {
   Select,
   SelectContent,
@@ -34,11 +41,14 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   DeviceMobile,
+  DeviceTabletSpeaker,
   Watch,
   CircleDashed,
   Headphones,
   Laptop,
   VirtualReality,
+  Television,
+  CookingPot,
   CalendarBlank,
   MagnifyingGlass,
   BookmarkSimple,
@@ -50,7 +60,22 @@ import {
   FilmStrip,
   Megaphone,
   CheckCircle,
+  CaretDown,
+  CaretUp,
+  Star,
+  House,
+  SpeakerHigh,
+  Bag,
+  Robot,
+  Package,
+  Sparkle,
+  Gear,
+  CheckSquare,
+  Square,
+  Queue,
+  SpinnerGap,
 } from '@phosphor-icons/react'
+import { ProductCard } from '@/components/features/product-card'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import {
@@ -71,12 +96,14 @@ interface Product {
   id: string
   name: string
   category_id: string
+  code_name: string | null
 }
 
 interface Brief {
   id: string
   version: number
   usps: string[]
+  is_active: boolean
   created_at: string
 }
 
@@ -91,12 +118,22 @@ interface Template {
 }
 
 const iconMap: Record<string, React.ComponentType<{ className?: string; weight?: 'regular' | 'bold' }>> = {
-  'device-mobile': DeviceMobile,
-  'watch': Watch,
+  'star': Star,           // Featured (기획전)
+  'device-mobile': DeviceMobile, // Mobile (모바일)
+  'tv': Television,       // TV & Audio (TV/영상·음향)
+  'cooking-pot': CookingPot, // Kitchen (주방가전)
+  'house': House,         // Living (리빙가전)
+  'laptop': Laptop,       // PC & Peripherals (PC/주변기기)
+  'watch': Watch,         // Wearables (웨어러블)
+  'speaker-high': SpeakerHigh, // Harman (하만)
+  'bag': Bag,             // Accessories (소모품/액세서리)
+  'robot': Robot,         // AI Club (AI 구독클럽)
+  // Legacy icons for backwards compatibility
   'circle': CircleDashed,
   'headphones': Headphones,
-  'laptop': Laptop,
+  'tablet': DeviceTabletSpeaker,
   'vr-headset': VirtualReality,
+  'appliance': CookingPot,
 }
 
 // Non-product content categories (P3 - ESG, Documentary, Campaign)
@@ -162,16 +199,25 @@ export function ProductSelector() {
   const { t } = useTranslation()
   const [categories, setCategories] = useState<Category[]>([])
   const [products, setProducts] = useState<Product[]>([])
-  const [activeBrief, setActiveBrief] = useState<Brief | null>(null)
+  const [allProducts, setAllProducts] = useState<Product[]>([]) // All products for global search
+  const [allBriefs, setAllBriefs] = useState<Brief[]>([]) // All briefs for product
   const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(true)
   const [productSearch, setProductSearch] = useState('')
+  const [globalSearch, setGlobalSearch] = useState('') // Global search across all categories
   const [productPopoverOpen, setProductPopoverOpen] = useState(false)
   const [templatePopoverOpen, setTemplatePopoverOpen] = useState(false)
   const [briefLoading, setBriefLoading] = useState(false)
   const [briefLoadError, setBriefLoadError] = useState<string | null>(null)
   const [isNonProductMode, setIsNonProductMode] = useState(false)
   const [selectedNonProductCategory, setSelectedNonProductCategory] = useState<string | null>(null)
+  const [samsungSettingsOpen, setSamsungSettingsOpen] = useState(false)
+  const [contentMode, setContentMode] = useState<'product' | 'non-product'>('product')
+
+  // Multi-select mode for batch generation
+  const [multiSelectMode, setMultiSelectMode] = useState(false)
+  const [selectedProducts, setSelectedProducts] = useState<string[]>([])
+  const [addingToQueue, setAddingToQueue] = useState(false)
 
   const {
     categoryId,
@@ -180,6 +226,7 @@ export function ProductSelector() {
     campaignTag,
     launchDate,
     selectedKeywords,
+    selectedBriefId,
     // Samsung Standard Fields (P1)
     contentType,
     videoFormat,
@@ -191,6 +238,7 @@ export function ProductSelector() {
     setCampaignTag,
     setLaunchDate,
     setBriefUsps,
+    setSelectedBriefId,
     setSelectedKeywords,
     // Samsung Standard Actions (P1)
     setContentType,
@@ -198,8 +246,15 @@ export function ProductSelector() {
     setFixedHashtags,
     setUseFixedHashtags,
     setVanityLinkCode,
+    // Multi-session support
+    createSession,
+    inputMethod,
+    videoUrl,
+    srtContent,
+    briefUsps,
   } = useGenerationStore()
 
+  const queueManager = useQueueManager()
   const supabase = createClient()
 
   // Compute hashtag validation (P0-1)
@@ -207,15 +262,17 @@ export function ProductSelector() {
     return validateHashtagOrder(fixedHashtags)
   }, [fixedHashtags])
 
-  // Fetch categories and templates on mount
+  // Fetch categories, templates, and all products on mount
   useEffect(() => {
     async function fetchInitialData() {
-      const [categoriesRes, templatesRes] = await Promise.all([
+      const [categoriesRes, templatesRes, allProductsRes] = await Promise.all([
         supabase.from('categories').select('*').order('sort_order'),
         supabase.from('templates').select('*').order('name'),
+        supabase.from('products').select('*').order('name'),
       ])
       if (categoriesRes.data) setCategories(categoriesRes.data)
       if (templatesRes.data) setTemplates(templatesRes.data)
+      if (allProductsRes.data) setAllProducts(allProductsRes.data)
       setLoading(false)
     }
     fetchInitialData()
@@ -229,6 +286,24 @@ export function ProductSelector() {
       p.name.toLowerCase().includes(searchLower)
     )
   }, [products, productSearch])
+
+  // Global search - filter all products across all categories
+  const globalSearchResults = useMemo(() => {
+    if (!globalSearch.trim()) return []
+    const searchLower = globalSearch.toLowerCase()
+    return allProducts.filter((p) =>
+      p.name.toLowerCase().includes(searchLower)
+    ).slice(0, 10) // Limit to 10 results
+  }, [allProducts, globalSearch])
+
+  // Handle global search product selection - auto-selects category
+  const handleGlobalProductSelect = (product: Product) => {
+    setGlobalSearch('')
+    setCategory(product.category_id)
+    setProduct(product.id, product.name)
+    setIsNonProductMode(false)
+    setContentMode('product')
+  }
 
   // Handle template selection
   const handleTemplateSelect = async (template: Template) => {
@@ -283,7 +358,7 @@ export function ProductSelector() {
     // Clear product-related state
     setCategory('')
     setProduct('', npCategory.name)
-    setActiveBrief(null)
+    setSelectedBriefId(null)
     setBriefUsps([])
   }
 
@@ -294,9 +369,10 @@ export function ProductSelector() {
     setCategory(catId)
   }
 
-  const fetchBrief = async () => {
+  const fetchBriefs = async () => {
     if (!productId) {
-      setActiveBrief(null)
+      setAllBriefs([])
+      setSelectedBriefId(null)
       setBriefUsps([])
       setBriefLoadError(null)
       return
@@ -306,39 +382,118 @@ export function ProductSelector() {
     setBriefLoadError(null)
 
     try {
+      // Fetch ALL briefs for this product, sorted by version descending
       const { data, error } = await supabase
         .from('briefs')
         .select('*')
         .eq('product_id', productId)
-        .eq('is_active', true)
         .order('version', { ascending: false })
-        .limit(1)
-        .single()
 
       if (error) {
-        // PGRST116 = no rows returned (not an error, just no brief exists)
-        if (error.code === 'PGRST116') {
-          setActiveBrief(null)
-          setBriefUsps([])
-        } else {
-          throw error
-        }
-      } else if (data) {
-        const brief = data as Brief
-        setActiveBrief(brief)
-        setBriefUsps(brief.usps || [])
+        throw error
       }
+
+      const briefs = (data || []) as Brief[]
+      setAllBriefs(briefs)
+
+      // Default to auto-extraction (no brief selected)
+      // Users can optionally select a brief if available
+      setSelectedBriefId(null)
+      setBriefUsps([])
     } catch (err) {
-      console.error('Failed to load brief:', err)
+      console.error('Failed to load briefs:', err)
       setBriefLoadError(t.generate.productSelector.briefLoadError)
-      setActiveBrief(null)
+      setAllBriefs([])
     } finally {
       setBriefLoading(false)
     }
   }
 
+  // Handle brief selection from dropdown
+  const handleBriefSelect = (briefId: string) => {
+    const brief = allBriefs.find(b => b.id === briefId)
+    if (brief) {
+      setSelectedBriefId(briefId)
+      setBriefUsps(brief.usps || [])
+    }
+  }
+
+  // Toggle multi-select for a product
+  const toggleProductSelection = (productId: string) => {
+    setSelectedProducts(prev =>
+      prev.includes(productId)
+        ? prev.filter(id => id !== productId)
+        : [...prev, productId]
+    )
+  }
+
+  // Select all visible products
+  const selectAllProducts = () => {
+    const allIds = filteredProducts.map(p => p.id)
+    setSelectedProducts(allIds)
+  }
+
+  // Clear all selections
+  const clearAllSelections = () => {
+    setSelectedProducts([])
+  }
+
+  // Add selected products to the generation queue
+  const addSelectedToQueue = async () => {
+    if (selectedProducts.length === 0) return
+
+    // Validate that SRT content is available
+    if (!srtContent) {
+      toast.error('SRT 콘텐츠를 먼저 입력해주세요')
+      return
+    }
+
+    setAddingToQueue(true)
+
+    try {
+      // Create a session for each selected product
+      for (const selectedProdId of selectedProducts) {
+        const product = filteredProducts.find(p => p.id === selectedProdId)
+        if (!product) continue
+
+        const sessionId = createSession({
+          categoryId,
+          productId: product.id,
+          productName: product.name,
+          campaignTag,
+          launchDate,
+          contentType,
+          videoFormat,
+          inputMethod,
+          fixedHashtags,
+          useFixedHashtags,
+          vanityLinkCode,
+          videoUrl,
+          srtContent,
+          selectedBriefId,
+          briefUsps,
+          selectedKeywords,
+        })
+
+        // Add to queue for processing
+        await queueManager.addToQueue(sessionId)
+      }
+
+      toast.success(`${selectedProducts.length}개 제품이 생성 대기열에 추가되었습니다`)
+
+      // Clear selections and exit multi-select mode
+      setSelectedProducts([])
+      setMultiSelectMode(false)
+    } catch (error) {
+      console.error('Failed to add to queue:', error)
+      toast.error('대기열 추가에 실패했습니다')
+    } finally {
+      setAddingToQueue(false)
+    }
+  }
+
   useEffect(() => {
-    fetchBrief()
+    fetchBriefs()
   }, [productId])
 
   if (loading) {
@@ -412,161 +567,318 @@ export function ProductSelector() {
         </div>
       )}
 
-      <div>
-        <Label className="text-sm sm:text-base mb-3 block">{t.generate.productSelector.productCategory}</Label>
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-2 sm:gap-3">
-          {categories.map((category) => {
-            const Icon = iconMap[category.icon || ''] || DeviceMobile
-            const isSelected = categoryId === category.id && !isNonProductMode
-            return (
-              <Card
-                key={category.id}
-                role="button"
-                tabIndex={0}
-                aria-pressed={isSelected}
-                aria-label={`${category.name_ko || category.name} category${isSelected ? ', selected' : ''}`}
-                className={cn(
-                  'cursor-pointer transition-all hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 min-h-[80px] sm:min-h-0',
-                  isSelected && 'border-primary ring-1 ring-primary'
-                )}
-                onClick={() => handleProductCategorySelect(category.id)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    handleProductCategorySelect(category.id)
-                  }
-                }}
-              >
-                <CardContent className="p-3 sm:p-4 text-center">
-                  <Icon
-                    className={cn(
-                      'h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-1 sm:mb-2',
-                      isSelected ? 'text-primary' : 'text-muted-foreground'
-                    )}
-                    weight={isSelected ? 'bold' : 'regular'}
-                  />
-                  <p className={cn(
-                    'text-xs sm:text-sm font-medium',
-                    isSelected ? 'text-primary' : 'text-muted-foreground'
-                  )}>
-                    {category.name_ko || category.name}
-                  </p>
-                </CardContent>
-              </Card>
-            )
-          })}
+      {/* Floating Selection Summary - Shows current selection context */}
+      {(productId || (isNonProductMode && selectedNonProductCategory)) && (
+        <div className="sticky top-0 z-10 -mx-1 px-1 py-2 bg-background/95 backdrop-blur-sm border-b">
+          <div className="flex items-center gap-3 text-sm">
+            <div className="flex items-center gap-2 text-primary">
+              <CheckCircle className="h-4 w-4" weight="fill" />
+              <span className="font-medium">
+                {isNonProductMode
+                  ? nonProductCategories.find(c => c.id === selectedNonProductCategory)?.name_ko
+                  : productName
+                }
+              </span>
+            </div>
+            <span className="text-muted-foreground">•</span>
+            <span className="text-muted-foreground text-xs">
+              {isNonProductMode
+                ? nonProductCategories.find(c => c.id === selectedNonProductCategory)?.name
+                : categories.find(c => c.id === categoryId)?.name_ko || categories.find(c => c.id === categoryId)?.name
+              }
+            </span>
+            {!isNonProductMode && (
+              <>
+                <span className="text-muted-foreground">•</span>
+                <span className="text-xs text-muted-foreground">
+                  USP: {selectedBriefId ? '브리프' : '자동 추출'}
+                </span>
+              </>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Non-Product Categories (P3 - ESG, Documentary, Brand Campaign) */}
-      <div>
-        <Label className="text-sm sm:text-base mb-3 block flex items-center gap-2">
-          {t.samsung.nonProductContent}
-          <span className="text-xs text-muted-foreground font-normal">({t.samsung.categories.esg}, {t.samsung.categories.documentary}, {t.samsung.categories.brandCampaign})</span>
-        </Label>
-        <div className="grid grid-cols-3 gap-2 sm:gap-3">
-          {nonProductCategories.map((npCategory) => {
-            const Icon = npCategory.icon
-            const isSelected = selectedNonProductCategory === npCategory.id && isNonProductMode
-            return (
-              <Card
-                key={npCategory.id}
-                role="button"
-                tabIndex={0}
-                aria-pressed={isSelected}
-                aria-label={`${npCategory.name_ko} category${isSelected ? ', selected' : ''}`}
-                className={cn(
-                  'cursor-pointer transition-all hover:border-green-500/50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 min-h-[80px] sm:min-h-0',
-                  isSelected && 'border-green-500 ring-1 ring-green-500 bg-green-50/50 dark:bg-green-950/20'
-                )}
-                onClick={() => handleNonProductCategorySelect(npCategory)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    handleNonProductCategorySelect(npCategory)
-                  }
-                }}
-              >
-                <CardContent className="p-3 sm:p-4 text-center">
-                  <Icon
-                    className={cn(
-                      'h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-1 sm:mb-2',
-                      isSelected ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
-                    )}
-                    weight={isSelected ? 'bold' : 'regular'}
-                  />
-                  <p className={cn(
-                    'text-xs sm:text-sm font-medium',
-                    isSelected ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
-                  )}>
-                    {npCategory.name_ko}
-                  </p>
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
-        {isNonProductMode && selectedNonProductCategory && (
-          <p className="text-xs text-green-600 dark:text-green-400 mt-2 flex items-center gap-1">
-            <Info className="h-3 w-3" />
-            {t.generate.productSelector.nonProductSelected}
-          </p>
+      {/* Global Product Search */}
+      <div className="relative">
+        <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder={t.generate.productSelector.searchAllProducts || '전체 제품 검색...'}
+          value={globalSearch}
+          onChange={(e) => setGlobalSearch(e.target.value)}
+          className="pl-9 h-11"
+        />
+        {/* Global search results dropdown */}
+        {globalSearchResults.length > 0 && (
+          <div className="absolute top-full left-0 right-0 mt-1 bg-background border rounded-lg shadow-lg z-20 max-h-64 overflow-y-auto">
+            {globalSearchResults.map((product) => {
+              const category = categories.find(c => c.id === product.category_id)
+              return (
+                <button
+                  key={product.id}
+                  type="button"
+                  onClick={() => handleGlobalProductSelect(product)}
+                  className="w-full flex items-center gap-3 px-3 py-2 hover:bg-muted text-left transition-colors"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{product.name}</p>
+                    <p className="text-xs text-muted-foreground">{category?.name_ko || category?.name}</p>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
         )}
       </div>
 
+      {/* Mode-Based Tab Navigation */}
+      <Tabs
+        value={contentMode}
+        onValueChange={(value) => {
+          setContentMode(value as 'product' | 'non-product')
+          if (value === 'product') {
+            // Switching to product mode - clear non-product state
+            setIsNonProductMode(false)
+            setSelectedNonProductCategory(null)
+          } else {
+            // Switching to non-product mode - clear product state
+            setIsNonProductMode(true)
+            setCategory('')
+            setProduct('', '')
+            setSelectedBriefId(null)
+            setBriefUsps([])
+          }
+        }}
+        className="w-full"
+      >
+        <TabsList className="w-full grid grid-cols-2 h-11">
+          <TabsTrigger value="product" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <Package className="h-4 w-4" />
+            <span className="hidden sm:inline">{t.generate.productSelector.productContent || '제품 콘텐츠'}</span>
+            <span className="sm:hidden">제품</span>
+          </TabsTrigger>
+          <TabsTrigger value="non-product" className="gap-2 data-[state=active]:bg-green-600 data-[state=active]:text-white">
+            <Sparkle className="h-4 w-4" />
+            <span className="hidden sm:inline">{t.samsung.nonProductContent || '비제품 콘텐츠'}</span>
+            <span className="sm:hidden">비제품</span>
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Product Content Tab */}
+        <TabsContent value="product" className="mt-4 space-y-4">
+          <div>
+            <Label className="text-sm sm:text-base mb-3 block">{t.generate.productSelector.productCategory}</Label>
+            <div className="grid grid-cols-5 md:grid-cols-10 gap-1.5 sm:gap-2">
+              {categories.map((category) => {
+                const Icon = iconMap[category.icon || ''] || DeviceMobile
+                const isSelected = categoryId === category.id && !isNonProductMode
+                return (
+                  <button
+                    key={category.id}
+                    type="button"
+                    aria-pressed={isSelected}
+                    aria-label={`${category.name_ko || category.name} category${isSelected ? ', selected' : ''}`}
+                    className={cn(
+                      'flex flex-col items-center justify-center p-2 sm:p-3 rounded-lg border transition-all',
+                      'hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1',
+                      isSelected
+                        ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                        : 'border-transparent bg-muted/30 hover:bg-muted/50'
+                    )}
+                    onClick={() => handleProductCategorySelect(category.id)}
+                  >
+                    <Icon
+                      className={cn(
+                        'h-5 w-5 sm:h-6 sm:w-6 mb-1',
+                        isSelected ? 'text-primary' : 'text-muted-foreground'
+                      )}
+                      weight={isSelected ? 'bold' : 'regular'}
+                    />
+                    <span className={cn(
+                      'text-[10px] sm:text-xs font-medium text-center leading-tight',
+                      isSelected ? 'text-primary' : 'text-muted-foreground'
+                    )}>
+                      {(category.name_ko || category.name).split('/')[0]}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Non-Product Content Tab */}
+        <TabsContent value="non-product" className="mt-4 space-y-4">
+          <div>
+            <Label className="text-sm sm:text-base mb-3 block flex items-center gap-2">
+              {t.samsung.nonProductContent}
+            </Label>
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+              {nonProductCategories.map((npCategory) => {
+                const Icon = npCategory.icon
+                const isSelected = selectedNonProductCategory === npCategory.id && isNonProductMode
+                return (
+                  <Card
+                    key={npCategory.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-pressed={isSelected}
+                    aria-label={`${npCategory.name_ko} category${isSelected ? ', selected' : ''}`}
+                    className={cn(
+                      'cursor-pointer transition-all hover:border-green-500/50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2',
+                      isSelected && 'border-green-500 ring-1 ring-green-500 bg-green-50/50 dark:bg-green-950/20'
+                    )}
+                    onClick={() => handleNonProductCategorySelect(npCategory)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        handleNonProductCategorySelect(npCategory)
+                      }
+                    }}
+                  >
+                    <CardContent className="p-4 sm:p-6 text-center">
+                      <Icon
+                        className={cn(
+                          'h-8 w-8 sm:h-10 sm:w-10 mx-auto mb-2',
+                          isSelected ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
+                        )}
+                        weight={isSelected ? 'bold' : 'regular'}
+                      />
+                      <p className={cn(
+                        'text-sm font-medium',
+                        isSelected ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
+                      )}>
+                        {npCategory.name_ko}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {npCategory.name}
+                      </p>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+            {isNonProductMode && selectedNonProductCategory && (
+              <p className="text-xs text-green-600 dark:text-green-400 mt-3 flex items-center gap-1.5 p-2 bg-green-50/50 dark:bg-green-950/20 rounded-md">
+                <CheckCircle className="h-4 w-4" weight="fill" />
+                {t.generate.productSelector.nonProductSelected}
+              </p>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
+
       {categoryId && !isNonProductMode && (
         <div className="space-y-4">
+          {/* Product Selection with Image Grid */}
           <div>
-            <Label htmlFor="product" className="text-sm sm:text-base">{t.generate.productSelector.product}</Label>
-            <Popover open={productPopoverOpen} onOpenChange={setProductPopoverOpen}>
-              <PopoverTrigger asChild>
+            <div className="flex items-center justify-between mb-3">
+              <Label htmlFor="product" className="text-sm sm:text-base">{t.generate.productSelector.product}</Label>
+
+              {/* Multi-select controls */}
+              <div className="flex items-center gap-2">
+                {multiSelectMode && selectedProducts.length > 0 && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={addSelectedToQueue}
+                    disabled={addingToQueue}
+                    className="gap-1.5 bg-primary hover:bg-primary/90"
+                  >
+                    {addingToQueue ? (
+                      <SpinnerGap className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Queue className="h-4 w-4" />
+                    )}
+                    {selectedProducts.length}개 대기열 추가
+                  </Button>
+                )}
+                {multiSelectMode && (
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={selectAllProducts}
+                      className="text-xs px-2"
+                    >
+                      전체 선택
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={clearAllSelections}
+                      className="text-xs px-2"
+                    >
+                      선택 해제
+                    </Button>
+                  </div>
+                )}
                 <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={productPopoverOpen}
-                  className="w-full justify-between mt-1.5"
+                  variant={multiSelectMode ? "secondary" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setMultiSelectMode(!multiSelectMode)
+                    if (multiSelectMode) {
+                      setSelectedProducts([])
+                    }
+                  }}
+                  className="gap-1.5"
                 >
-                  {productName || t.generate.productSelector.selectProduct}
-                  <MagnifyingGlass className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  {multiSelectMode ? (
+                    <CheckSquare className="h-4 w-4" />
+                  ) : (
+                    <Square className="h-4 w-4" />
+                  )}
+                  <span className="hidden sm:inline">다중 선택</span>
                 </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-full p-0" align="start">
-                <Command>
-                  <CommandInput
-                    placeholder={t.generate.productSelector.searchProducts}
-                    value={productSearch}
-                    onValueChange={setProductSearch}
+              </div>
+            </div>
+
+            {/* Search Input */}
+            <div className="relative mb-3">
+              <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder={t.generate.productSelector.searchProducts}
+                value={productSearch}
+                onChange={(e) => setProductSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+
+            {/* Product Image Grid */}
+            {filteredProducts.length > 0 ? (
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 sm:gap-3">
+                {filteredProducts.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    isSelected={multiSelectMode
+                      ? selectedProducts.includes(product.id)
+                      : productId === product.id
+                    }
+                    onSelect={() => {
+                      if (multiSelectMode) {
+                        toggleProductSelection(product.id)
+                      } else {
+                        setProduct(product.id, product.name)
+                      }
+                    }}
+                    multiSelectMode={multiSelectMode}
                   />
-                  <CommandList>
-                    <CommandEmpty>{t.generate.productSelector.noProductFound}</CommandEmpty>
-                    <CommandGroup>
-                      {filteredProducts.map((product) => (
-                        <CommandItem
-                          key={product.id}
-                          value={product.name}
-                          onSelect={() => {
-                            setProduct(product.id, product.name)
-                            setProductPopoverOpen(false)
-                            setProductSearch('')
-                          }}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              productId === product.id ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          {product.name}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-            {products.length > 5 && (
-              <p className="text-xs text-muted-foreground mt-1">
-                {t.generate.productSelector.productsAvailable.replace('{count}', String(products.length))}
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground text-sm">
+                {productSearch ? t.generate.productSelector.noProductFound : t.generate.productSelector.selectCategory}
+              </div>
+            )}
+
+            {products.length > 6 && (
+              <p className="text-xs text-muted-foreground mt-2">
+                {filteredProducts.length === products.length
+                  ? t.generate.productSelector.productsAvailable.replace('{count}', String(products.length))
+                  : `${filteredProducts.length} / ${products.length} ${t.generate.productSelector.productsFiltered || '제품 표시중'}`
+                }
               </p>
             )}
           </div>
@@ -591,139 +903,171 @@ export function ProductSelector() {
             </p>
           </div>
 
-          {/* Samsung Standard Fields (P1) */}
-          <div className="p-4 rounded-lg bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
-            <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-4 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-blue-500" />
-              {t.samsung.contentSettings}
-            </h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Content Type */}
-              <div>
-                <Label htmlFor="contentType" className="text-sm">{t.samsung.contentType}</Label>
-                <Select
-                  value={contentType}
-                  onValueChange={(value) => setContentType(value as ContentType)}
+          {/* Samsung Standard Fields (P1) - Collapsible */}
+          <Collapsible open={samsungSettingsOpen} onOpenChange={setSamsungSettingsOpen}>
+            <div className="rounded-lg border bg-muted/30 overflow-hidden">
+              <CollapsibleTrigger asChild>
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-between p-3 sm:p-4 hover:bg-muted/50 transition-colors"
                 >
-                  <SelectTrigger id="contentType" className="mt-1.5 bg-background">
-                    <SelectValue placeholder={t.common.select} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(Object.keys(CONTENT_TYPE_LABELS) as ContentType[]).map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {t.samsung.contentTypes[type]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Video Format */}
-              <div>
-                <Label htmlFor="videoFormat" className="text-sm">{t.samsung.videoFormat}</Label>
-                <Select
-                  value={videoFormat}
-                  onValueChange={(value) => setVideoFormat(value as VideoFormat)}
-                >
-                  <SelectTrigger id="videoFormat" className="mt-1.5 bg-background">
-                    <SelectValue placeholder={t.common.select} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(Object.keys(VIDEO_FORMAT_LABELS) as VideoFormat[]).map((fmt) => (
-                      <SelectItem key={fmt} value={fmt}>
-                        {t.samsung.videoFormats[fmt]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Fixed Hashtags */}
-            <div className="mt-4">
-              <div className="flex items-center justify-between mb-1.5">
-                <Label htmlFor="fixedHashtags" className="text-sm">
-                  {t.samsung.hashtags.fixedHashtags}
-                </Label>
-                <label className="flex items-center gap-2 text-xs cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={useFixedHashtags}
-                    onChange={(e) => setUseFixedHashtags(e.target.checked)}
-                    className="rounded border-gray-300"
-                  />
-                  <span className="text-muted-foreground">{t.samsung.hashtags.useFixedHashtags}</span>
-                </label>
-              </div>
-              <Input
-                id="fixedHashtags"
-                value={fixedHashtags.join(' ')}
-                onChange={(e) => {
-                  const hashtags = e.target.value
-                    .split(/\s+/)
-                    .filter(tag => tag.startsWith('#') || tag.length === 0)
-                    .map(tag => tag.startsWith('#') ? tag : `#${tag}`)
-                    .filter(Boolean)
-                  setFixedHashtags(hashtags)
-                }}
-                placeholder={t.samsung.hashtags.placeholder}
-                className="bg-background"
-                disabled={!useFixedHashtags}
-              />
-              <p className="text-xs text-muted-foreground mt-1.5">
-                {t.samsung.hashtags.orderHint}
-              </p>
-              {/* Hashtag Order Validation UI (P0-1) */}
-              {useFixedHashtags && fixedHashtags.length > 0 && (
-                <div className={cn(
-                  "mt-2 p-2.5 rounded-md text-xs border",
-                  hashtagValidation.valid
-                    ? "bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800"
-                    : "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
-                )}>
-                  {hashtagValidation.valid ? (
-                    <span className="flex items-center gap-1.5">
-                      <CheckCircle className="h-3.5 w-3.5" weight="fill" />
-                      {t.samsung.hashtags.valid} ({fixedHashtags.length})
-                    </span>
-                  ) : (
-                    <div className="space-y-1">
-                      <span className="flex items-center gap-1.5 font-medium">
-                        <Warning className="h-3.5 w-3.5" weight="fill" />
-                        {t.samsung.hashtags.invalid}
-                      </span>
-                      <ul className="pl-5 space-y-0.5 list-disc">
-                        {hashtagValidation.issueKeys.map((key, i) => (
-                          <li key={i}>{t.samsung.hashtags[key as keyof typeof t.samsung.hashtags]}</li>
-                        ))}
-                      </ul>
+                  <div className="flex items-center gap-3">
+                    <Gear className="h-4 w-4 text-muted-foreground" />
+                    <div className="text-left">
+                      <span className="text-sm font-medium">{t.samsung.contentSettings}</span>
+                      {!samsungSettingsOpen && (
+                        <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
+                          <span>{t.samsung.contentTypes[contentType]}</span>
+                          <span>•</span>
+                          <span>{t.samsung.videoFormats[videoFormat]}</span>
+                          {useFixedHashtags && fixedHashtags.length > 0 && (
+                            <>
+                              <span>•</span>
+                              <span>{fixedHashtags.length} {t.samsung.hashtags.fixedHashtags || '해시태그'}</span>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
+                  </div>
+                  {samsungSettingsOpen ? (
+                    <CaretUp className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <CaretDown className="h-4 w-4 text-muted-foreground" />
                   )}
-                </div>
-              )}
-            </div>
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="px-3 sm:px-4 pb-4 pt-2 border-t space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Content Type */}
+                    <div>
+                      <Label htmlFor="contentType" className="text-sm">{t.samsung.contentType}</Label>
+                      <Select
+                        value={contentType}
+                        onValueChange={(value) => setContentType(value as ContentType)}
+                      >
+                        <SelectTrigger id="contentType" className="mt-1.5 bg-background">
+                          <SelectValue placeholder={t.common.select} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(Object.keys(CONTENT_TYPE_LABELS) as ContentType[]).map((type) => (
+                            <SelectItem key={type} value={type}>
+                              {t.samsung.contentTypes[type]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-            {/* Vanity Link Code */}
-            <div className="mt-4">
-              <Label htmlFor="vanityLinkCode" className="text-sm">
-                {t.samsung.vanityLinkCode}
-                <span className="text-muted-foreground font-normal ml-2 text-xs">
-                  ({t.common.optional})
-                </span>
-              </Label>
-              <Input
-                id="vanityLinkCode"
-                value={vanityLinkCode}
-                onChange={(e) => setVanityLinkCode(e.target.value)}
-                placeholder="e.g., ZFlip7_Intro"
-                className="mt-1.5 bg-background"
-              />
-              <p className="text-xs text-muted-foreground mt-1.5">
-                {t.samsung.vanityLinkPreview}: http://smsng.co/{vanityLinkCode || '[Code]'}_yt
-              </p>
+                    {/* Video Format */}
+                    <div>
+                      <Label htmlFor="videoFormat" className="text-sm">{t.samsung.videoFormat}</Label>
+                      <Select
+                        value={videoFormat}
+                        onValueChange={(value) => setVideoFormat(value as VideoFormat)}
+                      >
+                        <SelectTrigger id="videoFormat" className="mt-1.5 bg-background">
+                          <SelectValue placeholder={t.common.select} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(Object.keys(VIDEO_FORMAT_LABELS) as VideoFormat[]).map((fmt) => (
+                            <SelectItem key={fmt} value={fmt}>
+                              {t.samsung.videoFormats[fmt]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Fixed Hashtags */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <Label htmlFor="fixedHashtags" className="text-sm">
+                        {t.samsung.hashtags.fixedHashtags}
+                      </Label>
+                      <label className="flex items-center gap-2 text-xs cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={useFixedHashtags}
+                          onChange={(e) => setUseFixedHashtags(e.target.checked)}
+                          className="rounded border-gray-300"
+                        />
+                        <span className="text-muted-foreground">{t.samsung.hashtags.useFixedHashtags}</span>
+                      </label>
+                    </div>
+                    <Input
+                      id="fixedHashtags"
+                      value={fixedHashtags.join(' ')}
+                      onChange={(e) => {
+                        const hashtags = e.target.value
+                          .split(/\s+/)
+                          .filter(tag => tag.startsWith('#') || tag.length === 0)
+                          .map(tag => tag.startsWith('#') ? tag : `#${tag}`)
+                          .filter(Boolean)
+                        setFixedHashtags(hashtags)
+                      }}
+                      placeholder={t.samsung.hashtags.placeholder}
+                      className="bg-background"
+                      disabled={!useFixedHashtags}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1.5">
+                      {t.samsung.hashtags.orderHint}
+                    </p>
+                    {/* Hashtag Order Validation UI (P0-1) */}
+                    {useFixedHashtags && fixedHashtags.length > 0 && (
+                      <div className={cn(
+                        "mt-2 p-2.5 rounded-md text-xs border",
+                        hashtagValidation.valid
+                          ? "bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800"
+                          : "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+                      )}>
+                        {hashtagValidation.valid ? (
+                          <span className="flex items-center gap-1.5">
+                            <CheckCircle className="h-3.5 w-3.5" weight="fill" />
+                            {t.samsung.hashtags.valid} ({fixedHashtags.length})
+                          </span>
+                        ) : (
+                          <div className="space-y-1">
+                            <span className="flex items-center gap-1.5 font-medium">
+                              <Warning className="h-3.5 w-3.5" weight="fill" />
+                              {t.samsung.hashtags.invalid}
+                            </span>
+                            <ul className="pl-5 space-y-0.5 list-disc">
+                              {hashtagValidation.issueKeys.map((key, i) => (
+                                <li key={i}>{t.samsung.hashtags[key as keyof typeof t.samsung.hashtags]}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Vanity Link Code */}
+                  <div>
+                    <Label htmlFor="vanityLinkCode" className="text-sm">
+                      {t.samsung.vanityLinkCode}
+                      <span className="text-muted-foreground font-normal ml-2 text-xs">
+                        ({t.common.optional})
+                      </span>
+                    </Label>
+                    <Input
+                      id="vanityLinkCode"
+                      value={vanityLinkCode}
+                      onChange={(e) => setVanityLinkCode(e.target.value)}
+                      placeholder="e.g., ZFlip7_Intro"
+                      className="mt-1.5 bg-background"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1.5">
+                      {t.samsung.vanityLinkPreview}: http://smsng.co/{vanityLinkCode || '[Code]'}_yt
+                    </p>
+                  </div>
+                </div>
+              </CollapsibleContent>
             </div>
-          </div>
+          </Collapsible>
 
           <div>
             <Label className="text-sm sm:text-base">
@@ -761,74 +1105,136 @@ export function ProductSelector() {
             )}
           </div>
 
-          {/* Brief Loading State */}
-          {briefLoading && (
-            <div className="p-4 rounded-lg bg-muted/50 border animate-pulse">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <div className="h-4 w-4 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
-                <span>{t.generate.productSelector.loadingBrief}</span>
-              </div>
-            </div>
-          )}
-
-          {/* Brief Load Error */}
-          {briefLoadError && !briefLoading && (
-            <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-start gap-2 text-sm">
-                  <Warning className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" weight="fill" />
-                  <div>
-                    <p className="font-medium text-destructive">{t.generate.productSelector.briefLoadFailed}</p>
-                    <p className="text-muted-foreground mt-1">{briefLoadError}</p>
-                  </div>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={fetchBrief}
-                  className="gap-2 flex-shrink-0"
-                >
-                  <ArrowClockwise className="h-4 w-4" />
-                  {t.generate.productSelector.retry}
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1">
-                <Info className="h-3 w-3" />
-                {t.generate.productSelector.continueWithoutBrief}
-              </p>
-            </div>
-          )}
-
-          {/* Active Brief Display */}
-          {activeBrief && !briefLoading && !briefLoadError && (
-            <div className="p-4 rounded-lg bg-muted/50 border">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                <span>{t.generate.productSelector.activeBrief}:</span>
-                <span className="font-medium text-foreground">v{activeBrief.version}</span>
-                <span>
-                  ({new Date(activeBrief.created_at).toLocaleDateString('ko-KR')})
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {activeBrief.usps.map((usp, i) => (
-                  <span
-                    key={i}
-                    className="px-2 py-1 text-sm bg-background rounded border"
-                  >
-                    {i + 1}. {usp}
+          {/* USP Source Selection - Simplified Radio Toggle */}
+          {productId && (
+            <div className="space-y-2">
+              <Label className="text-sm sm:text-base flex items-center gap-2">
+                USP {t.generate.productSelector.source || '소스'}
+                {briefLoading && (
+                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                    <div className="h-3 w-3 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
+                    {t.generate.productSelector.loadingBrief}
                   </span>
-                ))}
-              </div>
-            </div>
-          )}
+                )}
+              </Label>
 
-          {/* No Brief Available */}
-          {!activeBrief && !briefLoading && !briefLoadError && productId && (
-            <div className="p-4 rounded-lg bg-muted/30 border border-dashed">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Info className="h-4 w-4" />
-                <span>{t.generate.productSelector.noBriefFound}</span>
+              <div className="flex flex-col sm:flex-row gap-2">
+                {/* Auto-extraction option */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedBriefId(null)
+                    setBriefUsps([])
+                  }}
+                  className={cn(
+                    "flex-1 flex items-center gap-3 p-3 rounded-lg border text-left transition-all",
+                    !selectedBriefId
+                      ? "bg-green-50/50 dark:bg-green-950/20 border-green-400 dark:border-green-600"
+                      : "bg-muted/20 border-muted-foreground/20 hover:border-muted-foreground/40"
+                  )}
+                >
+                  <div className={cn(
+                    "w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0",
+                    !selectedBriefId ? "border-green-500 bg-green-500" : "border-muted-foreground/50"
+                  )}>
+                    {!selectedBriefId && <Check className="h-2.5 w-2.5 text-white" weight="bold" />}
+                  </div>
+                  <div>
+                    <span className={cn(
+                      "text-sm font-medium",
+                      !selectedBriefId ? "text-green-700 dark:text-green-300" : "text-muted-foreground"
+                    )}>
+                      {t.generate.productSelector.useAutoExtraction || 'SRT 자동 추출'}
+                    </span>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      AI가 콘텐츠 분석
+                    </p>
+                  </div>
+                </button>
+
+                {/* Brief selection option */}
+                {allBriefs.length > 0 && !briefLoading && (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className={cn(
+                          "flex-1 flex items-center gap-3 p-3 rounded-lg border text-left transition-all",
+                          selectedBriefId
+                            ? "bg-primary/5 border-primary"
+                            : "bg-muted/20 border-muted-foreground/20 hover:border-muted-foreground/40"
+                        )}
+                      >
+                        <div className={cn(
+                          "w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0",
+                          selectedBriefId ? "border-primary bg-primary" : "border-muted-foreground/50"
+                        )}>
+                          {selectedBriefId && <Check className="h-2.5 w-2.5 text-white" weight="bold" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className={cn(
+                            "text-sm font-medium",
+                            selectedBriefId ? "text-primary" : "text-muted-foreground"
+                          )}>
+                            {selectedBriefId
+                              ? `브리프 v${allBriefs.find(b => b.id === selectedBriefId)?.version || '?'}`
+                              : t.generate.productSelector.selectBrief || '브리프 선택'
+                            }
+                          </span>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {allBriefs.length}개 브리프 사용 가능
+                          </p>
+                        </div>
+                        <CaretDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-2" align="start">
+                      <div className="space-y-1">
+                        {allBriefs.map((brief) => (
+                          <button
+                            key={brief.id}
+                            type="button"
+                            onClick={() => handleBriefSelect(brief.id)}
+                            className={cn(
+                              "w-full flex items-center gap-2 px-3 py-2 rounded-md text-left text-sm transition-colors",
+                              selectedBriefId === brief.id
+                                ? "bg-primary/10 text-primary"
+                                : "hover:bg-muted"
+                            )}
+                          >
+                            <span className="font-medium">v{brief.version}</span>
+                            {brief.is_active && (
+                              <Badge variant="secondary" className="text-xs px-1.5 py-0">활성</Badge>
+                            )}
+                            <span className="text-xs text-muted-foreground ml-auto">
+                              {new Date(brief.created_at).toLocaleDateString('ko-KR')}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
               </div>
+
+              {/* Brief USPs preview - compact inline display */}
+              {selectedBriefId && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground pl-1">
+                  <span>USP:</span>
+                  <span className="truncate">
+                    {allBriefs.find(b => b.id === selectedBriefId)?.usps.slice(0, 2).join(', ')}
+                    {(allBriefs.find(b => b.id === selectedBriefId)?.usps.length || 0) > 2 && ' ...'}
+                  </span>
+                </div>
+              )}
+
+              {/* Error state - inline */}
+              {briefLoadError && !briefLoading && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                  <Warning className="h-3 w-3" />
+                  {t.generate.productSelector.briefLoadFailed} - {t.generate.productSelector.continueWithoutBrief}
+                </p>
+              )}
             </div>
           )}
         </div>

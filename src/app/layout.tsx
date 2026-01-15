@@ -15,7 +15,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko" suppressHydrationWarning>
-      <body className="font-samsung antialiased bg-background text-foreground">
+      <body className="font-samsung antialiased bg-background text-foreground" suppressHydrationWarning>
         <Providers>
           {children}
           <Toaster />

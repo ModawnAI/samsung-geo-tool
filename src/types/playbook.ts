@@ -142,16 +142,18 @@ export const SECTION_TITLES: Record<string, { ko: string; en: PlaybookSection }>
   '발행 전 체크리스트': { ko: '발행 전 체크리스트', en: 'pre_publish_checklist' },
 }
 
-// Samsung product categories
+// Samsung product categories (aligned with Samsung.com navigation)
 export type ProductCategory =
-  | 'mobile'
-  | 'watch'
-  | 'ring'
-  | 'buds'
-  | 'laptop'
-  | 'xr'
-  | 'tv'
-  | 'appliance'
+  | 'featured'       // 기획전
+  | 'mobile'         // 모바일
+  | 'tv_audio'       // TV/영상·음향
+  | 'kitchen'        // 주방가전
+  | 'living'         // 리빙가전
+  | 'pc'             // PC/주변기기
+  | 'wearables'      // 웨어러블
+  | 'harman'         // 하만
+  | 'accessories'    // 소모품/액세서리
+  | 'ai_club'        // AI 구독클럽
 
 // Content types in the playbook
 export type ContentType =

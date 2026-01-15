@@ -28,6 +28,7 @@ export async function POST(request: NextRequest) {
       faq,
       status,
       campaignTag,
+      imageAltResult,
     } = body
 
     if (!productId || !srtContent || !selectedKeywords) {
@@ -50,6 +51,7 @@ export async function POST(request: NextRequest) {
       faq: faq || null,
       status: status || 'draft',
       campaign_tag: campaignTag || null,
+      image_alt_result: imageAltResult || null,
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -16,6 +16,7 @@ import {
   SpinnerGap,
   Warning,
 } from '@phosphor-icons/react'
+import type { ImageAltResult } from '@/types/geo-v2'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -41,6 +42,7 @@ interface GenerationData {
   status: 'draft' | 'confirmed'
   campaign_tag: string | null
   video_url: string | null
+  image_alt_result: ImageAltResult | null
   created_at: string
   updated_at: string
   products: {
@@ -90,6 +92,7 @@ export default function GenerationViewPage() {
           status: gen.status,
           campaignTag: gen.campaign_tag || undefined,
           videoUrl: gen.video_url || undefined,
+          imageAltResult: gen.image_alt_result || null,
         })
       } catch (err) {
         console.error('Fetch error:', err)

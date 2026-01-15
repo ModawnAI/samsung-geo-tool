@@ -7,7 +7,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import type { GEOv2GenerateResponse } from '@/types/geo-v2'
 import { USPDisplay } from './usp-display'
-import { GroundingScoreDisplay } from './grounding-score-display'
+import { GroundingSourcesWidget } from './grounding-sources-widget'
+import { ImageAltDisplay } from './image-alt-display'
 import { ExportButtons } from './export-buttons'
 import {
   TextT,
@@ -16,12 +17,14 @@ import {
   Footprints,
   BookOpenText,
   Tag,
+  Globe,
   CaretDown,
   CaretUp,
   Copy,
   Check,
   ChartBar,
   Link as LinkIcon,
+  Image as ImageIcon,
 } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 
@@ -43,27 +46,15 @@ export function ResultsDisplay({
 
   return (
     <div className={cn('space-y-6', className)}>
-      {/* Header with Score and Export */}
+      {/* Header with Export */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <ChartBar className="h-5 w-5 text-[#040523] dark:text-slate-200" weight="fill" />
             <span className="text-sm font-medium">
-              {isKorean ? 'GEO/AEO 점수' : 'GEO/AEO Score'}
+              {isKorean ? '생성 결과' : 'Generated Results'}
             </span>
           </div>
-          <Badge
-            variant={
-              result.finalScore.total >= 80
-                ? 'default'
-                : result.finalScore.total >= 60
-                ? 'secondary'
-                : 'destructive'
-            }
-            className="text-lg px-3 py-1"
-          >
-            {result.finalScore.total}/100
-          </Badge>
         </div>
         <ExportButtons
           result={result}
@@ -85,7 +76,7 @@ export function ResultsDisplay({
 
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6">
+        <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8">
           <TabsTrigger value="description" className="gap-1.5">
             <TextT className="h-4 w-4" />
             <span className="hidden sm:inline">
@@ -118,6 +109,18 @@ export function ResultsDisplay({
             <Tag className="h-4 w-4" />
             <span className="hidden sm:inline">
               {isKorean ? '키워드' : 'Keywords'}
+            </span>
+          </TabsTrigger>
+          <TabsTrigger value="sources" className="gap-1.5">
+            <Globe className="h-4 w-4" />
+            <span className="hidden sm:inline">
+              {isKorean ? '소스' : 'Sources'}
+            </span>
+          </TabsTrigger>
+          <TabsTrigger value="image-alt" className="gap-1.5">
+            <ImageIcon className="h-4 w-4" />
+            <span className="hidden sm:inline">
+              {isKorean ? '이미지' : 'Images'}
             </span>
           </TabsTrigger>
         </TabsList>
@@ -161,23 +164,30 @@ export function ResultsDisplay({
           <KeywordsSection
             keywords={result.keywords}
             hashtags={result.hashtags}
+            isFixedHashtags={result.isFixedHashtags}
+            language={language}
+          />
+        </TabsContent>
+
+        {/* Sources Tab */}
+        <TabsContent value="sources" className="mt-4">
+          <SourcesSection
+            groundingMetadata={result.groundingMetadata}
+            groundingQuality={result.finalScore.groundingQuality}
+            language={language}
+          />
+        </TabsContent>
+
+        {/* Image Alt Tab */}
+        <TabsContent value="image-alt" className="mt-4">
+          <ImageAltSection
+            imageAltResult={result.imageAltResult}
             language={language}
           />
         </TabsContent>
       </Tabs>
 
-      {/* Grounding Quality & Sources */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {result.finalScore.groundingQuality && (
-          <GroundingScoreDisplay
-            groundingQuality={result.finalScore.groundingQuality}
-            groundingMetadata={result.groundingMetadata}
-          />
-        )}
-
-        {/* Score Breakdown */}
-        <ScoreBreakdown score={result.finalScore} language={language} />
-      </div>
+      {/* Score breakdown hidden - AI automatically optimizes for best results */}
     </div>
   )
 }
@@ -535,10 +545,12 @@ function CaseStudiesSection({
 function KeywordsSection({
   keywords,
   hashtags,
+  isFixedHashtags,
   language,
 }: {
   keywords: GEOv2GenerateResponse['keywords']
   hashtags: GEOv2GenerateResponse['hashtags']
+  isFixedHashtags?: boolean
   language: 'ko' | 'en'
 }) {
   const [copied, setCopied] = useState<'product' | 'generic' | 'hashtags' | null>(null)
@@ -616,9 +628,6 @@ function KeywordsSection({
               </Badge>
             ))}
           </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            {isKorean ? '키워드 밀도 점수' : 'Keyword Density Score'}: {keywords.densityScore}
-          </p>
         </CardContent>
       </Card>
 
@@ -626,9 +635,16 @@ function KeywordsSection({
       <Card>
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-medium">
-              {isKorean ? '해시태그' : 'Hashtags'}
-            </CardTitle>
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-sm font-medium">
+                {isKorean ? '해시태그' : 'Hashtags'}
+              </CardTitle>
+              {isFixedHashtags && (
+                <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-700">
+                  {isKorean ? '고정 해시태그' : 'Fixed'}
+                </Badge>
+              )}
+            </div>
             <Button
               variant="ghost"
               size="sm"
@@ -645,97 +661,78 @@ function KeywordsSection({
           </div>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-[#040523] dark:text-slate-200">{hashtags.join(' ')}</p>
+          <p className="text-sm text-[#040523] dark:text-slate-200 whitespace-pre-wrap">{hashtags.join(' ')}</p>
+          {isFixedHashtags && (
+            <p className="text-xs text-muted-foreground mt-2">
+              {isKorean
+                ? 'Samsung Standard에 따른 고정 해시태그입니다. 복사하여 사용하세요.'
+                : 'Fixed hashtags as per Samsung Standard. Copy to use.'}
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>
   )
 }
 
-// Score Breakdown Component
-function ScoreBreakdown({
-  score,
+// Sources Section Component
+function SourcesSection({
+  groundingMetadata,
+  groundingQuality,
   language,
 }: {
-  score: GEOv2GenerateResponse['finalScore']
+  groundingMetadata?: GEOv2GenerateResponse['groundingMetadata']
+  groundingQuality?: GEOv2GenerateResponse['finalScore']['groundingQuality']
   language: 'ko' | 'en'
 }) {
   const isKorean = language === 'ko'
 
-  const metrics = [
-    {
-      label: isKorean ? '키워드 밀도' : 'Keyword Density',
-      value: score.keywordDensity,
-      max: 15,
-    },
-    {
-      label: isKorean ? 'AI 검색 노출' : 'AI Search Exposure',
-      value: score.aiExposure,
-      max: 25,
-    },
-    {
-      label: isKorean ? '질문 패턴' : 'Question Patterns',
-      value: score.questionPatterns,
-      max: 20,
-    },
-    {
-      label: isKorean ? '문장 구조' : 'Sentence Structure',
-      value: score.sentenceStructure,
-      max: 15,
-    },
-    {
-      label: isKorean ? '길이 적합성' : 'Length Compliance',
-      value: score.lengthCompliance,
-      max: 15,
-    },
-  ]
+  if (!groundingMetadata || !groundingQuality) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center text-muted-foreground">
+          {isKorean
+            ? '그라운딩 소스 데이터가 없습니다'
+            : 'No grounding source data available'}
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <ChartBar className="h-4 w-4" />
-          {isKorean ? '점수 상세' : 'Score Breakdown'}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {metrics.map((metric, idx) => (
-          <div key={idx} className="space-y-1">
-            <div className="flex justify-between text-xs">
-              <span>{metric.label}</span>
-              <span className="font-medium">
-                {metric.value}/{metric.max}
-              </span>
-            </div>
-            <div className="h-2 bg-muted rounded-full overflow-hidden">
-              <div
-                className="h-full bg-[#040523] dark:bg-slate-300 transition-all duration-500"
-                style={{ width: `${(metric.value / metric.max) * 100}%` }}
-              />
-            </div>
-          </div>
-        ))}
-
-        <div className="pt-3 border-t">
-          <div className="flex justify-between items-center">
-            <span className="font-medium">
-              {isKorean ? '총점' : 'Total Score'}
-            </span>
-            <Badge
-              variant={
-                score.total >= 80
-                  ? 'default'
-                  : score.total >= 60
-                  ? 'secondary'
-                  : 'destructive'
-              }
-              className="text-base px-3"
-            >
-              {score.total}/100
-            </Badge>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+    <GroundingSourcesWidget
+      groundingMetadata={groundingMetadata}
+      groundingQuality={groundingQuality}
+      language={language}
+      onSourceClick={(uri, title) => {
+        console.log('Source clicked:', uri, title)
+      }}
+    />
   )
 }
+
+// Image Alt Section Component
+function ImageAltSection({
+  imageAltResult,
+  language,
+}: {
+  imageAltResult?: GEOv2GenerateResponse['imageAltResult']
+  language: 'ko' | 'en'
+}) {
+  const isKorean = language === 'ko'
+
+  if (!imageAltResult) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center text-muted-foreground">
+          {isKorean
+            ? '이미지 Alt 텍스트 데이터가 없습니다'
+            : 'No image alt text data available'}
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return <ImageAltDisplay imageAltResult={imageAltResult} language={language} />
+}
+

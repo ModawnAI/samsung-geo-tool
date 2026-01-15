@@ -1,25 +1,16 @@
 'use client'
 
-import { useEffect, useCallback, useRef, useState } from 'react'
+import { useEffect, useCallback, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGenerationStore } from '@/store/generation-store'
 import { ProductSelector } from '@/components/features/product-selector'
 import { SrtInput } from '@/components/features/srt-input'
 import { GenerationProgress } from '@/components/features/generation-progress'
+import { GenerationQueuePanel } from '@/components/features/generation-queue-panel'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
 
 // Lazy load heavy components that aren't immediately visible
 const KeywordSelector = dynamic(
@@ -59,7 +50,6 @@ import {
   Check,
   Info,
   CheckCircle,
-  Warning,
 } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { MOTION_VARIANTS, ICON_SIZES } from '@/lib/constants/ui'
@@ -104,9 +94,9 @@ export default function GeneratePage() {
   const fixedHashtags = useGenerationStore((state) => state.fixedHashtags)
   const useFixedHashtags = useGenerationStore((state) => state.useFixedHashtags)
 
-  // Validation dialog state (P0-3)
-  const [validationIssues, setValidationIssues] = useState<string[]>([])
-  const [showValidationDialog, setShowValidationDialog] = useState(false)
+  // Multi-session queue support
+  const sessionOrder = useGenerationStore((state) => state.sessionOrder)
+  const hasQueuedSessions = sessionOrder.length > 0
 
   // AbortController for cancelable requests
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -158,41 +148,7 @@ export default function GeneratePage() {
     }
   }, [step, productId, srtContent, selectedKeywords])
 
-  // Samsung Standard Validation (P0-3)
-  const validateBeforeGeneration = useCallback((): string[] => {
-    const issues: string[] = []
-
-    // Validate fixed hashtags if enabled
-    if (useFixedHashtags && fixedHashtags.length > 0) {
-      // Check hashtag count (Samsung standard: 3-5)
-      if (fixedHashtags.length < 3) {
-        issues.push(t.samsung.validation.hashtagCountLow.replace('{count}', String(fixedHashtags.length)))
-      } else if (fixedHashtags.length > 5) {
-        issues.push(t.samsung.validation.hashtagCountHigh.replace('{count}', String(fixedHashtags.length)))
-      }
-
-      // Check if #Samsung is last
-      const lastHashtag = fixedHashtags[fixedHashtags.length - 1]?.toLowerCase()
-      if (lastHashtag !== '#samsung') {
-        issues.push(t.samsung.validation.samsungLastRequired)
-      }
-
-      // Check if #GalaxyAI is first (if present)
-      const galaxyAIIndex = fixedHashtags.findIndex(h => h.toLowerCase().includes('galaxyai'))
-      if (galaxyAIIndex > 0) {
-        issues.push(t.samsung.validation.galaxyAIFirstRecommended)
-      }
-    }
-
-    // Validate Shorts content length
-    if (videoFormat === 'shorts_9x16' && srtContent.length > 1000) {
-      issues.push(t.samsung.validation.shortsTranscriptLong)
-    }
-
-    return issues
-  }, [useFixedHashtags, fixedHashtags, videoFormat, srtContent, t])
-
-  // Execute generation (called directly or after validation confirmation)
+  // Execute generation
   const executeGeneration = useCallback(async () => {
     // Cancel any pending request
     if (abortControllerRef.current) {
@@ -300,6 +256,7 @@ export default function GeneratePage() {
         faq: faqContent,
         breakdown,
         tuningMetadata: data.tuningMetadata,
+        imageAltResult: data.imageAltResult,
       })
 
       setStep('output')
@@ -312,23 +269,8 @@ export default function GeneratePage() {
     }
   }, [setIsGenerating, setOutput, setStep])
 
-  // Validation-aware generation handler (P0-3)
+  // Generation handler - AI auto-corrects to Samsung standards
   const handleGenerate = useCallback(async () => {
-    const issues = validateBeforeGeneration()
-
-    if (issues.length > 0) {
-      // Show validation dialog with issues
-      setValidationIssues(issues)
-      setShowValidationDialog(true)
-    } else {
-      // No issues, proceed directly
-      await executeGeneration()
-    }
-  }, [validateBeforeGeneration, executeGeneration])
-
-  // Handle confirmation from validation dialog
-  const handleValidationConfirm = useCallback(async () => {
-    setShowValidationDialog(false)
     await executeGeneration()
   }, [executeGeneration])
 
@@ -518,32 +460,14 @@ export default function GeneratePage() {
         )}
       </div>
 
-      {/* Samsung Standard Validation Dialog (P0-3) */}
-      <AlertDialog open={showValidationDialog} onOpenChange={setShowValidationDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <Warning className="h-5 w-5 text-amber-500" weight="fill" />
-              {t.samsung.validation.title}
-            </AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-3">
-                <ul className="list-disc pl-5 space-y-1 text-sm">
-                  {validationIssues.map((issue, i) => (
-                    <li key={i} className="text-amber-700 dark:text-amber-300">{issue}</li>
-                  ))}
-                </ul>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t.samsung.validation.fixIssues}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleValidationConfirm}>
-              {t.samsung.validation.generateAnyway}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Generation Queue Panel - shows when there are queued sessions */}
+      {hasQueuedSessions && (
+        <GenerationQueuePanel
+          className="mt-6"
+          collapsible={true}
+          defaultExpanded={true}
+        />
+      )}
     </div>
   )
 }

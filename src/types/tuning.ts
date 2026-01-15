@@ -208,3 +208,57 @@ export function normalizeWeights(weights: WeightValues): WeightValues {
     structure_quality: weights.structure_quality / total,
   }
 }
+
+// ============================================================================
+// Domain Blacklist Types
+// ============================================================================
+
+// Individual domain entry in a blacklist
+export interface BlacklistDomain {
+  domain: string
+  reason?: string
+  added_at: string  // ISO date string
+}
+
+// Database row type for domain_blacklist table
+export interface DomainBlacklistRow {
+  id: string
+  name: string
+  version: string
+  domains: BlacklistDomain[]
+  is_active: boolean
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+// Form data for creating/editing blacklist configs
+export interface BlacklistFormData {
+  name: string
+  version: string
+  domains: BlacklistDomain[]
+}
+
+// Loaded blacklist from cache/API
+export interface LoadedBlacklist {
+  id: string
+  name: string
+  version: string
+  domains: Set<string>  // Set for O(1) lookup
+  domainDetails: Map<string, BlacklistDomain>  // Full details by domain
+  loadedAt: number  // Timestamp for cache invalidation
+}
+
+// Result from blacklist loader
+export interface BlacklistLoaderResult {
+  blacklist: LoadedBlacklist | null
+  source: 'cache' | 'database' | 'none'
+  error?: string
+}
+
+// Result of domain blacklist check
+export interface BlacklistCheckResult {
+  isBlacklisted: boolean
+  reason?: string
+  matchedDomain?: string  // The domain that matched (could be parent domain)
+}
