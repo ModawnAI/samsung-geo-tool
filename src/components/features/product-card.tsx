@@ -56,6 +56,7 @@ export function ProductCard({ product, isSelected, onSelect, multiSelectMode = f
           fill
           className="object-contain"
           sizes="(max-width: 640px) 64px, 80px"
+          unoptimized
           onError={(e) => {
             // Fallback to placeholder on error
             const target = e.target as HTMLImageElement
