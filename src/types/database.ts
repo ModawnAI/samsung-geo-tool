@@ -223,6 +223,10 @@ export interface Database {
           keywords: string[]
           campaign_tag: string | null
           brief_usps: string[]
+          is_brief_template: boolean
+          brief_defaults: Json
+          usage_count: number
+          category_id: string | null
           created_by: string | null
           created_at: string
           updated_at: string
@@ -235,6 +239,10 @@ export interface Database {
           keywords?: string[]
           campaign_tag?: string | null
           brief_usps?: string[]
+          is_brief_template?: boolean
+          brief_defaults?: Json
+          usage_count?: number
+          category_id?: string | null
           created_by?: string | null
           created_at?: string
           updated_at?: string
@@ -247,9 +255,36 @@ export interface Database {
           keywords?: string[]
           campaign_tag?: string | null
           brief_usps?: string[]
+          is_brief_template?: boolean
+          brief_defaults?: Json
+          usage_count?: number
+          category_id?: string | null
           created_by?: string | null
           created_at?: string
           updated_at?: string
+        }
+      }
+      brief_template_usage: {
+        Row: {
+          id: string
+          template_id: string
+          brief_id: string | null
+          user_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          template_id: string
+          brief_id?: string | null
+          user_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          template_id?: string
+          brief_id?: string | null
+          user_id?: string | null
+          created_at?: string
         }
       }
       embedding_cache: {
@@ -283,6 +318,41 @@ export interface Database {
           model?: string
           dimensions?: number
           hit_count?: number
+          created_at?: string
+          expires_at?: string
+        }
+      }
+      generation_cache: {
+        Row: {
+          id: string
+          cache_key: string
+          product_name: string
+          keywords: Json
+          result: Json
+          hit_count: number
+          last_accessed_at: string
+          created_at: string
+          expires_at: string
+        }
+        Insert: {
+          id?: string
+          cache_key: string
+          product_name: string
+          keywords?: Json
+          result: Json
+          hit_count?: number
+          last_accessed_at?: string
+          created_at?: string
+          expires_at: string
+        }
+        Update: {
+          id?: string
+          cache_key?: string
+          product_name?: string
+          keywords?: Json
+          result?: Json
+          hit_count?: number
+          last_accessed_at?: string
           created_at?: string
           expires_at?: string
         }
@@ -815,6 +885,153 @@ export interface Database {
           created_at?: string
         }
       }
+      stage_prompts: {
+        Row: {
+          id: string
+          prompt_version_id: string | null
+          stage: 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
+          stage_system_prompt: string | null
+          temperature: number
+          max_tokens: number
+          top_p: number
+          model: string
+          workflow_status: 'draft' | 'testing' | 'pending_approval' | 'active' | 'archived'
+          avg_quality_score: number | null
+          test_count: number
+          last_tested_at: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          prompt_version_id?: string | null
+          stage: 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
+          stage_system_prompt?: string | null
+          temperature?: number
+          max_tokens?: number
+          top_p?: number
+          model?: string
+          workflow_status?: 'draft' | 'testing' | 'pending_approval' | 'active' | 'archived'
+          avg_quality_score?: number | null
+          test_count?: number
+          last_tested_at?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          prompt_version_id?: string | null
+          stage?: 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
+          stage_system_prompt?: string | null
+          temperature?: number
+          max_tokens?: number
+          top_p?: number
+          model?: string
+          workflow_status?: 'draft' | 'testing' | 'pending_approval' | 'active' | 'archived'
+          avg_quality_score?: number | null
+          test_count?: number
+          last_tested_at?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      prompt_test_runs: {
+        Row: {
+          id: string
+          stage_prompt_id: string | null
+          test_input: Json
+          product_name: string | null
+          language: 'en' | 'ko'
+          output_content: string | null
+          output_parsed: Json | null
+          latency_ms: number | null
+          input_tokens: number | null
+          output_tokens: number | null
+          total_tokens: number | null
+          quality_score: number | null
+          score_breakdown: Json | null
+          status: 'pending' | 'running' | 'completed' | 'failed'
+          error_message: string | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          stage_prompt_id?: string | null
+          test_input: Json
+          product_name?: string | null
+          language?: 'en' | 'ko'
+          output_content?: string | null
+          output_parsed?: Json | null
+          latency_ms?: number | null
+          input_tokens?: number | null
+          output_tokens?: number | null
+          total_tokens?: number | null
+          quality_score?: number | null
+          score_breakdown?: Json | null
+          status?: 'pending' | 'running' | 'completed' | 'failed'
+          error_message?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          stage_prompt_id?: string | null
+          test_input?: Json
+          product_name?: string | null
+          language?: 'en' | 'ko'
+          output_content?: string | null
+          output_parsed?: Json | null
+          latency_ms?: number | null
+          input_tokens?: number | null
+          output_tokens?: number | null
+          total_tokens?: number | null
+          quality_score?: number | null
+          score_breakdown?: Json | null
+          status?: 'pending' | 'running' | 'completed' | 'failed'
+          error_message?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+      }
+      stage_test_inputs: {
+        Row: {
+          id: string
+          name: string
+          stage: 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
+          input_data: Json
+          is_default: boolean
+          is_shared: boolean
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          stage: 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
+          input_data: Json
+          is_default?: boolean
+          is_shared?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          stage?: 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
+          input_data?: Json
+          is_default?: boolean
+          is_shared?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
@@ -824,6 +1041,25 @@ export interface Database {
         Args: { row_cache_key: string }
         Returns: void
       }
+      increment_generation_cache_hit: {
+        Args: { p_cache_key: string }
+        Returns: void
+      }
+      prune_expired_generation_cache: {
+        Args: Record<string, never>
+        Returns: number
+      }
+      get_generation_cache_stats: {
+        Args: Record<string, never>
+        Returns: {
+          total_entries: number
+          total_hits: number
+          expired_entries: number
+          avg_hit_count: number
+          oldest_entry: string | null
+          newest_entry: string | null
+        }[]
+      }
       get_user_activity_summary: {
         Args: { p_user_id: string; p_days: number }
         Returns: Json[]
@@ -831,6 +1067,38 @@ export interface Database {
       get_recent_api_errors: {
         Args: { p_user_id: string | null; p_limit: number }
         Returns: Json[]
+      }
+      increment_template_usage: {
+        Args: { p_template_id: string }
+        Returns: void
+      }
+      get_popular_brief_templates: {
+        Args: { p_limit: number }
+        Returns: {
+          id: string
+          name: string
+          description: string | null
+          category_id: string | null
+          category_name: string | null
+          keywords: string[]
+          brief_usps: string[]
+          brief_defaults: Json
+          usage_count: number
+          created_at: string
+        }[]
+      }
+      get_active_stage_prompt: {
+        Args: { p_stage: string }
+        Returns: {
+          id: string
+          stage: string
+          stage_system_prompt: string | null
+          temperature: number
+          max_tokens: number
+          model: string
+          prompt_version_id: string | null
+          base_system_prompt: string | null
+        }[]
       }
     }
     Enums: {

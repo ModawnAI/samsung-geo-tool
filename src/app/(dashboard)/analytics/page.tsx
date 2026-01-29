@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, Suspense } from 'react'
 import { useTranslation } from '@/lib/i18n'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -20,8 +20,18 @@ import {
   CalendarBlank,
 } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
+import { DateRangePicker, type DateRangeValue } from '@/components/analytics/date-range-picker'
+import { useAnalyticsFilters } from '@/hooks/use-analytics-filters'
 
 interface AnalyticsData {
+  dateRange: {
+    from: string
+    to: string
+  }
+  filters: {
+    productId: string | null
+    categoryId: string | null
+  }
   summary: {
     totalGenerations: number
     avgScore: number
@@ -245,17 +255,20 @@ function AnalyticsSkeleton() {
   )
 }
 
-export default function AnalyticsPage() {
+function AnalyticsPageContent() {
   const { t } = useTranslation()
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const { filters, setDateRange, buildQueryParams } = useAnalyticsFilters()
+
   const fetchAnalytics = useCallback(async () => {
     setIsLoading(true)
     setError(null)
     try {
-      const response = await fetch('/api/analytics')
+      const queryParams = buildQueryParams()
+      const response = await fetch(`/api/analytics?${queryParams}`)
       const data = await response.json()
       if (data.error) throw new Error(data.error)
       setAnalytics(data)
@@ -265,11 +278,15 @@ export default function AnalyticsPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [buildQueryParams])
 
   useEffect(() => {
     fetchAnalytics()
   }, [fetchAnalytics])
+
+  const handleDateRangeChange = (value: DateRangeValue) => {
+    setDateRange(value)
+  }
 
   if (isLoading) {
     return (
@@ -317,10 +334,16 @@ export default function AnalyticsPage() {
           <h1 className="text-2xl font-bold">{t.analytics.title}</h1>
           <p className="text-muted-foreground">{t.analytics.subtitle}</p>
         </div>
-        <Button variant="outline" onClick={fetchAnalytics} className="gap-2">
-          <ArrowClockwise className="h-4 w-4" />
-          {t.common.refresh}
-        </Button>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+          <DateRangePicker
+            value={filters.dateRange}
+            onChange={handleDateRangeChange}
+          />
+          <Button variant="outline" onClick={fetchAnalytics} className="gap-2">
+            <ArrowClockwise className="h-4 w-4" />
+            {t.common.refresh}
+          </Button>
+        </div>
       </div>
 
       {/* Summary Stats */}
@@ -470,5 +493,14 @@ export default function AnalyticsPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+// Wrap in Suspense because useSearchParams requires it
+export default function AnalyticsPage() {
+  return (
+    <Suspense fallback={<AnalyticsSkeleton />}>
+      <AnalyticsPageContent />
+    </Suspense>
   )
 }

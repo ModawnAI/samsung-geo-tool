@@ -7,6 +7,8 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient()
     const { searchParams } = new URL(request.url)
     const productId = searchParams.get('product_id')
+    const categoryId = searchParams.get('category_id')
+    const type = searchParams.get('type') // 'brief' or 'generation' or null for all
 
     // First check if templates table exists, if not we'll use a simple in-memory approach
     // or return empty array. Templates are stored in a templates table.
@@ -16,12 +18,25 @@ export async function GET(request: NextRequest) {
       .select(`
         *,
         products (id, name),
+        categories (id, name),
         users:created_by (email, name)
       `)
+      .order('usage_count', { ascending: false })
       .order('created_at', { ascending: false })
+
+    // Filter by type (brief templates vs generation templates)
+    if (type === 'brief') {
+      query = query.eq('is_brief_template', true)
+    } else if (type === 'generation') {
+      query = query.or('is_brief_template.is.null,is_brief_template.eq.false')
+    }
 
     if (productId) {
       query = query.eq('product_id', productId)
+    }
+
+    if (categoryId) {
+      query = query.eq('category_id', categoryId)
     }
 
     const { data, error } = await query
@@ -63,6 +78,9 @@ export async function POST(request: NextRequest) {
       campaign_tag,
       brief_usps,
       description,
+      is_brief_template,
+      brief_defaults,
+      category_id,
     } = body
 
     if (!name) {
@@ -81,11 +99,16 @@ export async function POST(request: NextRequest) {
         campaign_tag: campaign_tag || null,
         brief_usps: brief_usps || [],
         description: description || null,
+        is_brief_template: is_brief_template || false,
+        brief_defaults: brief_defaults || {},
+        category_id: category_id || null,
+        usage_count: 0,
         created_by: user.id,
       })
       .select(`
         *,
         products (id, name),
+        categories (id, name),
         users:created_by (email, name)
       `)
       .single()

@@ -31,6 +31,180 @@ interface SaveTemplateDialogProps {
   onSaved?: () => void
 }
 
+// Props for saving a brief as a template
+interface SaveBriefAsTemplateProps {
+  briefData: {
+    usps: string[]
+    content?: string | null
+    isActive?: boolean
+    categoryId?: string | null
+  }
+  productName?: string
+  onSaved?: (templateId: string) => void
+  disabled?: boolean
+}
+
+/**
+ * Button to save a brief as a reusable template
+ */
+export function SaveBriefAsTemplateButton({
+  briefData,
+  productName,
+  onSaved,
+  disabled,
+}: SaveBriefAsTemplateProps) {
+  const [open, setOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [templateName, setTemplateName] = useState('')
+  const [description, setDescription] = useState('')
+
+  const handleOpen = (isOpen: boolean) => {
+    setOpen(isOpen)
+    if (isOpen) {
+      setTemplateName(productName ? `${productName} Template` : '')
+      setDescription('')
+    }
+  }
+
+  const handleSave = async () => {
+    if (!templateName.trim()) {
+      toast.error('Template name is required')
+      return
+    }
+
+    if (briefData.usps.length === 0) {
+      toast.error('At least one USP is required')
+      return
+    }
+
+    setSaving(true)
+    try {
+      const response = await fetch('/api/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: templateName.trim(),
+          description: description.trim() || null,
+          brief_usps: briefData.usps,
+          brief_defaults: {
+            content: briefData.content || undefined,
+            isActive: briefData.isActive ?? true,
+          },
+          category_id: briefData.categoryId || null,
+          is_brief_template: true,
+        }),
+      })
+
+      const data = await response.json()
+      if (data.error) throw new Error(data.error)
+
+      toast.success('Template saved successfully')
+      setOpen(false)
+      onSaved?.(data.template.id)
+    } catch (error) {
+      console.error('Failed to save brief template:', error)
+      toast.error('Failed to save template')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-2" disabled={disabled}>
+          <FloppyDisk className="h-4 w-4" />
+          Save as Template
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FloppyDisk className="h-5 w-5" />
+            Save Brief as Template
+          </DialogTitle>
+          <DialogDescription>
+            Save this brief configuration for quick reuse in the future.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="brief-template-name">Template Name *</Label>
+            <Input
+              id="brief-template-name"
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              placeholder="e.g., Product Launch Brief"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="brief-template-description">Description (optional)</Label>
+            <Textarea
+              id="brief-template-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="When to use this template..."
+              rows={2}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">USPs to Include</Label>
+            <div className="flex flex-wrap gap-2 p-3 bg-muted/50 rounded-lg min-h-[60px]">
+              {briefData.usps.length > 0 ? (
+                briefData.usps.map((usp, i) => (
+                  <Badge key={i} variant="secondary" className="text-xs font-normal">
+                    {usp.length > 40 ? usp.slice(0, 40) + '...' : usp}
+                  </Badge>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">No USPs to include</p>
+              )}
+            </div>
+          </div>
+
+          {briefData.content && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Additional Content</Label>
+              <p className="text-sm text-muted-foreground p-3 bg-muted/50 rounded-lg line-clamp-3">
+                {briefData.content}
+              </p>
+            </div>
+          )}
+
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 text-xs text-muted-foreground">
+            <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
+            <p>
+              This template can be used to quickly create new briefs with the same USPs and content.
+            </p>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} disabled={saving || !templateName.trim()} className="gap-2">
+            {saving ? (
+              <>
+                <SpinnerGap className="h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <CheckCircle className="h-4 w-4" />
+                Save Template
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export function SaveTemplateDialog({ onSaved }: SaveTemplateDialogProps) {
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)

@@ -40,10 +40,10 @@ import { logGenerationFlow, createApiLoggerContext, finalizeApiLog } from '@/lib
 import { createClient } from '@/lib/supabase/server'
 import {
   createGenerationCacheKey,
-  getCachedGeneration,
-  cacheGeneration,
-  getGenerationCacheStats,
-} from '@/lib/cache/generation-cache'
+  getHybridCache,
+  setHybridCache,
+  getHybridCacheStats,
+} from '@/lib/cache/hybrid-cache'
 import type {
   GEOv2GenerateResponse,
   PipelineProgress,
@@ -466,16 +466,19 @@ export async function POST(request: NextRequest) {
     })
 
     if (!isRegeneration) {
-      const cachedResult = getCachedGeneration<GEOv2GenerateResponse>(cacheKey)
-      if (cachedResult) {
-        const cacheStats = getGenerationCacheStats()
-        console.log(`[GEO v2] 캐시 HIT (${cacheStats.hitRate} 비율, ${cacheStats.size}/${cacheStats.maxSize} 항목)`)
+      const cacheResult = await getHybridCache<GEOv2GenerateResponse>(cacheKey)
+      if (cacheResult.cacheHit && cacheResult.value) {
+        const cacheStats = await getHybridCacheStats()
+        console.log(`[GEO v2] 캐시 HIT (L${cacheResult.cacheSource === 'l1' ? '1' : '2'}, L1: ${cacheStats.l1.hitRate}, 총 요청: ${cacheStats.overall.totalRequests})`)
         return NextResponse.json({
-          ...cachedResult,
+          ...cacheResult.value,
           cached: true,
+          cacheSource: cacheResult.cacheSource,
           cacheStats: {
-            hitRate: cacheStats.hitRate,
-            cacheSize: cacheStats.size,
+            l1HitRate: cacheStats.overall.l1HitRate,
+            l2HitRate: cacheStats.overall.l2HitRate,
+            l1Size: cacheStats.l1.size,
+            l2Size: cacheStats.l2?.totalEntries ?? 0,
           },
         })
       }
@@ -864,8 +867,9 @@ export async function POST(request: NextRequest) {
     // CACHE STORAGE (only for non-regeneration)
     // ==========================================
     if (!isRegeneration) {
-      cacheGeneration(cacheKey, response)
-      console.log(`[GEO v2] 결과가 캐시에 저장됨`)
+      // Save to hybrid cache (L1 in-memory + L2 Supabase)
+      await setHybridCache(cacheKey, productName, keywords, response)
+      console.log(`[GEO v2] 결과가 하이브리드 캐시에 저장됨 (L1 + L2)`)
     }
 
     return NextResponse.json(response)

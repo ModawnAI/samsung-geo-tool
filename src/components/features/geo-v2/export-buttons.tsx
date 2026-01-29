@@ -23,15 +23,19 @@ import {
   generateExportFilename,
   createExportBlob,
 } from '@/lib/geo-v2/export'
+import { exportToMarkdown, generateMarkdownFilename } from '@/lib/geo-v2/export-markdown'
 import {
   Download,
   FileText,
   FileJs,
+  FileMd,
   Check,
   CaretDown,
   CircleNotch,
+  Sliders,
 } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
+import { ExportDialog } from '@/components/features/export-dialog'
 
 interface ExportButtonsProps {
   result: GEOv2GenerateResponse
@@ -41,7 +45,7 @@ interface ExportButtonsProps {
   variant?: 'default' | 'compact'
 }
 
-type ExportFormat = 'json' | 'text'
+type ExportFormat = 'json' | 'text' | 'markdown'
 
 export function ExportButtons({
   result,
@@ -58,18 +62,31 @@ export function ExportButtons({
 
     try {
       // Generate content based on format
-      const content =
-        format === 'json'
-          ? exportToJSON(result, {
-              includeSources: true,
-              includeScores: true,
-              includeUSPs: true,
-            })
-          : exportToTextReport(result, {}, language)
+      let content: string
+      let blob: Blob
+      let filename: string
 
-      // Create blob and download
-      const blob = createExportBlob(content, format)
-      const filename = generateExportFilename(productName, format)
+      if (format === 'json') {
+        content = exportToJSON(result, {
+          includeSources: true,
+          includeScores: true,
+          includeUSPs: true,
+        })
+        blob = createExportBlob(content, 'json')
+        filename = generateExportFilename(productName, 'json')
+      } else if (format === 'markdown') {
+        content = exportToMarkdown(result, {
+          language,
+          productName,
+          includeFrontmatter: true,
+        })
+        blob = new Blob([content], { type: 'text/markdown;charset=utf-8' })
+        filename = generateMarkdownFilename(productName)
+      } else {
+        content = exportToTextReport(result, {}, language)
+        blob = createExportBlob(content, 'text')
+        filename = generateExportFilename(productName, 'text')
+      }
 
       // Trigger download
       const url = URL.createObjectURL(blob)
@@ -140,6 +157,31 @@ export function ExportButtons({
               <Check className="h-4 w-4 text-green-500 ml-auto" />
             )}
           </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => handleExport('markdown')}
+            disabled={isExporting !== null}
+            className="gap-2"
+          >
+            <FileMd className="h-4 w-4" />
+            Markdown
+            {lastExported === 'markdown' && (
+              <Check className="h-4 w-4 text-green-500 ml-auto" />
+            )}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <ExportDialog
+            result={result}
+            productName={productName}
+            trigger={
+              <DropdownMenuItem
+                onSelect={(e) => e.preventDefault()}
+                className="gap-2"
+              >
+                <Sliders className="h-4 w-4" />
+                {language === 'ko' ? '고급 옵션...' : 'Advanced Options...'}
+              </DropdownMenuItem>
+            }
+          />
         </DropdownMenuContent>
       </DropdownMenu>
     )
@@ -206,6 +248,59 @@ export function ExportButtons({
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
+
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleExport('markdown')}
+              disabled={isExporting !== null}
+              className="gap-2"
+            >
+              {isExporting === 'markdown' ? (
+                <CircleNotch className="h-4 w-4 animate-spin" />
+              ) : lastExported === 'markdown' ? (
+                <Check className="h-4 w-4 text-green-500" />
+              ) : (
+                <FileMd className="h-4 w-4" />
+              )}
+              MD
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>
+              {language === 'ko'
+                ? 'Markdown 형식으로 내보내기'
+                : 'Export as Markdown'}
+            </p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+
+      <ExportDialog
+        result={result}
+        productName={productName}
+        trigger={
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Sliders className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>
+                  {language === 'ko'
+                    ? '고급 내보내기 옵션'
+                    : 'Advanced export options'}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        }
+      />
     </div>
   )
 }
@@ -233,13 +328,23 @@ export function SingleExportButton({
     setIsExporting(true)
 
     try {
-      const content =
-        format === 'json'
-          ? exportToJSON(result)
-          : exportToTextReport(result, {}, language)
+      let content: string
+      let blob: Blob
+      let filename: string
 
-      const blob = createExportBlob(content, format)
-      const filename = generateExportFilename(productName, format)
+      if (format === 'json') {
+        content = exportToJSON(result)
+        blob = createExportBlob(content, 'json')
+        filename = generateExportFilename(productName, 'json')
+      } else if (format === 'markdown') {
+        content = exportToMarkdown(result, { language, productName })
+        blob = new Blob([content], { type: 'text/markdown;charset=utf-8' })
+        filename = generateMarkdownFilename(productName)
+      } else {
+        content = exportToTextReport(result, {}, language)
+        blob = createExportBlob(content, 'text')
+        filename = generateExportFilename(productName, 'text')
+      }
 
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -259,10 +364,12 @@ export function SingleExportButton({
     }
   }
 
-  const Icon = format === 'json' ? FileJs : FileText
+  const Icon = format === 'json' ? FileJs : format === 'markdown' ? FileMd : FileText
   const label =
     format === 'json'
       ? 'JSON'
+      : format === 'markdown'
+      ? 'Markdown'
       : language === 'ko'
       ? '텍스트 리포트'
       : 'Text Report'

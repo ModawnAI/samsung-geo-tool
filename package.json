@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "predev": "lsof -ti:3000 | xargs kill -9 2>/dev/null; rm -rf .next/dev/lock 2>/dev/null; exit 0",
+    "predev": "exit 0",
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",

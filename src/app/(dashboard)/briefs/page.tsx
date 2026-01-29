@@ -57,7 +57,11 @@ import {
   Download,
   Upload,
   Funnel,
+  FolderOpen,
+  FloppyDisk,
 } from '@phosphor-icons/react'
+import { TemplateSelector } from '@/components/features/template-selector'
+import { SaveBriefAsTemplateButton } from '@/components/features/template-manager'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 
@@ -405,6 +409,21 @@ export default function BriefsPage() {
             <Download className="h-4 w-4 mr-2" />
             {t.briefs.export}
           </Button>
+          <TemplateSelector
+            onSelect={(template) => {
+              // Apply template to form
+              setFormUsps(template.briefUsps.length > 0 ? template.briefUsps : [''])
+              setFormContent((template.briefDefaults as { content?: string })?.content || '')
+              setFormIsActive((template.briefDefaults as { isActive?: boolean })?.isActive ?? true)
+              setIsCreateOpen(true)
+            }}
+            trigger={
+              <Button variant="outline" size="sm">
+                <FolderOpen className="h-4 w-4 mr-2" />
+                {t.briefs.fromTemplate || 'From Template'}
+              </Button>
+            }
+          />
           <Button onClick={() => { resetForm(); setIsCreateOpen(true) }}>
             <Plus className="h-4 w-4 mr-2" />
             {t.briefs.newBrief}
@@ -575,6 +594,16 @@ export default function BriefsPage() {
                       </p>
                     </div>
                   )}
+                  <div className="pt-3 border-t flex justify-end">
+                    <SaveBriefAsTemplateButton
+                      briefData={{
+                        usps: brief.usps,
+                        content: brief.content,
+                        isActive: brief.is_active,
+                      }}
+                      productName={brief.products?.name}
+                    />
+                  </div>
                 </div>
               </CardContent>
             </Card>

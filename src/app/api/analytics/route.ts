@@ -18,7 +18,7 @@ interface GenerationWithScore {
   } | null
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -27,12 +27,58 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { searchParams } = new URL(request.url)
+    const fromParam = searchParams.get('from')
+    const toParam = searchParams.get('to')
+    const productIdParam = searchParams.get('product_id')
+    const categoryIdParam = searchParams.get('category_id')
+
     const now = new Date()
+
+    // Parse date range from params or use defaults
+    const rangeEnd = toParam ? new Date(toParam) : now
+    const rangeStart = fromParam
+      ? new Date(fromParam)
+      : new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+
+    // Validate dates
+    if (isNaN(rangeStart.getTime()) || isNaN(rangeEnd.getTime())) {
+      return NextResponse.json({ error: 'Invalid date format' }, { status: 400 })
+    }
+
+    // For month comparison
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
     const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
     const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0)
-    const thirtyDaysAgo = new Date(now)
-    thirtyDaysAgo.setDate(now.getDate() - 30)
+
+    // Build base query with optional filters
+    const buildGenerationsQuery = () => {
+      let query = supabase
+        .from('generations')
+        .select(`
+          id,
+          geo_score_v2,
+          created_at,
+          status,
+          selected_keywords,
+          product_id,
+          products (
+            id,
+            name,
+            category_id,
+            categories (name)
+          )
+        `)
+        .gte('created_at', rangeStart.toISOString())
+        .lte('created_at', rangeEnd.toISOString())
+        .order('created_at', { ascending: false })
+
+      if (productIdParam) {
+        query = query.eq('product_id', productIdParam)
+      }
+
+      return query
+    }
 
     // Parallel queries for analytics data
     const [
@@ -41,21 +87,8 @@ export async function GET() {
       lastMonthGenerations,
       categoryStats,
     ] = await Promise.all([
-      // All generations with scores (for distribution)
-      supabase
-        .from('generations')
-        .select(`
-          id,
-          geo_score_v2,
-          created_at,
-          status,
-          selected_keywords,
-          products (
-            name,
-            categories (name)
-          )
-        `)
-        .order('created_at', { ascending: false }),
+      // All generations with scores (for the selected date range)
+      buildGenerationsQuery(),
 
       // This month's generations
       supabase
@@ -70,7 +103,7 @@ export async function GET() {
         .gte('created_at', startOfLastMonth.toISOString())
         .lte('created_at', endOfLastMonth.toISOString()),
 
-      // Category counts
+      // Category counts (for selected date range)
       supabase
         .from('generations')
         .select(`
@@ -78,7 +111,8 @@ export async function GET() {
             categories!inner (name)
           )
         `)
-        .gte('created_at', thirtyDaysAgo.toISOString()),
+        .gte('created_at', rangeStart.toISOString())
+        .lte('created_at', rangeEnd.toISOString()),
     ])
 
     // Process score distribution
@@ -110,11 +144,16 @@ export async function GET() {
       ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
       : 0
 
-    // Process daily score trend (last 30 days)
+    // Process daily score trend for the selected date range
     const dailyScores: Record<string, { total: number; count: number }> = {}
-    for (let i = 29; i >= 0; i--) {
-      const d = new Date(now)
-      d.setDate(now.getDate() - i)
+
+    // Calculate the number of days in the range
+    const rangeDays = Math.ceil((rangeEnd.getTime() - rangeStart.getTime()) / (1000 * 60 * 60 * 24))
+    const daysToShow = Math.min(rangeDays, 60) // Cap at 60 days for readability
+
+    for (let i = daysToShow - 1; i >= 0; i--) {
+      const d = new Date(rangeEnd)
+      d.setDate(rangeEnd.getDate() - i)
       const key = d.toISOString().split('T')[0]
       dailyScores[key] = { total: 0, count: 0 }
     }
@@ -190,6 +229,14 @@ export async function GET() {
       : 0
 
     return NextResponse.json({
+      dateRange: {
+        from: rangeStart.toISOString(),
+        to: rangeEnd.toISOString(),
+      },
+      filters: {
+        productId: productIdParam,
+        categoryId: categoryIdParam,
+      },
       summary: {
         totalGenerations: generations.length,
         avgScore,

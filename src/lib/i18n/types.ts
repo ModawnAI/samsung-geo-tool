@@ -515,6 +515,30 @@ export interface TranslationDictionary {
     statusColumn: string
     createdAt: string
     actions: string
+    // Template
+    fromTemplate: string
+    saveAsTemplate: string
+    templateSaved: string
+  }
+
+  // Templates
+  templates: {
+    loadError: string
+    fromTemplate: string
+    selectTemplate: string
+    selectTemplateDescription: string
+    filterByCategory: string
+    allCategories: string
+    noTemplates: string
+    tryOtherCategory: string
+    createFirst: string
+    usageCount: string
+    saveAsTemplate: string
+    templateName: string
+    templateDescription: string
+    saving: string
+    saved: string
+    saveError: string
   }
 
   // Analytics
@@ -539,6 +563,15 @@ export interface TranslationDictionary {
     last90Days: string
     custom: string
     exportReport: string
+    selectDateRange: string
+    presets: {
+      last7Days: string
+      last30Days: string
+      last90Days: string
+      last12Months: string
+      monthToDate: string
+      custom: string
+    }
     metrics: {
       totalAnalyzed: string
       avgScore: string
@@ -1268,6 +1301,134 @@ export interface TranslationDictionary {
       esg: string
       documentary: string
       brandCampaign: string
+    }
+  }
+
+  // Prompt Studio (Admin)
+  promptStudio: {
+    title: string
+    subtitle: string
+    dashboard: {
+      title: string
+      subtitle: string
+      overview: string
+      activePrompts: string
+      totalTests: string
+      avgScore: string
+      lastTested: string
+      noData: string
+    }
+    stages: {
+      description: string
+      usp: string
+      faq: string
+      chapters: string
+      case_studies: string
+      keywords: string
+      hashtags: string
+    }
+    status: {
+      draft: string
+      testing: string
+      pending_approval: string
+      active: string
+      archived: string
+    }
+    editor: {
+      title: string
+      systemPrompt: string
+      systemPromptPlaceholder: string
+      parameters: string
+      temperature: string
+      temperatureHint: string
+      maxTokens: string
+      maxTokensHint: string
+      topP: string
+      topPHint: string
+      model: string
+      modelHint: string
+      variables: string
+      variablesHint: string
+      insertVariable: string
+      save: string
+      saving: string
+      saved: string
+      saveError: string
+      goToTest: string
+      workflowStatus: string
+    }
+    test: {
+      title: string
+      subtitle: string
+      inputForm: string
+      productName: string
+      productNamePlaceholder: string
+      category: string
+      categoryPlaceholder: string
+      keywords: string
+      keywordsPlaceholder: string
+      videoDescription: string
+      videoDescriptionPlaceholder: string
+      srtContent: string
+      srtContentPlaceholder: string
+      savedInputs: string
+      loadInput: string
+      saveInput: string
+      saveInputName: string
+      runTest: string
+      running: string
+      results: string
+      noResults: string
+      rawResponse: string
+      parsedOutput: string
+      metrics: string
+      latency: string
+      inputTokens: string
+      outputTokens: string
+      totalTokens: string
+      qualityScore: string
+      scoreBreakdown: string
+      keywordDensity: string
+      questionPatterns: string
+      sentenceStructure: string
+      lengthCompliance: string
+      aiExposure: string
+      total: string
+      history: string
+      noHistory: string
+      testRun: string
+      status: {
+        success: string
+        failed: string
+        pending: string
+      }
+    }
+    variables: {
+      productName: string
+      category: string
+      keywords: string
+      usps: string
+      videoDescription: string
+      srtContent: string
+      groundingData: string
+      language: string
+    }
+    actions: {
+      saveAsDraft: string
+      submitForTesting: string
+      submitForApproval: string
+      approve: string
+      reject: string
+      activate: string
+      archive: string
+    }
+    messages: {
+      loadError: string
+      saveSuccess: string
+      saveError: string
+      testSuccess: string
+      testError: string
+      noPromptConfigured: string
     }
   }
 }
