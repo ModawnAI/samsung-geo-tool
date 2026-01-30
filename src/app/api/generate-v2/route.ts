@@ -24,6 +24,11 @@ import {
   getAntiFabricationPrompt,
   PIPELINE_CONFIGS,
   type PipelineInput,
+  // Platform-specific generators (GEO Strategy + Brief)
+  generateYouTubeTitle,
+  generateMetaTags,
+  generateInstagramDescription,
+  generateEnhancedHashtags,
 } from '@/lib/geo-v2'
 import {
   loadTuningConfig,
@@ -52,6 +57,12 @@ import type {
   FAQItem,
   CaseStudy,
   CaseStudyResult,
+  Platform,
+  YouTubeTitleResult,
+  MetaTagsResult,
+  InstagramDescriptionResult,
+  EnhancedHashtagResult,
+  ContentType,
 } from '@/types/geo-v2'
 import type {
   ProductCategory,
@@ -262,6 +273,8 @@ interface GEOv2GenerateRequest {
   pipelineConfig?: 'full' | 'quick' | 'grounded'
   language?: 'ko' | 'en'
   regenerationConfig?: RegenerationConfig
+  // Platform Selection (GEO Strategy p.95-104)
+  platform?: 'youtube' | 'instagram' | 'tiktok'
   // Samsung Standard Fields (Part 5.4)
   contentType?: 'intro' | 'unboxing' | 'how_to' | 'shorts' | 'teaser' | 'brand' | 'esg' | 'documentary' | 'official_replay'
   videoFormat?: 'feed_16x9' | 'shorts_9x16'
@@ -434,8 +447,10 @@ export async function POST(request: NextRequest) {
       pipelineConfig = 'full',
       language = 'ko',
       regenerationConfig,
+      // Platform Selection (GEO Strategy p.95-104)
+      platform = 'youtube' as Platform,
       // Samsung Standard Fields (Part 5.4)
-      contentType = 'intro',
+      contentType = 'intro' as ContentType,
       videoFormat = 'feed_16x9',
       fixedHashtags = [],
       useFixedHashtags = false,
@@ -775,6 +790,68 @@ export async function POST(request: NextRequest) {
     console.log(`[GEO v2] 파이프라인 완료: ${Date.now() - startTime}ms`)
 
     // ==========================================
+    // PLATFORM-SPECIFIC GENERATION (GEO Strategy + Brief)
+    // ==========================================
+    console.log(`[GEO v2] 플랫폼별 생성 시작: ${platform}`)
+    
+    let titleResult: YouTubeTitleResult | undefined
+    let metaTagsResult: MetaTagsResult | undefined
+    let instagramDescriptionResult: InstagramDescriptionResult | undefined
+    let enhancedHashtagsResult: EnhancedHashtagResult | undefined
+
+    try {
+      // Generate platform-specific content
+      if (platform === 'youtube') {
+        // YouTube: Title + Meta Tags (Brief Slide 3)
+        console.log(`[GEO v2] YouTube 타이틀 생성 중...`)
+        titleResult = await generateYouTubeTitle({
+          productName,
+          keywords,
+          contentType,
+          srtContent,
+          briefUsps: uspResult.usps.map(u => u.feature),
+        })
+        console.log(`[GEO v2] 타이틀 생성 완료: "${titleResult.primary}" (${titleResult.charCount}자)`)
+
+        console.log(`[GEO v2] 메타태그 생성 중...`)
+        metaTagsResult = await generateMetaTags({
+          productName,
+          keywords,
+          contentType,
+          description: descriptionResult.description.full,
+          briefUsps: uspResult.usps.map(u => u.feature),
+        })
+        console.log(`[GEO v2] 메타태그 생성 완료: ${metaTagsResult.totalCount}개 태그`)
+      } else if (platform === 'instagram') {
+        // Instagram: Description (125자) + Enhanced Hashtags (Brief Slide 4)
+        console.log(`[GEO v2] Instagram 설명 생성 중...`)
+        instagramDescriptionResult = await generateInstagramDescription({
+          productName,
+          keywords,
+          contentType,
+          srtContent,
+          briefUsps: uspResult.usps.map(u => u.feature),
+        })
+        console.log(`[GEO v2] Instagram 설명 생성 완료: ${instagramDescriptionResult.charCount}자`)
+      }
+
+      // Generate enhanced hashtags for all platforms (with GEO ordering)
+      console.log(`[GEO v2] 강화된 해시태그 생성 중...`)
+      enhancedHashtagsResult = await generateEnhancedHashtags({
+        productName,
+        keywords,
+        contentType,
+        platform,
+        fixedHashtags: useFixedHashtags ? fixedHashtags : undefined,
+        useFixedHashtags,
+      })
+      console.log(`[GEO v2] 해시태그 생성 완료: ${enhancedHashtagsResult.hashtags.length}개, 순서 정확: ${enhancedHashtagsResult.validation.orderCorrect}`)
+    } catch (platformError) {
+      console.error(`[GEO v2] 플랫폼별 생성 오류 (비치명적):`, platformError)
+      // Continue with response - platform-specific features are optional enhancements
+    }
+
+    // ==========================================
     // BUILD RESPONSE
     // ==========================================
     const response: GEOv2GenerateResponse = {
@@ -817,6 +894,12 @@ export async function POST(request: NextRequest) {
           contribution: b.contribution,
         })),
       },
+      // Platform-specific outputs (GEO Strategy + Brief)
+      platform,
+      title: titleResult,
+      metaTags: metaTagsResult,
+      instagramDescription: instagramDescriptionResult,
+      enhancedHashtags: enhancedHashtagsResult,
     }
 
     // Log successful generation

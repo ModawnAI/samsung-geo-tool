@@ -641,6 +641,12 @@ export interface GEOv2GenerateResponse {
       contribution: number
     }>
   }
+  // Platform-specific outputs (GEO Strategy + Brief)
+  platform?: Platform
+  title?: YouTubeTitleResult              // YouTube only (Brief Slide 3)
+  metaTags?: MetaTagsResult               // YouTube only (Brief Slide 3)
+  instagramDescription?: InstagramDescriptionResult  // Instagram only (Brief Slide 4)
+  enhancedHashtags?: EnhancedHashtagResult  // All platforms (GEO ordered)
 }
 
 export interface GEOv2Score {
