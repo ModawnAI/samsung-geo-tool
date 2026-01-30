@@ -237,12 +237,14 @@ export const en: TranslationDictionary = {
     readyToProceed: 'Ready to proceed to next step',
     minimum: 'minimum',
     steps: {
+      platform: 'Platform',
       product: 'Product',
       content: 'Content',
       keywords: 'Keywords',
       output: 'Output',
     },
     requirements: {
+      platform: 'Select a platform',
       product: 'Select a product',
       content: 'Enter SRT content or video URL',
       keywords: 'Select at least one keyword',

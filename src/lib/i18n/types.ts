@@ -239,12 +239,14 @@ export interface TranslationDictionary {
     readyToProceed: string
     minimum: string
     steps: {
+      platform: string
       product: string
       content: string
       keywords: string
       output: string
     }
     requirements: {
+      platform: string
       product: string
       content: string
       keywords: string

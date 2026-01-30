@@ -237,12 +237,14 @@ export const ko: TranslationDictionary = {
     readyToProceed: '다음 단계로 진행할 준비가 되었습니다',
     minimum: '최소',
     steps: {
+      platform: '플랫폼',
       product: '제품',
       content: '콘텐츠',
       keywords: '키워드',
       output: '출력',
     },
     requirements: {
+      platform: '플랫폼을 선택하세요',
       product: '제품을 선택하세요',
       content: 'SRT 콘텐츠 또는 영상 URL을 입력하세요',
       keywords: '최소 1개의 키워드를 선택하세요',

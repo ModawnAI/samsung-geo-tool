@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGenerationStore } from '@/store/generation-store'
 import { ProductSelector } from '@/components/features/product-selector'
+import { PlatformSelector } from '@/components/features/platform-selector'
 import { SrtInput } from '@/components/features/srt-input'
 import { GenerationProgress } from '@/components/features/generation-progress'
 import { GenerationQueuePanel } from '@/components/features/generation-queue-panel'
@@ -50,12 +51,13 @@ import {
   Check,
   Info,
   CheckCircle,
+  DeviceMobile,
 } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { MOTION_VARIANTS, ICON_SIZES } from '@/lib/constants/ui'
 import { useTranslation } from '@/lib/i18n'
 
-type StepId = 'product' | 'content' | 'keywords' | 'output'
+type StepId = 'platform' | 'product' | 'content' | 'keywords' | 'output'
 
 interface StepConfig {
   id: StepId
@@ -63,6 +65,7 @@ interface StepConfig {
 }
 
 const stepConfigs: StepConfig[] = [
+  { id: 'platform', icon: DeviceMobile },
   { id: 'product', icon: Package },
   { id: 'content', icon: FileText },
   { id: 'keywords', icon: Tag },
@@ -135,6 +138,8 @@ export default function GeneratePage() {
 
   const canProceed = useCallback(() => {
     switch (step) {
+      case 'platform':
+        return true // Platform always has a default selection
       case 'product':
         return !!productId
       case 'content':
@@ -326,6 +331,8 @@ export default function GeneratePage() {
     }
 
     switch (step) {
+      case 'platform':
+        return <PlatformSelector />
       case 'product':
         return <ProductSelector />
       case 'content':
