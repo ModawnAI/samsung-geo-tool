@@ -9,6 +9,7 @@ import type { Tables, Json } from './database'
 export type StagePrompt = Tables<'stage_prompts'>
 export type PromptTestRun = Tables<'prompt_test_runs'>
 export type StageTestInput = Tables<'stage_test_inputs'>
+export type PromptRefineSession = Tables<'prompt_refine_sessions'>
 
 // Alias for store compatibility
 export type StageTestRun = PromptTestRun
@@ -23,6 +24,7 @@ export interface LLMParameters {
 
 // Stage type (matches database enum)
 export type PromptStage =
+  | 'grounding'
   | 'description'
   | 'usp'
   | 'faq'
@@ -46,6 +48,12 @@ export type TestRunStatus = 'pending' | 'running' | 'completed' | 'failed'
 // Stage Configuration
 // ============================================================================
 
+export interface TemplateVariable {
+  name: string
+  description: string
+  descriptionKo: string
+}
+
 export interface StageConfig {
   id: PromptStage
   label: string
@@ -56,6 +64,8 @@ export interface StageConfig {
   color: string
   inputSchema: StageInputSchema
   outputSchema: StageOutputSchema
+  /** Template variables that can be used in prompts for this stage */
+  templateVariables: TemplateVariable[]
 }
 
 export interface StageInputSchema {
@@ -137,6 +147,7 @@ export interface StageTestInputData {
   usps?: string[]
   groundingData?: Json
   previousStageResult?: Json
+  launchDate?: string  // For grounding stage
 }
 
 export interface StageTestResponse {
@@ -155,6 +166,10 @@ export interface StageOutput {
   parsed?: Json
 
   // Stage-specific fields
+  // Grounding stage
+  grounding_keywords?: GroundingKeyword[]
+  grounding_sources?: GroundingSource[]
+
   // Description stage
   first_130?: string
   full_description?: string
@@ -180,6 +195,22 @@ export interface StageOutput {
 
   // Hashtags stage
   hashtags?: string[]
+}
+
+export interface GroundingKeyword {
+  term: string
+  score: number
+  sources: Array<{
+    uri: string
+    title: string
+    tier: 1 | 2 | 3 | 4
+  }>
+}
+
+export interface GroundingSource {
+  uri: string
+  title: string
+  tier: 1 | 2 | 3 | 4
 }
 
 export interface USPOutput {
@@ -316,6 +347,7 @@ export interface StageStatusSummary {
 // ============================================================================
 
 export const PROMPT_STAGES: PromptStage[] = [
+  'grounding',
   'description',
   'usp',
   'faq',
@@ -364,6 +396,29 @@ export const WORKFLOW_STATUS_CONFIG: Record<WorkflowStatus, {
 }
 
 export const STAGE_CONFIG: Record<PromptStage, StageConfig> = {
+  grounding: {
+    id: 'grounding',
+    label: 'Grounding',
+    labelKo: '그라운딩',
+    description: 'Web search for user intent signals and product context',
+    descriptionKo: '사용자 의도 신호 및 제품 컨텍스트를 위한 웹 검색',
+    icon: 'MagnifyingGlass',
+    color: 'bg-cyan-500',
+    inputSchema: {
+      fields: [
+        { name: 'productName', type: 'text', label: 'Product Name', labelKo: '제품명' },
+        { name: 'launchDate', type: 'text', label: 'Launch Date (optional)', labelKo: '출시일 (선택)', placeholder: 'YYYY-MM-DD' },
+      ],
+      requiredFields: ['productName'],
+    },
+    outputSchema: {
+      fields: [
+        { name: 'grounding_keywords', type: 'array', label: 'Keywords', labelKo: '키워드' },
+        { name: 'grounding_sources', type: 'array', label: 'Sources', labelKo: '소스' },
+      ],
+    },
+    templateVariables: [], // Grounding uses Perplexity API, no prompt templates
+  },
   description: {
     id: 'description',
     label: 'Description',
@@ -379,6 +434,7 @@ export const STAGE_CONFIG: Record<PromptStage, StageConfig> = {
         { name: 'keywords', type: 'keywords', label: 'Keywords', labelKo: '키워드' },
         { name: 'videoDescription', type: 'textarea', label: 'Video Description', labelKo: '영상 설명' },
         { name: 'srtContent', type: 'textarea', label: 'SRT Content', labelKo: 'SRT 내용' },
+        { name: 'groundingData', type: 'json', label: 'Grounding Data', labelKo: '그라운딩 데이터' },
       ],
       requiredFields: ['productName'],
     },
@@ -389,6 +445,11 @@ export const STAGE_CONFIG: Record<PromptStage, StageConfig> = {
         { name: 'vanity_link', type: 'text', label: 'Vanity Link', labelKo: '배너 링크' },
       ],
     },
+    templateVariables: [
+      { name: '{{product_name}}', description: 'Product name', descriptionKo: '제품명' },
+      { name: '{{category}}', description: 'Product category', descriptionKo: '제품 카테고리' },
+      { name: '{{keywords}}', description: 'Target keywords (comma-separated)', descriptionKo: '타겟 키워드 (쉼표 구분)' },
+    ],
   },
   usp: {
     id: 'usp',
@@ -413,6 +474,11 @@ export const STAGE_CONFIG: Record<PromptStage, StageConfig> = {
         { name: 'competitive_context', type: 'text', label: 'Competitive Context', labelKo: '경쟁 맥락' },
       ],
     },
+    templateVariables: [
+      { name: '{{product_name}}', description: 'Product name', descriptionKo: '제품명' },
+      { name: '{{category}}', description: 'Product category', descriptionKo: '제품 카테고리' },
+      { name: '{{keywords}}', description: 'Target keywords (comma-separated)', descriptionKo: '타겟 키워드 (쉼표 구분)' },
+    ],
   },
   faq: {
     id: 'faq',
@@ -435,6 +501,10 @@ export const STAGE_CONFIG: Record<PromptStage, StageConfig> = {
         { name: 'faqs', type: 'array', label: 'FAQs', labelKo: 'FAQ 목록' },
       ],
     },
+    templateVariables: [
+      { name: '{{product_name}}', description: 'Product name', descriptionKo: '제품명' },
+      { name: '{{category}}', description: 'Product category', descriptionKo: '제품 카테고리' },
+    ],
   },
   chapters: {
     id: 'chapters',
@@ -457,6 +527,9 @@ export const STAGE_CONFIG: Record<PromptStage, StageConfig> = {
         { name: 'chapters', type: 'array', label: 'Chapters', labelKo: '챕터 목록' },
       ],
     },
+    templateVariables: [
+      { name: '{{keywords}}', description: 'Target keywords (comma-separated)', descriptionKo: '타겟 키워드 (쉼표 구분)' },
+    ],
   },
   case_studies: {
     id: 'case_studies',
@@ -480,6 +553,10 @@ export const STAGE_CONFIG: Record<PromptStage, StageConfig> = {
         { name: 'case_studies', type: 'array', label: 'Case Studies', labelKo: '사용 사례 목록' },
       ],
     },
+    templateVariables: [
+      { name: '{{product_name}}', description: 'Product name', descriptionKo: '제품명' },
+      { name: '{{keywords}}', description: 'Target keywords (comma-separated)', descriptionKo: '타겟 키워드 (쉼표 구분)' },
+    ],
   },
   keywords: {
     id: 'keywords',
@@ -504,6 +581,10 @@ export const STAGE_CONFIG: Record<PromptStage, StageConfig> = {
         { name: 'scoring', type: 'json', label: 'Scoring', labelKo: '점수' },
       ],
     },
+    templateVariables: [
+      { name: '{{product_name}}', description: 'Product name', descriptionKo: '제품명' },
+      { name: '{{category}}', description: 'Product category', descriptionKo: '제품 카테고리' },
+    ],
   },
   hashtags: {
     id: 'hashtags',
@@ -525,6 +606,9 @@ export const STAGE_CONFIG: Record<PromptStage, StageConfig> = {
         { name: 'hashtags', type: 'array', label: 'Hashtags', labelKo: '해시태그 목록' },
       ],
     },
+    templateVariables: [
+      { name: '{{product_name}}', description: 'Product name', descriptionKo: '제품명' },
+    ],
   },
 }
 
@@ -540,3 +624,80 @@ export const AVAILABLE_MODELS = [
   { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro (Preview)' },
   { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
 ]
+
+// ============================================================================
+// Prompt Refiner Chat Types
+// ============================================================================
+
+/**
+ * Actions available in the refiner chat
+ * - analyze: Analyze current prompt strengths, weaknesses, and improvement areas
+ * - improve: Generate improved prompt version (returned in code block)
+ * - test: Compare current vs improved prompt with sample input
+ * - chat: Free-form conversation for specific modifications
+ */
+export type RefinerAction = 'analyze' | 'improve' | 'test' | 'chat'
+
+/**
+ * A single message in the refiner chat
+ */
+export interface RefinerMessage {
+  id: string
+  role: 'user' | 'assistant' | 'system'
+  content: string
+  /** The action that triggered this message (for user messages) */
+  action?: RefinerAction
+  /** Extracted code blocks containing prompts (for assistant messages) */
+  codeBlocks?: string[]
+  /** ISO timestamp */
+  timestamp: string
+}
+
+/**
+ * A refiner chat session
+ */
+export interface RefineSession {
+  id: string
+  stage: PromptStage
+  title: string | null
+  messages: RefinerMessage[]
+  currentPrompt: string | null
+  improvedPrompt: string | null
+  isFavorite: boolean
+  createdBy: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+/**
+ * Request body for refine chat API
+ */
+export interface RefineRequest {
+  sessionId?: string
+  stage: PromptStage
+  action: RefinerAction
+  userMessage?: string
+  currentPrompt: string
+  testInput?: StageTestInputData
+}
+
+/**
+ * Response from refine chat API
+ */
+export interface RefineResponse {
+  sessionId: string
+  message: RefinerMessage
+  codeBlocks: string[]
+}
+
+/**
+ * Session list item (summary)
+ */
+export interface RefineSessionSummary {
+  id: string
+  stage: PromptStage
+  title: string | null
+  messageCount: number
+  isFavorite: boolean
+  updatedAt: string
+}

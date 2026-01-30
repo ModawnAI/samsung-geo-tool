@@ -478,7 +478,7 @@ export function getDefaultPrompt(engine: Engine): string {
  * Combines base prompt with stage-specific instructions
  */
 export interface StagePromptConfig {
-  stage: 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
+  stage: 'grounding' | 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
   basePrompt: string
   antiFabricationLevel?: 'low' | 'medium' | 'high'
   language: 'ko' | 'en'
@@ -499,6 +499,29 @@ export function composeStagePrompt(config: StagePromptConfig): string {
   const contentTypeInstructions = getContentTypeInstructions(contentType, videoFormat, vanityLinkCode)
 
   const stageInstructions: Record<string, string> = {
+    grounding: `
+## GROUNDING STAGE (Web Search Preprocessing)
+
+This stage uses **Perplexity Sonar API** to gather user intent signals before content generation.
+
+### What This Stage Does:
+1. **Searches the web** for discussions about the product (reviews, forums, social media)
+2. **Extracts keywords** that users care about (features, concerns, comparisons)
+3. **Collects authoritative sources** with tier ratings (1=official, 2=major tech, 3=community, 4=other)
+4. **Passes data to dependent stages** (Description, FAQ, Case Studies)
+
+### Inputs:
+- **Product Name**: The product to search for (e.g., "Galaxy Z Flip7")
+- **Launch Date** (optional): Filter results to after this date
+
+### Outputs:
+- **grounding_keywords**: Array of {term, score, sources[]}
+- **grounding_sources**: Array of {uri, title, tier}
+
+### Note:
+This stage does NOT use the prompt editor - it's a web search stage.
+The system prompt below is for reference/documentation only.
+`,
     description: `
 ## TASK
 Generate a YouTube description optimized for GEO (Generative Engine Optimization) and AEO (Answer Engine Optimization).

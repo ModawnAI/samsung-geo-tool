@@ -13,6 +13,7 @@ import {
   ArrowRight,
   Spinner,
   Warning,
+  MagnifyingGlass,
   type Icon,
 } from '@phosphor-icons/react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -27,6 +28,7 @@ import {
 } from '@/types/prompt-studio'
 
 const STAGE_ICONS: Record<PromptStage, Icon> = {
+  grounding: MagnifyingGlass,
   description: FileText,
   usp: Star,
   faq: ChatCircle,

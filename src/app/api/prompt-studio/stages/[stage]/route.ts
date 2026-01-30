@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { PROMPT_STAGES, type PromptStage, type WorkflowStatus } from '@/types/prompt-studio'
+import { composeStagePrompt } from '@/lib/tuning/prompt-loader'
 
 interface RouteParams {
   params: Promise<{ stage: string }>
@@ -46,8 +47,28 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     if (error) {
       if (error.code === 'PGRST116') {
-        // No record found
-        return NextResponse.json({ stagePrompt: null })
+        // No stage-specific record found, load the base prompt from prompt_versions
+        const { data: activePrompt } = await supabase
+          .from('prompt_versions')
+          .select('system_prompt')
+          .eq('engine', 'gemini')
+          .eq('is_active', true)
+          .single() as { data: { system_prompt: string } | null }
+
+        // Compose the default stage prompt
+        const basePrompt = activePrompt?.system_prompt || ''
+        const composedPrompt = basePrompt ? composeStagePrompt({
+          stage: stage as PromptStage,
+          basePrompt,
+          language: 'en',
+        }) : ''
+
+        // Return a virtual stage prompt with defaults
+        return NextResponse.json({
+          stagePrompt: null,
+          defaultPrompt: composedPrompt,
+          basePrompt: basePrompt,
+        })
       }
       throw error
     }

@@ -15,12 +15,14 @@ export interface StageDependencyConfig {
  * Stage dependency map
  *
  * Flow:
- * description (independent)
+ * grounding (independent - web search for user intent signals)
+ *      ↓
+ * description ← needs grounding result (keywords, sources)
  *      ↓
  * usp ← needs description result (groundingSources, descriptionContent)
  *      ↓
- * faq ← needs usp result (usps)
- * case_studies ← needs usp result (usps)
+ * faq ← needs usp result (usps) + grounding data
+ * case_studies ← needs usp result (usps) + grounding data
  * keywords ← needs description result
  *      ↓
  * hashtags ← needs usp + keywords results
@@ -28,10 +30,19 @@ export interface StageDependencyConfig {
  * chapters is independent (uses video/SRT data directly)
  */
 export const STAGE_DEPENDENCIES: Record<PromptStage, StageDependencyConfig> = {
-  description: {
+  grounding: {
     dependsOn: [],
     requiredFields: [],
     fieldMapping: {},
+  },
+  description: {
+    dependsOn: ['grounding'],
+    requiredFields: ['grounding_keywords', 'grounding_sources'],
+    fieldMapping: {
+      // grounding output → description input
+      grounding_keywords: 'groundingData.keywords',
+      grounding_sources: 'groundingData.sources',
+    },
   },
   usp: {
     dependsOn: ['description'],
@@ -42,11 +53,14 @@ export const STAGE_DEPENDENCIES: Record<PromptStage, StageDependencyConfig> = {
     },
   },
   faq: {
-    dependsOn: ['usp'],
-    requiredFields: ['usps'],
+    dependsOn: ['usp', 'grounding'],
+    requiredFields: ['usps', 'grounding_keywords'],
     fieldMapping: {
       // usp output → faq input
       usps: 'usps',
+      // grounding output → faq input
+      grounding_keywords: 'groundingData.keywords',
+      grounding_sources: 'groundingData.sources',
     },
   },
   chapters: {
@@ -55,11 +69,14 @@ export const STAGE_DEPENDENCIES: Record<PromptStage, StageDependencyConfig> = {
     fieldMapping: {},
   },
   case_studies: {
-    dependsOn: ['usp'],
-    requiredFields: ['usps'],
+    dependsOn: ['usp', 'grounding'],
+    requiredFields: ['usps', 'grounding_keywords'],
     fieldMapping: {
       // usp output → case_studies input
       usps: 'usps',
+      // grounding output → case_studies input
+      grounding_keywords: 'groundingData.keywords',
+      grounding_sources: 'groundingData.sources',
     },
   },
   keywords: {
@@ -94,6 +111,7 @@ export function getDependencyInfo(stage: PromptStage): {
   const hasDependencies = config.dependsOn.length > 0
 
   const stageLabels: Record<PromptStage, string> = {
+    grounding: 'Grounding',
     description: 'Description',
     usp: 'USP',
     faq: 'FAQ',
@@ -110,8 +128,9 @@ export function getDependencyInfo(stage: PromptStage): {
     if (config.dependsOn.length === 1) {
       description = `Requires ${dependencyNames[0]} result`
     } else {
-      const last = dependencyNames.pop()
-      description = `Requires ${dependencyNames.join(', ')} and ${last} results`
+      const lastDep = [...dependencyNames].pop()
+      const otherDeps = dependencyNames.slice(0, -1)
+      description = `Requires ${otherDeps.join(', ')} and ${lastDep} results`
     }
   } else {
     description = 'No dependencies (independent stage)'
@@ -171,10 +190,18 @@ export function extractFieldsForNextStage(
 
   const extracted: Record<string, unknown> = {}
 
-  // Extract mapped fields
+  // Extract mapped fields based on source stage
   for (const [outputField, inputField] of Object.entries(targetConfig.fieldMapping)) {
+    // Only extract fields that come from this source stage
+    const isGroundingField = outputField.startsWith('grounding_')
+    const isFromGrounding = sourceStage === 'grounding'
+
+    if (isGroundingField !== isFromGrounding) {
+      continue // Skip fields from other stages
+    }
+
     if (outputData[outputField] !== undefined) {
-      // Handle nested field mapping (e.g., 'previousStageResult.product_keywords')
+      // Handle nested field mapping (e.g., 'groundingData.keywords')
       if (inputField.includes('.')) {
         const [parent, child] = inputField.split('.')
         if (!extracted[parent]) {

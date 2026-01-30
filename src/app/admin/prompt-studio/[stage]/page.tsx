@@ -12,6 +12,7 @@ import {
   Warning,
   Check,
   Info,
+  Robot,
 } from '@phosphor-icons/react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -34,16 +35,17 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import {
+  saveRefinerPromptData,
+  type RefinerPromptData,
+} from '@/components/prompt-studio/refiner-fullscreen'
+import {
   STAGE_CONFIG,
-  WORKFLOW_STATUS_CONFIG,
   DEFAULT_LLM_PARAMETERS,
   AVAILABLE_MODELS,
   PROMPT_STAGES,
   type PromptStage,
   type StagePrompt,
-  type WorkflowStatus,
 } from '@/types/prompt-studio'
-import { TEMPLATE_VARIABLES } from '@/types/tuning'
 
 interface PageParams {
   stage: string
@@ -73,9 +75,7 @@ export default function StageEditorPage({ params }: { params: Promise<PageParams
   const [systemPrompt, setSystemPrompt] = useState('')
   const [temperature, setTemperature] = useState(DEFAULT_LLM_PARAMETERS.temperature)
   const [maxTokens, setMaxTokens] = useState(DEFAULT_LLM_PARAMETERS.maxTokens)
-  const [topP, setTopP] = useState(DEFAULT_LLM_PARAMETERS.topP)
   const [model, setModel] = useState(DEFAULT_LLM_PARAMETERS.model)
-  const [workflowStatus, setWorkflowStatus] = useState<WorkflowStatus>('draft')
 
   useEffect(() => {
     fetchStagePrompt()
@@ -87,27 +87,22 @@ export default function StageEditorPage({ params }: { params: Promise<PageParams
     try {
       const response = await fetch(`/api/prompt-studio/stages/${stageId}`)
       if (!response.ok) {
-        if (response.status === 404) {
-          // No existing prompt, use defaults
-          setSystemPrompt('')
-          setTemperature(DEFAULT_LLM_PARAMETERS.temperature)
-          setMaxTokens(DEFAULT_LLM_PARAMETERS.maxTokens)
-          setTopP(DEFAULT_LLM_PARAMETERS.topP)
-          setModel(DEFAULT_LLM_PARAMETERS.model)
-          setWorkflowStatus('draft')
-          return
-        }
         throw new Error('Failed to fetch stage prompt')
       }
       const data = await response.json()
       if (data.stagePrompt) {
+        // Use existing stage-specific prompt
         setStagePrompt(data.stagePrompt)
         setSystemPrompt(data.stagePrompt.stage_system_prompt || '')
         setTemperature(data.stagePrompt.temperature)
         setMaxTokens(data.stagePrompt.max_tokens)
-        setTopP(data.stagePrompt.top_p)
         setModel(data.stagePrompt.model)
-        setWorkflowStatus(data.stagePrompt.workflow_status)
+      } else if (data.defaultPrompt) {
+        // Use the composed default prompt from base prompt_versions
+        setSystemPrompt(data.defaultPrompt)
+        setTemperature(DEFAULT_LLM_PARAMETERS.temperature)
+        setMaxTokens(DEFAULT_LLM_PARAMETERS.maxTokens)
+        setModel(DEFAULT_LLM_PARAMETERS.model)
       }
     } catch (err) {
       console.error('Error fetching stage prompt:', err)
@@ -127,9 +122,7 @@ export default function StageEditorPage({ params }: { params: Promise<PageParams
         stageSystemPrompt: systemPrompt || null,
         temperature,
         maxTokens,
-        topP,
         model,
-        workflowStatus,
       }
 
       const response = await fetch(`/api/prompt-studio/stages/${stageId}`, {
@@ -161,16 +154,12 @@ export default function StageEditorPage({ params }: { params: Promise<PageParams
       setSystemPrompt(stagePrompt.stage_system_prompt || '')
       setTemperature(stagePrompt.temperature)
       setMaxTokens(stagePrompt.max_tokens)
-      setTopP(stagePrompt.top_p)
       setModel(stagePrompt.model)
-      setWorkflowStatus(stagePrompt.workflow_status)
     } else {
       setSystemPrompt('')
       setTemperature(DEFAULT_LLM_PARAMETERS.temperature)
       setMaxTokens(DEFAULT_LLM_PARAMETERS.maxTokens)
-      setTopP(DEFAULT_LLM_PARAMETERS.topP)
       setModel(DEFAULT_LLM_PARAMETERS.model)
-      setWorkflowStatus('draft')
     }
     setHasChanges(false)
   }
@@ -180,6 +169,21 @@ export default function StageEditorPage({ params }: { params: Promise<PageParams
     setHasChanges(true)
   }
 
+  // Navigate to fullscreen refiner
+  const handleOpenRefiner = () => {
+    // Save current state to session storage for the refiner page
+    const data: RefinerPromptData = {
+      stageId,
+      systemPrompt,
+      stagePrompt,
+      temperature,
+      maxTokens,
+      model,
+    }
+    saveRefinerPromptData(data)
+    router.push(`/admin/prompt-studio/${stageId}/refiner`)
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -187,8 +191,6 @@ export default function StageEditorPage({ params }: { params: Promise<PageParams
       </div>
     )
   }
-
-  const statusConfig = WORKFLOW_STATUS_CONFIG[workflowStatus]
 
   return (
     <TooltipProvider>
@@ -205,9 +207,6 @@ export default function StageEditorPage({ params }: { params: Promise<PageParams
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-semibold">{config.label}</h2>
-                <Badge className={`${statusConfig.bgColor} ${statusConfig.color} border-0`}>
-                  {statusConfig.label}
-                </Badge>
                 {hasChanges && (
                   <Badge variant="outline" className="text-yellow-600 border-yellow-300">
                     Unsaved changes
@@ -218,6 +217,23 @@ export default function StageEditorPage({ params }: { params: Promise<PageParams
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {/* AI Refiner Button - navigates to fullscreen refiner */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleOpenRefiner}
+                >
+                  <Robot className="h-4 w-4 mr-1" />
+                  AI Refiner
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Open AI-assisted prompt refinement (fullscreen)</p>
+              </TooltipContent>
+            </Tooltip>
+
             <Button variant="outline" size="sm" onClick={handleReset} disabled={!hasChanges}>
               <ArrowCounterClockwise className="h-4 w-4 mr-1" />
               Reset
@@ -279,35 +295,43 @@ export default function StageEditorPage({ params }: { params: Promise<PageParams
                   className="min-h-[400px] font-mono text-sm"
                 />
 
-                {/* Variable Inserter */}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Label className="text-sm">Insert Variable</Label>
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <Info className="h-4 w-4 text-muted-foreground" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="max-w-xs">
-                          Variables are replaced with actual values during generation
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
+                {/* Variable Inserter - only show if stage has template variables */}
+                {config.templateVariables.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm">Insert Variable</Label>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <Info className="h-4 w-4 text-muted-foreground" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="max-w-xs">
+                            Variables are replaced with actual values during test execution
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {config.templateVariables.map((v) => (
+                        <Tooltip key={v.name}>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs font-mono"
+                              onClick={() => insertVariable(v.name)}
+                            >
+                              {v.name}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{v.description}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      ))}
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {TEMPLATE_VARIABLES.map((v) => (
-                      <Button
-                        key={v.name}
-                        variant="outline"
-                        size="sm"
-                        className="text-xs font-mono"
-                        onClick={() => insertVariable(v.name)}
-                      >
-                        {v.name}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -383,85 +407,37 @@ export default function StageEditorPage({ params }: { params: Promise<PageParams
                     max={32000}
                   />
                 </div>
+              </CardContent>
+            </Card>
 
-                {/* Top P */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label>Top P</Label>
-                    <span className="text-sm text-muted-foreground font-mono">
-                      {topP.toFixed(2)}
+            {/* Test Stats */}
+            {stagePrompt && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Test Statistics</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Test Count</span>
+                    <span>{stagePrompt.test_count}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Avg Score</span>
+                    <span>
+                      {stagePrompt.avg_quality_score != null
+                        ? `${stagePrompt.avg_quality_score.toFixed(1)}%`
+                        : '--'}
                     </span>
                   </div>
-                  <Slider
-                    value={[topP]}
-                    onValueChange={([value]) => {
-                      setTopP(value)
-                      setHasChanges(true)
-                    }}
-                    min={0}
-                    max={1}
-                    step={0.05}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Workflow Status */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Workflow Status</CardTitle>
-                <CardDescription>Current prompt status</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Select
-                  value={workflowStatus}
-                  onValueChange={(value: WorkflowStatus) => {
-                    setWorkflowStatus(value)
-                    setHasChanges(true)
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(WORKFLOW_STATUS_CONFIG).map(([key, cfg]) => (
-                      <SelectItem key={key} value={key}>
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`w-2 h-2 rounded-full ${cfg.bgColor.replace('bg-', 'bg-')}`}
-                          />
-                          {cfg.label}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                {/* Stats */}
-                {stagePrompt && (
-                  <div className="pt-4 border-t space-y-2">
+                  {stagePrompt.last_tested_at && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Test Count</span>
-                      <span>{stagePrompt.test_count}</span>
+                      <span className="text-muted-foreground">Last Tested</span>
+                      <span>{new Date(stagePrompt.last_tested_at).toLocaleDateString()}</span>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Avg Score</span>
-                      <span>
-                        {stagePrompt.avg_quality_score != null
-                          ? `${stagePrompt.avg_quality_score.toFixed(1)}%`
-                          : '--'}
-                      </span>
-                    </div>
-                    {stagePrompt.last_tested_at && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Last Tested</span>
-                        <span>{new Date(stagePrompt.last_tested_at).toLocaleDateString()}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>

@@ -1032,6 +1032,44 @@ export interface Database {
           updated_at?: string
         }
       }
+      prompt_refine_sessions: {
+        Row: {
+          id: string
+          stage: 'grounding' | 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
+          title: string | null
+          messages: Json
+          current_prompt: string | null
+          improved_prompt: string | null
+          is_favorite: boolean
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          stage: 'grounding' | 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
+          title?: string | null
+          messages?: Json
+          current_prompt?: string | null
+          improved_prompt?: string | null
+          is_favorite?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          stage?: 'grounding' | 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
+          title?: string | null
+          messages?: Json
+          current_prompt?: string | null
+          improved_prompt?: string | null
+          is_favorite?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
