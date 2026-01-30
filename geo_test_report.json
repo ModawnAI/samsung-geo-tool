@@ -1,0 +1,1120 @@
+{
+  "timestamp": "2026-01-20T11:38:52.545Z",
+  "totalProducts": 15,
+  "averageScore": 84,
+  "categoryBreakdown": {
+    "How to": {
+      "avgScore": 86,
+      "count": 8
+    },
+    "Unboxing": {
+      "avgScore": 87,
+      "count": 2
+    },
+    "Intro": {
+      "avgScore": 84,
+      "count": 2
+    },
+    "CXP": {
+      "avgScore": 67,
+      "count": 2
+    },
+    "Guided Demo": {
+      "avgScore": 100,
+      "count": 1
+    }
+  },
+  "patternBreakdown": {
+    "Opening Statement": {
+      "avgScore": 87,
+      "passRate": 87
+    },
+    "Step-by-Step": {
+      "avgScore": 93,
+      "passRate": 87
+    },
+    "What's New": {
+      "avgScore": 83,
+      "passRate": 73
+    },
+    "Q&A Format": {
+      "avgScore": 75,
+      "passRate": 60
+    },
+    "Hashtags": {
+      "avgScore": 100,
+      "passRate": 100
+    },
+    "Timestamps": {
+      "avgScore": 50,
+      "passRate": 27
+    },
+    "Vanity Link": {
+      "avgScore": 100,
+      "passRate": 100
+    }
+  },
+  "results": [
+    {
+      "product": "Galaxy Book5",
+      "category": "How to",
+      "youtubeTitle": "Galaxy Book: How to use AI Select | Samsung",
+      "youtubeUrl": "https://www.youtube.com/watch?v=fT0s8t9VVpE",
+      "patterns": [
+        {
+          "name": "Opening Statement",
+          "score": 15,
+          "maxScore": 15,
+          "passed": true,
+          "details": "Uses proper \"How to\" opening pattern"
+        },
+        {
+          "name": "Step-by-Step",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "Header: ✓, Steps: 5/3-5"
+        },
+        {
+          "name": "What's New",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "N/A for this content type"
+        },
+        {
+          "name": "Q&A Format",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "Pairs: 2/2-4, Colon: ✓"
+        },
+        {
+          "name": "Hashtags",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "#GalaxyAI first: ✓, #Samsung last: ✓, Count: 5"
+        },
+        {
+          "name": "Timestamps",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "No numbering: ✓, Action verbs: ✓"
+        },
+        {
+          "name": "Vanity Link",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "Vanity link: ✓, \"Learn more\": ✓"
+        }
+      ],
+      "totalScore": 75,
+      "maxScore": 75,
+      "percentage": 100,
+      "matchQuality": "excellent",
+      "groundTruth": "This is the official video guide on how to use AI Select on Galaxy Book. Search effortlessly without interrupting your flow—drag it, draw it, and find it! 🔍 AI Select is here to simplify internet searches for you—from looking up text to scanning QR codes, get on board with AI Select ✨ Explore the endless world of Galaxy AI as more exciting features await you. Stay tuned for in-app translation, image editing, and much more. Learn more: http://smsng.co/GalaxyBook5_How-to_yt\r\n\r\n00:00 Intro\r\n00:16 Search image with AI Select\r\n01:03 Search text with AI Select\r\n01:25 Search QR code with AI Select\r\n\r\nFollow these simple steps to use AI Select:\r\nStep 1: Launch 'AI Select' from the search bar.\r\nStep 2: Drag and draw around the object to select the image, text, or QR code you want to search.\r\nStep 3: Results appear immediately on the right side of the screen.\r\nStep 4: Proceed with the action you want, such as opening a link, translating, or checking related information.\r\nStep 5: Save or share the search results for convenient use.\r\n\r\nQ: What content and features are supported?\r\nA: It supports selecting areas in various content such as images, videos, and text, then editing, saving, sharing, and extracting text.\r\n\r\nQ: Is text extraction or translation also possible?\r\nA: Yes. You can extract the selected text to copy or share it, and you can also use translation or writing assist features.\r\n\r\n#GalaxyAI #GalaxyBook5Pro 360 #GalaxyBook5Pro #GalaxyBook5 #Samsung",
+      "generated": "",
+      "apiError": "Network Error: fetch failed"
+    },
+    {
+      "product": "Galaxy Book5 Pro",
+      "category": "Unboxing",
+      "youtubeTitle": "Galaxy Book5 Pro | Book5 Pro 360: Unboxing | Samsung",
+      "youtubeUrl": "https://www.youtube.com/watch?v=rwxposMAV-w",
+      "patterns": [
+        {
+          "name": "Opening Statement",
+          "score": 15,
+          "maxScore": 15,
+          "passed": true,
+          "details": "Uses proper \"Unboxing\" opening pattern"
+        },
+        {
+          "name": "Step-by-Step",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "N/A for non-how-to content"
+        },
+        {
+          "name": "What's New",
+          "score": 5,
+          "maxScore": 10,
+          "passed": false,
+          "details": "Header: ✗, Features: 4",
+          "suggestions": [
+            "Add \"What's new in [Product]?\" section",
+            "Format features as numbered list"
+          ]
+        },
+        {
+          "name": "Q&A Format",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "Pairs: 2/2-4, Colon: ✓"
+        },
+        {
+          "name": "Hashtags",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "#GalaxyAI first: ✓, #Samsung last: ✓, Count: 5"
+        },
+        {
+          "name": "Timestamps",
+          "score": 5,
+          "maxScore": 10,
+          "passed": false,
+          "details": "No numbering: ✓, Action verbs: ✗",
+          "suggestions": [
+            "Remove numbering, add action verbs"
+          ]
+        },
+        {
+          "name": "Vanity Link",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "Vanity link: ✓, \"Learn more\": ✓"
+        }
+      ],
+      "totalScore": 65,
+      "maxScore": 75,
+      "percentage": 87,
+      "matchQuality": "excellent",
+      "groundTruth": "This is the official unboxing video for the new Galaxy Book5 Pro and Book5 Pro 360 📦 Pick your work and creativity assistant: Galaxy Book5 Pro or Galaxy Book5 Pro 360 🌌 Experience lightning-fast performance of Copilot+ PC, a stunning AMOLED 2X display, and a seamless interface—powered by high-performance Galaxy AI ✨ Learn more: http://smsng.co/GalaxyBook5Pro_Unboxi...\r\n\r\n00:00 Intro\r\n00:07 Galaxy Book5 Pro 360\r\n00:10 What's in the box: Galaxy Book5 Pro 360\r\n00:15 Design: Galaxy Book5 Pro 360\r\n00:29 S Pen: Galaxy Book5 Pro 360\r\n00:42 Galaxy Book5 Pro\r\n00:44 What's in the box: Galaxy Book5 Pro\r\n00:48 Design: Galaxy Book5 Pro\r\n01:08 Galaxy Book5 Pro | Book5 Pro 360\r\n01:15 Processor: Galaxy Book5 Pro | Book5 Pro 360\r\n01:27 Display: Galaxy Book5 Pro | Book5 Pro 360\r\n01:39 Productivity: Galaxy Book5 Pro | Book5 Pro 360\r\n\r\nWhat’s new in Galaxy Book5 Pro 360?\r\n1. Ultra-slim design: Delivers powerful performance with a thin 12.8 mm profile and a lightweight 1.69 kg body.\r\n2. 2-in-1 form factor: Work precisely like a laptop and create comfortably like a tablet.\r\n3. S Pen support: Express ideas freely with precise handwriting and drawing using S Pen.\r\n\r\nWhat’s new in Galaxy Book5 Pro?\r\n1. Two sizes: 16-inch and 14-inch options so you can choose what fits your needs.\r\n2. Strong performance: High-performance processor and fast response for both work and creation.\r\n3. Vivid display: Dynamic AMOLED 2X panel with rich colors and deep contrast.\r\n\r\nQ: What’s included in the box?\r\nA: You’ll get an S Pen (Galaxy Book5 Pro 360 only), a Quick Start Guide, a Compact Charger, and a USB-C to C Cable.\r\nQ: Do both models support Galaxy AI features?\r\nA: Yes. Both come with a Copilot Key and Intel Core Ultra processor to enable Galaxy AI features such as text generation, translation, and content summarization.\r\n\r\n#GalaxyAI #GalaxyBook5Pro 360 #GalaxyBook5Pro #GalaxyBook5 #Samsung",
+      "generated": "",
+      "apiError": "Network Error: fetch failed"
+    },
+    {
+      "product": "Galaxy Book5 Pro",
+      "category": "Intro",
+      "youtubeTitle": "Introducing Galaxy Book5 Pro | Samsung",
+      "youtubeUrl": "https://www.youtube.com/watch?v=vjbK9B9WmPE",
+      "patterns": [
+        {
+          "name": "Opening Statement",
+          "score": 15,
+          "maxScore": 15,
+          "passed": true,
+          "details": "Uses proper \"Intro\" opening pattern"
+        },
+        {
+          "name": "Step-by-Step",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "N/A for non-how-to content"
+        },
+        {
+          "name": "What's New",
+          "score": 0,
+          "maxScore": 10,
+          "passed": false,
+          "details": "Header: ✗, Features: 0",
+          "suggestions": [
+            "Add \"What's new in [Product]?\" section",
+            "Format features as numbered list"
+          ]
+        },
+        {
+          "name": "Q&A Format",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "Pairs: 2/2-4, Colon: ✓"
+        },
+        {
+          "name": "Hashtags",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "#GalaxyAI first: ✓, #Samsung last: ✓, Count: 4"
+        },
+        {
+          "name": "Timestamps",
+          "score": 5,
+          "maxScore": 10,
+          "passed": false,
+          "details": "No numbering: ✓, Action verbs: ✗",
+          "suggestions": [
+            "Remove numbering, add action verbs"
+          ]
+        },
+        {
+          "name": "Vanity Link",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "Vanity link: ✓, \"Learn more\": ✓"
+        }
+      ],
+      "totalScore": 60,
+      "maxScore": 75,
+      "percentage": 80,
+      "matchQuality": "good",
+      "groundTruth": "Introducing the new Galaxy Book5 Pro. Supercharged by the Intel® Core™ Ultra processor to accelerate boundless AI experiences with its dedicated NPU capable of up to 47 Trillion Operations Per Second (TOPS). Unleash the power of Galaxy AI on PC including AI Select and Writing Assist. Boost your productivity by seamlessly connecting your Galaxy devices with Nearby devices and Storage Share. Learn more: http://smsng.co/GalaxyBook5Pro_Intro_yt\r\n\r\n00:00 Intro\r\n00:06 AI Performance with Intel® Core™ Ultra\r\n00:30 AI Select\r\n00:38 Writing Assist\r\n00:49 Recall\r\n01:04 Storage Share \r\n01:15 Nearby devices\r\n01:24 Battery life up to 25 hrs\r\n\r\nQ: What is the core processor responsible for the AI performance of the Galaxy Book5 Pro?\r\nA: The device is equipped with the 'Intel® Core™ Ultra Processor Series 2 (codenamed Lunar Lake)', which supports a Neural Processing Unit (NPU) capable of up to 47 TOPS. This ensures stable and fast performance for AI-related tasks. \r\n\r\nQ: What are the battery life and charging speeds?\r\nA: It features a large 76.1 Wh battery capable of up to 25 hours of video runtime. Fast charging support allows the battery to quickly replenish up to 35% in about 30 minutes.\r\n\r\n#GalaxyAI #GalaxyBook5Pro #GalaxyBook5 #Samsung",
+      "generated": "",
+      "apiError": "Network Error: fetch failed"
+    },
+    {
+      "product": "Galaxy S25 Ultra",
+      "category": "CXP",
+      "youtubeTitle": "Galaxy AI | Now Brief | Samsung Galaxy S25 Ultra",
+      "youtubeUrl": "https://www.youtube.com/watch?v=kOcEK5TGXV8",
+      "patterns": [
+        {
+          "name": "Opening Statement",
+          "score": 15,
+          "maxScore": 15,
+          "passed": true,
+          "details": "Uses proper \"CXP\" opening pattern"
+        },
+        {
+          "name": "Step-by-Step",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "N/A for non-how-to content"
+        },
+        {
+          "name": "What's New",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "N/A for this content type"
+        },
+        {
+          "name": "Q&A Format",
+          "score": 6,
+          "maxScore": 10,
+          "passed": false,
+          "details": "Pairs: 1/2-4, Colon: ✓",
+          "suggestions": [
+            "Use Q:/A: format with 2-4 pairs"
+          ]
+        },
+        {
+          "name": "Hashtags",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "#GalaxyAI first: ✓, #Samsung last: ✓, Count: 4"
+        },
+        {
+          "name": "Timestamps",
+          "score": 0,
+          "maxScore": 10,
+          "passed": false,
+          "details": "No timestamps found",
+          "suggestions": [
+            "Add timestamps in \"00:00 Action with Feature\" format"
+          ]
+        },
+        {
+          "name": "Vanity Link",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "Vanity link: ✓, \"Learn more\": ✓"
+        }
+      ],
+      "totalScore": 61,
+      "maxScore": 75,
+      "percentage": 81,
+      "matchQuality": "good",
+      "groundTruth": "This is the official video on Galaxy S25 Ultra's Now Brief. Get personalized briefings that keep you organized, informed and ahead of schedule all day long. Seize the day the easy way with your very own Now Brief and Now Bar. Learn more: http://smsng.co/S25Ultra_Now-Brief_yt\r\n\r\nQ: How do I access Now Brief and what kind of information I can see?\r\nA: You can access the ‘Now Brief’ straight from the Now Bar or the home screen. It gives you a personal summary of your day curated by Galaxy AI. You can use it to view your energy score, schedule, and routines.\r\n\r\n#GalaxyAI #GalaxyS25Ultra #GalaxyS25 #Samsung",
+      "generated": "",
+      "apiError": "Network Error: fetch failed"
+    },
+    {
+      "product": "Galaxy S25 Ultra",
+      "category": "Guided Demo",
+      "youtubeTitle": "A Guided Demo of Camera | Galaxy S25 Ultra | Samsung",
+      "youtubeUrl": "https://www.youtube.com/watch?v=4qBL2koKKr8",
+      "patterns": [
+        {
+          "name": "Opening Statement",
+          "score": 15,
+          "maxScore": 15,
+          "passed": true,
+          "details": "Uses proper \"Guided Demo\" opening pattern"
+        },
+        {
+          "name": "Step-by-Step",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "N/A for non-how-to content"
+        },
+        {
+          "name": "What's New",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "N/A for this content type"
+        },
+        {
+          "name": "Q&A Format",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "Pairs: 2/2-4, Colon: ✓"
+        },
+        {
+          "name": "Hashtags",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "#GalaxyAI first: ✓, #Samsung last: ✓, Count: 5"
+        },
+        {
+          "name": "Timestamps",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "No numbering: ✓, Action verbs: ✓"
+        },
+        {
+          "name": "Vanity Link",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "Vanity link: ✓, \"Learn more\": ✓"
+        }
+      ],
+      "totalScore": 75,
+      "maxScore": 75,
+      "percentage": 100,
+      "matchQuality": "excellent",
+      "groundTruth": "This is the official guided demo film of Galaxy S25 Ultra for Camera. Experience the Galaxy's most powerful cameras and the enhanced AI features on Galaxy S25 Ultra, a true AI companion that combines great intelligence and power to open up your world—making everything more personalized and intuitive than ever before. Learn more: http://smsng.co/S25Ultra_Camera_yt\r\n\r\n00:00 Introducing Galaxy S25 Ultra\r\n01:21 Natural Portraits: Detailed photography\r\n02:14 Filters: Real-time customized filming and editing\r\n02:58 Nightography video: Next generation ProVisual Engine\r\n03:59 Audio Eraser: Filter out unwanted background noise from videos\r\n\r\nQ: Can I use my custom filter for both photos and videos?\r\nA: Yes, you can use your filters in both photo and video modes directly in the 'Camera' app.\r\nQ: What sounds can Audio Eraser adjust?\r\nA: Audio Eraser can fine-tune voices, wind, music, noise, crowd, and ambient noise in your videos.\r\n\r\n#GalaxyAI #GalaxyS25Ultra #GuidedDemo #camera #Samsung",
+      "generated": "",
+      "apiError": "Network Error: fetch failed"
+    },
+    {
+      "product": "Galaxy S25",
+      "category": "How to",
+      "youtubeTitle": "How to use Settings Search | Galaxy AI | Galaxy S25 Series | Samsung",
+      "youtubeUrl": "https://www.youtube.com/watch?v=howvpaK1OlE",
+      "patterns": [
+        {
+          "name": "Opening Statement",
+          "score": 15,
+          "maxScore": 15,
+          "passed": true,
+          "details": "Uses proper \"How to\" opening pattern"
+        },
+        {
+          "name": "Step-by-Step",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "Header: ✓, Steps: 3/3-5"
+        },
+        {
+          "name": "What's New",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "N/A for this content type"
+        },
+        {
+          "name": "Q&A Format",
+          "score": 6,
+          "maxScore": 10,
+          "passed": false,
+          "details": "Pairs: 1/2-4, Colon: ✓",
+          "suggestions": [
+            "Use Q:/A: format with 2-4 pairs"
+          ]
+        },
+        {
+          "name": "Hashtags",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "#GalaxyAI first: ✓, #Samsung last: ✓, Count: 4"
+        },
+        {
+          "name": "Timestamps",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "No numbering: ✓, Action verbs: ✓"
+        },
+        {
+          "name": "Vanity Link",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "Vanity link: ✓, \"Learn more\": ✓"
+        }
+      ],
+      "totalScore": 71,
+      "maxScore": 75,
+      "percentage": 95,
+      "matchQuality": "excellent",
+      "groundTruth": "This is the official video guide on how to use Settings Search on Galaxy S25 Series ⚡ Need to locate a certain setting on your phone? Galaxy AI can help you with that, even if you're unsure of what it's called or where the menu is. Simply describe the setting or issue and it will be instantly found for you. Learn more: http://smsng.co/S25_Setting-Search_yt\r\n\r\n00:00 Intro\r\n00:08 Locating functions\r\n01:03 Applying the settings\r\n\r\nFollow these simple steps to use Settings Search:\r\nStep 1: Open 'Settings' on your Galaxy S25 Series.\r\nStep 2: Tap 'Search' and type or speak a description of the setting or issue you’re looking for.\r\nStep 3: Once the menu appears, tap it and toggle the setting on or off to apply your change.\r\n\r\nQ: How can I find a phone setting I don't know the name of?\r\nA: Just describe it with voice or text, and Galaxy AI will find the right setting instantly.\r\n\r\n#GalaxyAI #GalaxyS25Ultra #GalaxyS25 #Samsung",
+      "generated": "",
+      "apiError": "Network Error: fetch failed"
+    },
+    {
+      "product": "Galaxy Book5, Galaxy S25 Ultra",
+      "category": "How to",
+      "youtubeTitle": "How to use Storage Share across Galaxy devices | Samsung",
+      "youtubeUrl": "https://www.youtube.com/watch?v=dDi-b154gkU",
+      "patterns": [
+        {
+          "name": "Opening Statement",
+          "score": 15,
+          "maxScore": 15,
+          "passed": true,
+          "details": "Uses proper \"How to\" opening pattern"
+        },
+        {
+          "name": "Step-by-Step",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "Header: ✓, Steps: 4/3-5"
+        },
+        {
+          "name": "What's New",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "N/A for this content type"
+        },
+        {
+          "name": "Q&A Format",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "Pairs: 2/2-4, Colon: ✓"
+        },
+        {
+          "name": "Hashtags",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "#GalaxyAI first: ✓, #Samsung last: ✓, Count: 4"
+        },
+        {
+          "name": "Timestamps",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "No numbering: ✓, Action verbs: ✓"
+        },
+        {
+          "name": "Vanity Link",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "Vanity link: ✓, \"Learn more\": ✓"
+        }
+      ],
+      "totalScore": 75,
+      "maxScore": 75,
+      "percentage": 100,
+      "matchQuality": "excellent",
+      "groundTruth": "This is the official video guide on how to use Storage Share across Galaxy devices. Storage Share lets you wirelessly transfer files 🗂️ across your Galaxy devices without the need for external drives or tangled cables. Simply drag and drop files between devices and it's done! Learn more: http://smsng.co/GalaxyBook5_Storage-S...\r\n\r\n00:00 Intro\r\n00:11 Set things up first\r\n00:42 Connect between Galaxy devices\r\n01:30 Explore various uses\r\n\r\nFollow these simple steps to use Storage Share:\r\nStep 1: Sign in to the same Samsung Account on Galaxy Book and smartphone, then turn on Wi-Fi and Bluetooth on both devices.\r\nStep 2: On Galaxy Book, open 'Samsung Settings' → 'Connected devices' → turn on 'Storage Share'.\r\nStep 3: Open 'File Explorer', select your phone from the left menu, then tap 'Allow' on the phone to connect.\r\nStep 4: Now open your phone’s folders and files directly from Galaxy Book, and drag and drop to transfer freely between both devices.\r\n\r\nQ: Does it take up storage space?\r\nA: No. Storage Share pulls files directly from your phone, so no additional space is used.\r\nQ: Can I use Storage Share on a TV as well?\r\nA: Yes. On 2025 Samsung Smart TVs, turning on Storage Share lets you view files from your phone or tablet right on the TV.\r\n\r\n#GalaxyAI #GalaxyBook5Pro 360 #GalaxyBook5 #Samsung",
+      "generated": "",
+      "apiError": "Network Error: fetch failed"
+    },
+    {
+      "product": "Galaxy Tab S10 FE",
+      "category": "Unboxing",
+      "youtubeTitle": "Unboxing Galaxy Tab S10 FE | FE+ | Samsung",
+      "youtubeUrl": "https://www.youtube.com/watch?v=hSdQBZxMRFo",
+      "patterns": [
+        {
+          "name": "Opening Statement",
+          "score": 15,
+          "maxScore": 15,
+          "passed": true,
+          "details": "Uses proper \"Unboxing\" opening pattern"
+        },
+        {
+          "name": "Step-by-Step",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "N/A for non-how-to content"
+        },
+        {
+          "name": "What's New",
+          "score": 5,
+          "maxScore": 10,
+          "passed": false,
+          "details": "Header: ✗, Features: 4",
+          "suggestions": [
+            "Add \"What's new in [Product]?\" section",
+            "Format features as numbered list"
+          ]
+        },
+        {
+          "name": "Q&A Format",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "Pairs: 2/2-4, Colon: ✓"
+        },
+        {
+          "name": "Hashtags",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "#GalaxyAI first: ✓, #Samsung last: ✓, Count: 3"
+        },
+        {
+          "name": "Timestamps",
+          "score": 5,
+          "maxScore": 10,
+          "passed": false,
+          "details": "No numbering: ✓, Action verbs: ✗",
+          "suggestions": [
+            "Remove numbering, add action verbs"
+          ]
+        },
+        {
+          "name": "Vanity Link",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "Vanity link: ✓, \"Learn more\": ✓"
+        }
+      ],
+      "totalScore": 65,
+      "maxScore": 75,
+      "percentage": 87,
+      "matchQuality": "excellent",
+      "groundTruth": "This is the official unboxing video for the new Galaxy Tab S10 FE and FE+ 📦 Galaxy Tab S10 FE and Galaxy Tab S10 FE+ are here—bigger, smarter, and more creative! 🎨 Enjoy a larger display for all your binge-watching 🎬, AI-powered features 🤖 that make life easier, and an upgraded S Pen 🖊️ for next-level note-taking and doodling! Learn more: http://smsng.co/TabS10FE_Unboxing_yt\r\n\r\n00:00 Intro\r\n00:14 What’s in the box\r\n00:20 S Pen\r\n00:30 Color\r\n00:42 Display\r\n01:02 Hardware specifications and performance\r\n01:15 Camera\r\n01:22 Battery\r\n\r\nWhat’s new in Galaxy Tab S10 FE and FE+?\r\n1. S Pen: Both models include S Pen, so you can start handwriting, drawing, and editing right away.\r\n2. Vision Booster: Display tech that stays clear even outdoors in bright conditions.\r\n3. Slim design: Just 6.0 mm thin—light and portable anywhere.\r\n4. Camera upgrades: Rear 13 MP and front 12 MP ultra-wide cameras for crisp video calls and content capture.\r\n\r\nQ: What are the key differences between Galaxy Tab S10 FE+ and FE?\r\nA: Galaxy Tab S10 FE+ has a 13.1-inch large display and a 10,090 mAh battery, great for video editing or drawing. Galaxy Tab S10 FE has a 10.9-inch display and an 8,000 mAh battery, better for lighter, portability-focused use.\r\n\r\nQ: What colors are available?\r\nA: Both models come in Gray, Silver, and Blue, so you can choose your style.\r\n\r\n#GalaxyAI #GalaxyTabS10 FE #Samsung",
+      "generated": "",
+      "apiError": "Network Error: fetch failed"
+    },
+    {
+      "product": "Galaxy S25 Edge",
+      "category": "Intro",
+      "youtubeTitle": "Cases of Galaxy S25 Edge | Samsung",
+      "youtubeUrl": "https://www.youtube.com/watch?v=JDawyMv4qAU",
+      "patterns": [
+        {
+          "name": "Opening Statement",
+          "score": 15,
+          "maxScore": 15,
+          "passed": true,
+          "details": "Uses proper \"Intro\" opening pattern"
+        },
+        {
+          "name": "Step-by-Step",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "N/A for non-how-to content"
+        },
+        {
+          "name": "What's New",
+          "score": 5,
+          "maxScore": 10,
+          "passed": false,
+          "details": "Header: ✗, Features: 3",
+          "suggestions": [
+            "Add \"What's new in [Product]?\" section",
+            "Format features as numbered list"
+          ]
+        },
+        {
+          "name": "Q&A Format",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "Pairs: 3/2-4, Colon: ✓"
+        },
+        {
+          "name": "Hashtags",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "#GalaxyAI first: ✓, #Samsung last: ✓, Count: 3"
+        },
+        {
+          "name": "Timestamps",
+          "score": 5,
+          "maxScore": 10,
+          "passed": false,
+          "details": "No numbering: ✓, Action verbs: ✗",
+          "suggestions": [
+            "Remove numbering, add action verbs"
+          ]
+        },
+        {
+          "name": "Vanity Link",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "Vanity link: ✓, \"Learn more\": ✓"
+        }
+      ],
+      "totalScore": 65,
+      "maxScore": 75,
+      "percentage": 87,
+      "matchQuality": "excellent",
+      "groundTruth": "This is the official introduction video for the new Galaxy S25 Edge case lineup: Silicone Case, Clear Case, and Kindsuit Case. Slim protection to suit the slimmest Galaxy S smartphone yet. Precisely crafted to fit tight, feel light, and keep your Galaxy S25 Edge secure in style. What’s the best case for the new Galaxy S25 Edge? Learn more: http://smsng.co/S25Edge_Cases_yt\r\n\r\n00:00 Intro\r\n00:08 Silicone Case\r\n00:27 Clear Case\r\n00:44 Kindsuit Case\r\n\r\nHere’s what you’ll find in the lineup:\r\n1. Silicone Case: Recommended for users who need a secure grip and strong protection. The smooth material feels soft to the touch, and the vibrant colors let you create your own style.\r\n2. Clear Case: Ideal for minimalists who like simplicity. Enjoy the original design with a transparent clear case.\r\n3. Kindsuit Case: Recommended for users who value refined texture and slimness. With a soft, clean design, it offers a smooth feel at your fingertips.\r\n\r\nQ: How many colors does Silicone Case come in?\r\nA: Three colors that highlight your individuality: Light Blue, Light Gray, and Black.\r\n\r\nQ: What are the advantages of Clear Case?\r\nA: A case that embodies pure simplicity—thin, yet durable, with a clean, transparent design that lets you enjoy your phone’s original color and design.\r\n\r\nQ: What is the main feature of Kindsuit Case?\r\nA: Ensuring both style and safety, the inner lining of the Kindsuit Case does a fine job at keeping your phone at its finest.\r\n\r\n#GalaxyAI #GalaxyS25Edge #Samsung\r\n",
+      "generated": "",
+      "apiError": "Network Error: fetch failed"
+    },
+    {
+      "product": "Galaxy Watch8",
+      "category": "How to",
+      "youtubeTitle": "How to use Running Coach | Galaxy Watch8 Series | Samsung",
+      "youtubeUrl": "https://www.youtube.com/watch?v=nh16o10JOR4",
+      "patterns": [
+        {
+          "name": "Opening Statement",
+          "score": 15,
+          "maxScore": 15,
+          "passed": true,
+          "details": "Uses proper \"How to\" opening pattern"
+        },
+        {
+          "name": "Step-by-Step",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "Header: ✓, Steps: 5/3-5"
+        },
+        {
+          "name": "What's New",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "N/A for this content type"
+        },
+        {
+          "name": "Q&A Format",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "Pairs: 2/2-4, Colon: ✓"
+        },
+        {
+          "name": "Hashtags",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "#GalaxyAI first: ✓, #Samsung last: ✓, Count: 3"
+        },
+        {
+          "name": "Timestamps",
+          "score": 5,
+          "maxScore": 10,
+          "passed": false,
+          "details": "No numbering: ✓, Action verbs: ✗",
+          "suggestions": [
+            "Remove numbering, add action verbs"
+          ]
+        },
+        {
+          "name": "Vanity Link",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "Vanity link: ✓, \"Learn more\": ✓"
+        }
+      ],
+      "totalScore": 70,
+      "maxScore": 75,
+      "percentage": 93,
+      "matchQuality": "excellent",
+      "groundTruth": "This is the official video guide 📝 on how to check your running level and train step by step with Running Coach on Galaxy Watch8 Series. Where does your running ability stand right now? You can find out through Running Coach on Galaxy Watch8 Series. Start with a simple test that measures your running level from 1 to 10, then follow a 3 to 5 week training plan tailored to your results. Running Coach helps you train at your own pace and chart your own path of progress. Learn more: http://smsng.co/Watch8_Running-Coach_yt\r\n\r\n00:00 Intro\r\n00:15 Connect\r\n00:24 Survey\r\n00:53 Running test\r\n01:48 Training plan\r\n02:15 Daily insights \r\n02:28 Level up test\r\n\r\nFollow these simple steps to use Running Coach on Galaxy Watch8 Series:\r\nStep 1: Tap ‘Find your level’ on your Galaxy Watch8 Series to start Running Coach.\r\nStep 2: Take the Running Level Test to assess your current running ability.\r\nStep 3: Receive a level from 1 to 10 and get a 3 to 5 week training plan.\r\nStep 4: Follow the daily training guide and receive running insights during each workout.\r\nStep 5: Track your progress and challenge yourself to reach the next level.\r\n\r\nQ: What kind of workout plan does Running Coach offer?\r\nA: Running Coach provides a structured 3 to 5 week plan that's customized to your fitness level. It provides real-time audio guidance from your watch to notify you about your pace, distance and progress toward your goal regardless whether you're a beginner or an experienced runner.\r\nQ. Will my training be saved even if I don't hit my goal? And is it okay to do multiple sessions in a day?\r\nA: Yes, all your Running Coach training sessions are saved, even if you don’t meet your goal. This data can help adjust future training plans. However, we recommend completing only one session per day since multiple sessions may lead to excessive training load.\r\nQ. Can I use Running Coach on a treadmill?\r\nA: Running Coach is only available in outdoor environments where GPS signals are received. This is because the training program relies on real-time location data to calculate pace, distance and speed. Indoor environments do not provide a GPS signal, which can affect the accuracy of training data.\r\nQ: What is RPE?\r\nA: RPE stands for Rating of Perceived Exertion. It is an index that indicates the intensity you felt during the workout, from a scale of 1 to 10. Unlike objective stats like heart rate or speed, RPE reflects your condition subjectively. \r\n\r\n#GalaxyAI #GalaxyWatch8 #Samsung",
+      "generated": "",
+      "apiError": "Network Error: fetch failed"
+    },
+    {
+      "product": "Galaxy Z Fold7",
+      "category": "How to",
+      "youtubeTitle": "How to use Browsing Assist & Writing Assist | Galaxy Z Fold7 | Samsung",
+      "youtubeUrl": "https://www.youtube.com/watch?v=z4M1Yk2BeuI",
+      "patterns": [
+        {
+          "name": "Opening Statement",
+          "score": 15,
+          "maxScore": 15,
+          "passed": true,
+          "details": "Uses proper \"How to\" opening pattern"
+        },
+        {
+          "name": "Step-by-Step",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "Header: ✓, Steps: 5/3-5"
+        },
+        {
+          "name": "What's New",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "N/A for this content type"
+        },
+        {
+          "name": "Q&A Format",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "Pairs: 2/2-4, Colon: ✓"
+        },
+        {
+          "name": "Hashtags",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "#GalaxyAI first: ✓, #Samsung last: ✓, Count: 3"
+        },
+        {
+          "name": "Timestamps",
+          "score": 5,
+          "maxScore": 10,
+          "passed": false,
+          "details": "No numbering: ✓, Action verbs: ✗",
+          "suggestions": [
+            "Remove numbering, add action verbs"
+          ]
+        },
+        {
+          "name": "Vanity Link",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "Vanity link: ✓, \"Learn more\": ✓"
+        }
+      ],
+      "totalScore": 70,
+      "maxScore": 75,
+      "percentage": 93,
+      "matchQuality": "excellent",
+      "groundTruth": "This is the official video guide on how to multi-task using Browsing Assist and Writing Assist on Galaxy Z Fold7. Whether you’re researching, planning a trip or just saving articles to review later, these features are ideal for anyone who wants to read, summarize and save all in one place ✨ Learn more: http://smsng.co/ZFold7_Multi-tasking_yt\r\n\r\n00:00 Intro\r\n00:15 Browsing Assist\r\n01:38 Writing Assist\r\n\r\nFollow these easy steps to multi-task effortlessly on the big screen of your Galaxy Z Fold7:\r\nStep 1: Open the website you want to summarize. Unfold your Galaxy Z Fold7 and split the screen to multi-task like a pro. \r\nStep 2: Open the ’Messages’ app. Tap ‘Summarize’ and send the summary.\r\nStep 3: Long press ‘Notes’ in the Edge panel and drag and drop it into the screen. \r\nStep 4: Select the content you want to summarize and tap ‘Summarize’ and see Galaxy AI do the work.\r\nStep 5: Copy and paste the summary directly into ‘Notes’, all on the same screen.\r\n\r\nQ: Where are my saved summaries stored?\r\nA: Your summaries can be saved directly into the ‘Notes’ app, where you can edit, organize and revisit anytime.\r\n\r\nQ: What kind of content can be summarized?\r\nA: It works best on text-rich websites like articles, news or blog posts.\r\n\r\n#GalaxyAI #GalaxyZFold7 #Samsung",
+      "generated": "",
+      "apiError": "Network Error: fetch failed"
+    },
+    {
+      "product": "Galaxy Z Flip7",
+      "category": "How to",
+      "youtubeTitle": "How to use FlexCam | Galaxy Z Flip7 | Samsung",
+      "youtubeUrl": "https://www.youtube.com/watch?v=_IjUNZlk_ww",
+      "patterns": [
+        {
+          "name": "Opening Statement",
+          "score": 0,
+          "maxScore": 15,
+          "passed": false,
+          "details": "Missing official opening pattern for \"How to\" content",
+          "suggestions": [
+            "Start with: \"This is the official video guide on how to use [Feature/Product]\""
+          ]
+        },
+        {
+          "name": "Step-by-Step",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "Header: ✓, Steps: 4/3-5"
+        },
+        {
+          "name": "What's New",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "N/A for this content type"
+        },
+        {
+          "name": "Q&A Format",
+          "score": 6,
+          "maxScore": 10,
+          "passed": false,
+          "details": "Pairs: 1/2-4, Colon: ✓",
+          "suggestions": [
+            "Use Q:/A: format with 2-4 pairs"
+          ]
+        },
+        {
+          "name": "Hashtags",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "#GalaxyAI first: ✓, #Samsung last: ✓, Count: 5"
+        },
+        {
+          "name": "Timestamps",
+          "score": 5,
+          "maxScore": 10,
+          "passed": false,
+          "details": "No numbering: ✓, Action verbs: ✗",
+          "suggestions": [
+            "Remove numbering, add action verbs"
+          ]
+        },
+        {
+          "name": "Vanity Link",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "Vanity link: ✓, \"Learn more\": ✓"
+        }
+      ],
+      "totalScore": 51,
+      "maxScore": 75,
+      "percentage": 68,
+      "matchQuality": "needs_improvement",
+      "groundTruth": "This is a video guide on how to use FlexCam on the new Galaxy Z Flip7. Looking to take stunning, hands-free selfies with the AI-powered 50MP camera? 📸 Learn how to get the best shots using FlexCam. It’s ideal for users who want to stay perfectly framed without lifting a finger 😎 Learn more: http://smsng.co/ZFlip7_FlexCam_yt\r\n\r\n00:00 Intro\r\n00:14 Get started\r\n00:44 New FlexCam with Auto Zoom\r\n01:07 New FlexCam with Palm Gesture\r\n\r\nFollow these simple steps to make full use of FlexCam!\r\nStep 1: Tap FlexCam and drag it to the center of Galaxy Z Flip7.\r\nStep 2: Let Auto Zoom automatically calculate the distance and frame you at the right angle.\r\nStep 3: Take various shots with FlexCam & Palm Gesture, and see how Auto Zoom refines your photos.\r\nStep 4: Use Camera Controller on the Galaxy Watch8 to take shots more conveniently.\r\n\r\nQ: Can I use a Galaxy Watch with FlexCam?\r\nA: Yes, you can control the camera remotely using the Camera Controller on your Galaxy Watch for added convenience.\r\n\r\n#GalaxyAI #GalaxyZFlip7 #FlexWindow #selfie #Samsung",
+      "generated": "",
+      "apiError": "Network Error: fetch failed"
+    },
+    {
+      "product": "Galaxy S25 FE",
+      "category": "How to",
+      "youtubeTitle": "How to apply Anti-reflecting Film | Galaxy S25 FE | Samsung",
+      "youtubeUrl": "https://www.youtube.com/watch?v=mNMoSREN9Qc",
+      "patterns": [
+        {
+          "name": "Opening Statement",
+          "score": 15,
+          "maxScore": 15,
+          "passed": true,
+          "details": "Uses proper \"How to\" opening pattern"
+        },
+        {
+          "name": "Step-by-Step",
+          "score": 5,
+          "maxScore": 10,
+          "passed": false,
+          "details": "Header: ✗, Steps: 5/3-5",
+          "suggestions": [
+            "Add \"Follow these simple steps to use [Feature]:\"",
+            "Include 3-5 numbered steps"
+          ]
+        },
+        {
+          "name": "What's New",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "N/A for this content type"
+        },
+        {
+          "name": "Q&A Format",
+          "score": 2,
+          "maxScore": 10,
+          "passed": false,
+          "details": "Pairs: 0/2-4, Colon: ✓",
+          "suggestions": [
+            "Use Q:/A: format with 2-4 pairs"
+          ]
+        },
+        {
+          "name": "Hashtags",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "#GalaxyAI first: ✓, #Samsung last: ✓, Count: 3"
+        },
+        {
+          "name": "Timestamps",
+          "score": 0,
+          "maxScore": 10,
+          "passed": false,
+          "details": "No timestamps found",
+          "suggestions": [
+            "Add timestamps in \"00:00 Action with Feature\" format"
+          ]
+        },
+        {
+          "name": "Vanity Link",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "Vanity link: ✓, \"Learn more\": ✓"
+        }
+      ],
+      "totalScore": 52,
+      "maxScore": 75,
+      "percentage": 69,
+      "matchQuality": "needs_improvement",
+      "groundTruth": "This is the official video guide on how to apply Anti-reflecting Film on Galaxy S25 FE. Want to easily apply the film yourself? Learn more: http://smsng.co/S25FE_Film_How-to_yt 00:00 Intro 00:13 What's in the box 00:16 Set up 00:34 Apply the Anti-reflecting Film 01:33 Finish up Follow the steps below, and you'll be able to apply the Anti-reflecting Film quickly and easily! 🤓 Step 1: Attach the applicator to your Galaxy S25 FE. Step 2: Clean the screen with microfiber cleaner and dust removal sticker. Step 3: Align the Anti-reflecting Film with the Galaxy S25 FE screen and apply one half. Step 4: Rotate your Galaxy S25 FE and apply the remaining half of the film. Step 5: Finish by smoothing out any bubbles with the squeegee and wiping the screen with the microfiber cleaner. The Anti-reflecting Film will provide enhanced visibility and protection against dust and fingerprint smudges 🤩 Q: Is the Anti-reflecting Film scratch-resistant? A: The Anti-reflecting Film is coated with both an anti-scratch layer and a dust-resistant coating to help maintain clarity and durability over time. It’s designed to resist everyday wear and keep your screen looking clean and sharp. Q: Why does a line appear in the center of the screen after applying the Anti-reflecting Film? A: A line may appear in the center of the screen after applying the Anti-reflecting Film. The line typically fades over time and may be reduced by gently wiping the area with a microfiber cleaner. #GalaxyAI #GalaxyS25 FE #Samsung",
+      "generated": "",
+      "apiError": "Network Error: fetch failed"
+    },
+    {
+      "product": "Galaxy Tab S 11 Ultra",
+      "category": "How to",
+      "youtubeTitle": "How to use Samsung DeX on Galaxy Tab S11 Series | Samsung",
+      "youtubeUrl": "https://www.youtube.com/watch?v=IzljKlApawo",
+      "patterns": [
+        {
+          "name": "Opening Statement",
+          "score": 15,
+          "maxScore": 15,
+          "passed": true,
+          "details": "Uses proper \"How to\" opening pattern"
+        },
+        {
+          "name": "Step-by-Step",
+          "score": 5,
+          "maxScore": 10,
+          "passed": false,
+          "details": "Header: ✓, Steps: 6/3-5",
+          "suggestions": [
+            "Add \"Follow these simple steps to use [Feature]:\"",
+            "Include 3-5 numbered steps"
+          ]
+        },
+        {
+          "name": "What's New",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "N/A for this content type"
+        },
+        {
+          "name": "Q&A Format",
+          "score": 2,
+          "maxScore": 10,
+          "passed": false,
+          "details": "Pairs: 0/2-4, Colon: ✓",
+          "suggestions": [
+            "Use Q:/A: format with 2-4 pairs"
+          ]
+        },
+        {
+          "name": "Hashtags",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "#GalaxyAI first: ✓, #Samsung last: ✓, Count: 4"
+        },
+        {
+          "name": "Timestamps",
+          "score": 0,
+          "maxScore": 10,
+          "passed": false,
+          "details": "No timestamps found",
+          "suggestions": [
+            "Add timestamps in \"00:00 Action with Feature\" format"
+          ]
+        },
+        {
+          "name": "Vanity Link",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "Vanity link: ✓, \"Learn more\": ✓"
+        }
+      ],
+      "totalScore": 52,
+      "maxScore": 75,
+      "percentage": 69,
+      "matchQuality": "needs_improvement",
+      "groundTruth": "This is the official video guide 📝 on how to use Samsung DeX on Galaxy Tab S11 Series—your go-to tool for seamless multi-tasking with extended monitor support. Want to boost your productivity with more space and flexibility? With Samsung DeX on Galaxy Tab S11 Series, you can create multiple workspaces and even connect wirelessly to another monitor—giving you more room to multi-task right from your tablet. Learn more: http://smsng.co/TabS11_DeX_yt 00:00 Intro 00:16 Switch to DeX mode 00:38 Create workspaces 01:09 Extend your workspaces 01:37 Exit DeX mode Follow these simple steps to use Samsung DeX on Galaxy Tab S11 Series: Step 1: Switch to Samsung DeX mode to enable a more flexible work environment. Step 2: Resize and arrange app windows as you want. Step 3: Add up to four workspaces, each customized to your needs. Step 4: Rearrange or remove apps from your workspaces. Step 5: Extend your screen with Wireless DeX for even more multi-tasking room. Step 6: Exit Samsung DeX mode and switch in and out freely whenever you need. Q: What can I do with multiple workspaces in Samsung DeX mode? A: You can set up different workspaces in Samsung DeX mode, each organized by task or purpose. For example, one for work, one for creative projects, and one for web browsing. It helps you stay focused and switch between tasks more efficiently. Q: What’s the benefit of using Samsung DeX with an extended monitor? A: With Samsung DeX, you can connect your Galaxy Tab S11 to another monitor wirelessly. This extended screen gives you more space to view content, manage apps, and stay productive. #GalaxyAI #GalaxyTabS11Ultra #GalaxyTabS11 #Samsung",
+      "generated": "",
+      "apiError": "Network Error: fetch failed"
+    },
+    {
+      "product": "Galaxy Tab S 11",
+      "category": "CXP",
+      "youtubeTitle": "The S Pen story | Galaxy Tab S11 Series | Samsung",
+      "youtubeUrl": "https://www.youtube.com/watch?v=a4LSE5iHrQE",
+      "patterns": [
+        {
+          "name": "Opening Statement",
+          "score": 0,
+          "maxScore": 15,
+          "passed": false,
+          "details": "Missing official opening pattern for \"CXP\" content",
+          "suggestions": [
+            "Start with: \"This is the official cxp video for [Feature/Product]\""
+          ]
+        },
+        {
+          "name": "Step-by-Step",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "N/A for non-how-to content"
+        },
+        {
+          "name": "What's New",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "N/A for this content type"
+        },
+        {
+          "name": "Q&A Format",
+          "score": 0,
+          "maxScore": 10,
+          "passed": false,
+          "details": "Pairs: 0/2-4, Colon: ✗",
+          "suggestions": [
+            "Use Q:/A: format with 2-4 pairs"
+          ]
+        },
+        {
+          "name": "Hashtags",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "#GalaxyAI first: ✓, #Samsung last: ✓, Count: 4"
+        },
+        {
+          "name": "Timestamps",
+          "score": 0,
+          "maxScore": 10,
+          "passed": false,
+          "details": "No timestamps found",
+          "suggestions": [
+            "Add timestamps in \"00:00 Action with Feature\" format"
+          ]
+        },
+        {
+          "name": "Vanity Link",
+          "score": 10,
+          "maxScore": 10,
+          "passed": true,
+          "details": "Vanity link: ✓, \"Learn more\": ✓"
+        }
+      ],
+      "totalScore": 40,
+      "maxScore": 75,
+      "percentage": 53,
+      "matchQuality": "needs_improvement",
+      "groundTruth": "Meet the new S Pen, engineered for comfort and optimized tilt control for more natural, precise drawing. Paired with the Galaxy Tab S11 Series, it's your ultimate creative companion. Learn more: http://smsng.co/TabS11_SPen-Story_yt #GalaxyAI #GalaxyTabS11Ultra #GalaxyTabS11 #Samsung",
+      "generated": "",
+      "apiError": "Network Error: fetch failed"
+    }
+  ],
+  "feedbackSummary": [
+    "✗ Timestamps: 27% pass rate",
+    "⚠ Q&A Format: 60% pass rate",
+    "⚠ What's New: 73% pass rate",
+    "✓ Opening Statement: 87% pass rate",
+    "✓ Step-by-Step: 87% pass rate",
+    "✓ Hashtags: 100% pass rate",
+    "✓ Vanity Link: 100% pass rate"
+  ],
+  "improvementPriorities": [
+    "[7x] Remove numbering, add action verbs",
+    "[6x] Use Q:/A: format with 2-4 pairs",
+    "[4x] Add \"What's new in [Product]?\" section",
+    "[4x] Format features as numbered list",
+    "[4x] Add timestamps in \"00:00 Action with Feature\" format",
+    "[2x] Add \"Follow these simple steps to use [Feature]:\"",
+    "[2x] Include 3-5 numbered steps",
+    "[1x] Start with: \"This is the official video guide on how to use [Feature/Product]\"",
+    "[1x] Start with: \"This is the official cxp video for [Feature/Product]\""
+  ]
+}

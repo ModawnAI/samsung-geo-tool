@@ -1,8 +1,19 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import type { ContentType, VideoFormat, InputMethod, ImageAltResult, GEOv2Score } from '@/types/geo-v2'
+import type { 
+  ContentType, 
+  VideoFormat, 
+  InputMethod, 
+  ImageAltResult, 
+  GEOv2Score,
+  Platform,
+  YouTubeTitleResult,
+  MetaTagsResult,
+  InstagramDescriptionResult,
+  EnhancedHashtagResult,
+} from '@/types/geo-v2'
 
-export type GenerationStep = 'product' | 'content' | 'keywords' | 'output'
+export type GenerationStep = 'platform' | 'product' | 'content' | 'keywords' | 'output'
 
 export interface GroundingSource {
   uri: string
@@ -80,6 +91,7 @@ export type SessionStatus =
   | 'cancelled'   // User cancelled
 
 export interface GenerationSessionInput {
+  platform: Platform
   categoryId: string
   productId: string
   productName: string
@@ -108,6 +120,11 @@ export interface GenerationSessionResult {
   imageAltResult: ImageAltResult | null
   groundingKeywords: GroundingKeyword[]
   finalScore?: GEOv2Score
+  // Platform-specific outputs
+  title?: YouTubeTitleResult              // YouTube only
+  metaTags?: MetaTagsResult               // YouTube only
+  instagramDescription?: InstagramDescriptionResult  // Instagram only
+  enhancedHashtags?: EnhancedHashtagResult
 }
 
 export interface GenerationSession {
@@ -136,6 +153,9 @@ export interface GenerationSession {
 interface GenerationState {
   // Current step
   step: GenerationStep
+
+  // Step 0: Platform selection (NEW - GEO Strategy p.95-104)
+  platform: Platform
 
   // Step 1: Product selection
   categoryId: string | null
@@ -173,6 +193,12 @@ interface GenerationState {
   imageAltResult: ImageAltResult | null // Image alt text templates
   isGenerating: boolean
   generationStage: string | null // Current generation stage (usps, faq, case-studies, etc.)
+  
+  // Platform-specific outputs (GEO Strategy + Brief)
+  title: YouTubeTitleResult | null              // YouTube only
+  metaTags: MetaTagsResult | null               // YouTube only
+  instagramDescription: InstagramDescriptionResult | null  // Instagram only
+  enhancedHashtags: EnhancedHashtagResult | null
 
   // Saved generation tracking
   generationId: string | null
@@ -189,6 +215,7 @@ interface GenerationState {
 
   // Actions
   setStep: (step: GenerationStep) => void
+  setPlatform: (platform: Platform) => void  // NEW - Platform selection
   setCategory: (categoryId: string) => void
   setProduct: (productId: string, productName: string) => void
   setCampaignTag: (tag: string) => void
@@ -270,7 +297,8 @@ interface GenerationState {
 }
 
 const initialState = {
-  step: 'product' as GenerationStep,
+  step: 'platform' as GenerationStep,  // Start with platform selection
+  platform: 'youtube' as Platform,     // Default to YouTube
   categoryId: null,
   productId: null,
   productName: null,
@@ -299,6 +327,11 @@ const initialState = {
   imageAltResult: null as ImageAltResult | null,
   isGenerating: false,
   generationStage: null as string | null,
+  // Platform-specific outputs
+  title: null as YouTubeTitleResult | null,
+  metaTags: null as MetaTagsResult | null,
+  instagramDescription: null as InstagramDescriptionResult | null,
+  enhancedHashtags: null as EnhancedHashtagResult | null,
   generationId: null,
   generationStatus: 'unsaved' as const,
   isSaving: false,
@@ -318,6 +351,8 @@ export const useGenerationStore = create<GenerationState>()(
       ...initialState,
 
       setStep: (step) => set({ step }),
+
+      setPlatform: (platform) => set({ platform }),
 
   setCategory: (categoryId) => set({ categoryId, productId: null, productName: null }),
 
@@ -435,6 +470,7 @@ export const useGenerationStore = create<GenerationState>()(
     }
 
     const input: GenerationSessionInput = {
+      platform: state.platform,
       categoryId: state.categoryId,
       productId: state.productId,
       productName: state.productName,

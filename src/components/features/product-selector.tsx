@@ -227,6 +227,8 @@ export function ProductSelector() {
     launchDate,
     selectedKeywords,
     selectedBriefId,
+    // Platform selection (GEO Strategy)
+    platform,
     // Samsung Standard Fields (P1)
     contentType,
     videoFormat,
@@ -463,6 +465,7 @@ export function ProductSelector() {
         if (!product) continue
 
         const sessionId = createSession({
+          platform,
           categoryId,
           productId: product.id,
           productName: product.name,

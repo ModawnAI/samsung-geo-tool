@@ -54,6 +54,233 @@ export const VIDEO_FORMAT_LABELS: Record<VideoFormat, string> = {
   shorts_9x16: 'Shorts (9:16)',
 }
 
+// ==========================================
+// Platform Selection (GEO Strategy p.95-104)
+// YouTube / Instagram / TikTok support
+// ==========================================
+
+export type Platform = 'youtube' | 'instagram' | 'tiktok'
+
+export interface PlatformConfig {
+  name: string
+  nameKo: string
+  icon: string
+  charLimits: {
+    firstSection: number    // YouTube: 130, Instagram/TikTok: 125
+    description: number
+    altText?: number        // Instagram only: 150
+    title?: number          // YouTube only: 60
+  }
+  outputs: string[]
+  enabled: boolean
+}
+
+export const PLATFORM_CONFIGS: Record<Platform, PlatformConfig> = {
+  youtube: {
+    name: 'YouTube',
+    nameKo: '유튜브',
+    icon: '📺',
+    charLimits: {
+      firstSection: 130,
+      description: 5000,
+      title: 60,
+    },
+    outputs: ['title', 'description', 'timestamps', 'hashtags', 'faq', 'metaTags', 'thumbnailText'],
+    enabled: true,
+  },
+  instagram: {
+    name: 'Instagram',
+    nameKo: '인스타그램',
+    icon: '📸',
+    charLimits: {
+      firstSection: 125,
+      description: 2200,
+      altText: 150,
+    },
+    outputs: ['description', 'altText', 'hashtags', 'engagementComments'],
+    enabled: true,
+  },
+  tiktok: {
+    name: 'TikTok',
+    nameKo: '틱톡',
+    icon: '🎵',
+    charLimits: {
+      firstSection: 125,
+      description: 2200,
+    },
+    outputs: ['description', 'coverText', 'hashtags'],
+    enabled: false, // TBD per Brief
+  },
+}
+
+// ==========================================
+// YouTube Title Generation (Brief Slide 3)
+// Samsung Structure: [Primary Keyword] | [Feature] | [Product Name] | Samsung
+// ==========================================
+
+export interface YouTubeTitleResult {
+  primary: string           // Main recommended title
+  alternatives: string[]    // 2-3 alternative titles
+  keywords: string[]        // Keywords included
+  charCount: number
+  validation: {
+    structureValid: boolean       // Follows Samsung structure
+    keywordPosition: 'front' | 'middle' | 'back'
+    hasBrandSuffix: boolean       // Ends with Samsung
+    withinLimit: boolean          // ≤60 chars
+  }
+}
+
+export const SAMSUNG_TITLE_TEMPLATES: Record<ContentType, string> = {
+  intro: '[Product Name] | [Key Feature] | Samsung',
+  unboxing: '[Product Name] Unboxing | [Highlight] | Samsung',
+  how_to: 'How to [Action] on [Product Name] | Samsung',
+  shorts: '[Hook] | [Product Name]',  // Shorts are shorter
+  teaser: '[Product Name] | Coming Soon | Samsung',
+  brand: '[Campaign Message] | [Product Name] | Samsung',
+  esg: '[ESG Topic] | Samsung Sustainability',
+  documentary: '[Documentary Title] | [Product Name] | Samsung',
+  official_replay: '[Event Name] Replay | [Product Name] | Samsung',
+}
+
+// ==========================================
+// Meta Tags Generation (Brief Slide 3)
+// ==========================================
+
+export interface MetaTagsResult {
+  tags: string[]
+  categories: {
+    brand: string[]       // Samsung, Galaxy
+    product: string[]     // S26 Ultra, Z Flip 7
+    feature: string[]     // AI, Camera, Battery
+    generic: string[]     // smartphone, mobile
+  }
+  totalCount: number
+  seoScore: number        // 0-100
+}
+
+// ==========================================
+// Instagram Description (Brief Slide 4)
+// First 125 chars: Core message + Keywords + CTA
+// ==========================================
+
+export interface InstagramDescriptionResult {
+  primary: string           // First 125 chars (visible before "more")
+  extended: string          // Full description
+  charCount: number
+  validation: {
+    hasCoreMessage: boolean
+    hasProductName: boolean
+    hasFeatureName: boolean
+    hasBrandName: boolean
+    hasCTA: boolean
+    keywordsFound: string[]
+  }
+}
+
+// ==========================================
+// Enhanced Hashtag Generation (Brief Slide 4)
+// Order: #GalaxyAI → #ProductName → #ProductSeries → #Samsung
+// ==========================================
+
+export interface EnhancedHashtagResult {
+  hashtags: string[]
+  validation: {
+    officialIncluded: string[]      // Official hashtags found
+    geoOptimized: string[]          // GEO-effective hashtags
+    totalCount: number
+    orderCorrect: boolean           // Correct order maintained
+  }
+  recommendations: {
+    add: string[]
+    remove: string[]
+  }
+}
+
+export const HASHTAG_ORDER_RULES = {
+  first: ['#GalaxyAI'],                 // AI features go first
+  middle: ['#ProductName', '#ProductSeries'],
+  last: ['#Samsung'],                   // Always last
+} as const
+
+export const OFFICIAL_SAMSUNG_HASHTAGS = [
+  '#Samsung',
+  '#Galaxy',
+  '#GalaxyAI',
+  '#GalaxyS26',
+  '#GalaxyZFlip',
+  '#GalaxyZFold',
+  '#GalaxyRing',
+  '#GalaxyWatch',
+  '#GalaxyBuds',
+  '#AIPhone',
+] as const
+
+// ==========================================
+// Engagement Comments (Brief Slide 4)
+// For Instagram, LinkedIn, X
+// ==========================================
+
+export type EngagementPlatform = 'instagram' | 'linkedin' | 'x'
+export type CommentType = 'question' | 'cta' | 'highlight' | 'engagement'
+
+export interface EngagementComment {
+  text: string
+  platform: EngagementPlatform
+  type: CommentType
+  isInfluencerCollab: boolean
+}
+
+export interface EngagementCommentResult {
+  comments: EngagementComment[]
+  byPlatform: Record<EngagementPlatform, EngagementComment[]>
+}
+
+// ==========================================
+// TikTok Cover Text (Brief Slide 5)
+// ==========================================
+
+export interface TikTokCoverTextResult {
+  text: string
+  keywords: string[]
+  charCount: number
+}
+
+// ==========================================
+// Review Workflow (Brief Slide 2)
+// Pre/Post review system
+// ==========================================
+
+export type ReviewMode = 'generate' | 'review'
+export type ReviewTiming = 'pre' | 'post'
+export type ContentClassification = 'unpacked_event' | 'non_unpacked_general'
+
+export interface ContentSubmissionForm {
+  classification: ContentClassification
+  reviewTiming: ReviewTiming
+  publishedUrl?: string         // For post-review
+  wipDescription?: string       // For pre-review
+  wipMedia?: File
+  includeAsset: boolean
+}
+
+export interface ReviewCheckItem {
+  name: string
+  nameKo: string
+  passed: boolean
+  score: number
+  issues: string[]
+  suggestions: string[]
+}
+
+export interface ReviewResult {
+  platform: Platform
+  reviewType: ReviewTiming
+  checks: ReviewCheckItem[]
+  overallScore: number
+  passRate: number
+}
+
 export type InputMethod = 'youtube_url' | 'srt_upload' | 'text_input'
 
 export const INPUT_METHOD_LABELS: Record<InputMethod, string> = {

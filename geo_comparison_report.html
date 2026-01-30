@@ -1,0 +1,2277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Samsung GEO Pipeline Comparison Report</title>
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.0.3/src/regular/style.css">
+  <style>
+    :root {
+      --color-bg: #ffffff;
+      --color-surface: #fafafa;
+      --color-border: #e5e5e5;
+      --color-border-dark: #d4d4d4;
+      --color-text: #171717;
+      --color-text-secondary: #525252;
+      --color-text-muted: #a3a3a3;
+      --color-excellent: #171717;
+      --color-good: #525252;
+      --color-warning: #737373;
+      --color-poor: #a3a3a3;
+      --font-mono: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-bg);
+      color: var(--color-text);
+      line-height: 1.6;
+      font-size: 14px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 24px;
+    }
+
+    /* Header */
+    .header {
+      margin-bottom: 48px;
+      padding-bottom: 32px;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .header-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--color-text-muted);
+      font-size: 12px;
+      font-family: var(--font-mono);
+      margin-bottom: 16px;
+    }
+
+    .header h1 {
+      font-size: 28px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+      margin-bottom: 8px;
+    }
+
+    .header-subtitle {
+      color: var(--color-text-secondary);
+      font-size: 15px;
+    }
+
+    /* Summary Cards */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 48px;
+    }
+
+    .summary-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      padding: 24px;
+      border-radius: 8px;
+    }
+
+    .summary-card-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--color-text-muted);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .summary-card-value {
+      font-size: 32px;
+      font-weight: 600;
+      font-family: var(--font-mono);
+    }
+
+    .summary-card-sub {
+      font-size: 13px;
+      color: var(--color-text-secondary);
+      margin-top: 4px;
+    }
+
+    /* Section Headers */
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 24px;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .section-header i {
+      font-size: 20px;
+    }
+
+    /* Stats Section */
+    .stats-section {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 32px;
+      margin-bottom: 48px;
+    }
+
+    .stats-group {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      padding: 24px;
+      border-radius: 8px;
+    }
+
+    .stats-group h3 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .stat-item {
+      display: grid;
+      grid-template-columns: 120px 1fr 50px 40px;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .stat-label {
+      font-size: 13px;
+      color: var(--color-text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .stat-bar {
+      height: 6px;
+      background: var(--color-border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .stat-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.3s ease;
+    }
+
+    .stat-fill.score-excellent { background: var(--color-excellent); }
+    .stat-fill.score-good { background: var(--color-good); }
+    .stat-fill.score-warning { background: var(--color-warning); }
+    .stat-fill.score-poor { background: var(--color-poor); }
+
+    .stat-value {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 500;
+      text-align: right;
+    }
+
+    .stat-count {
+      font-size: 12px;
+      color: var(--color-text-muted);
+    }
+
+    /* Feedback Section */
+    .feedback-section {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 32px;
+      margin-bottom: 48px;
+    }
+
+    .feedback-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      padding: 24px;
+      border-radius: 8px;
+    }
+
+    .feedback-card h3 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .feedback-item {
+      font-size: 13px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--color-border);
+      font-family: var(--font-mono);
+    }
+
+    .feedback-item:last-child {
+      border-bottom: none;
+    }
+
+    /* Results Section */
+    .results-section {
+      margin-bottom: 48px;
+    }
+
+    .result-card {
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      margin-bottom: 24px;
+      overflow: hidden;
+    }
+
+    .result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      background: var(--color-surface);
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .result-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .result-index {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--color-text-muted);
+    }
+
+    .result-category {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 4px 8px;
+      background: var(--color-border);
+      border-radius: 4px;
+    }
+
+    .result-product {
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .result-score {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 16px;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 6px;
+    }
+
+    .result-score.score-excellent { background: #f0f0f0; }
+    .result-score.score-good { background: #f5f5f5; }
+    .result-score.score-warning { background: #fafafa; }
+    .result-score.score-poor { background: #fafafa; color: var(--color-text-muted); }
+
+    .result-title {
+      font-size: 15px;
+      font-weight: 500;
+      padding: 16px 20px 8px;
+    }
+
+    .youtube-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--color-text-secondary);
+      text-decoration: none;
+      padding: 0 20px 16px;
+    }
+
+    .youtube-link:hover {
+      color: var(--color-text);
+    }
+
+    /* Patterns Grid */
+    .patterns-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      padding: 16px 20px;
+      background: var(--color-surface);
+      border-top: 1px solid var(--color-border);
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .pattern-item {
+      padding: 12px;
+      border-radius: 6px;
+      border: 1px solid var(--color-border);
+      background: var(--color-bg);
+    }
+
+    .pattern-item.passed {
+      border-color: var(--color-border-dark);
+    }
+
+    .pattern-item.failed {
+      border-color: var(--color-border);
+      background: var(--color-surface);
+    }
+
+    .pattern-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .pattern-name {
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .pattern-score {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--color-text-secondary);
+    }
+
+    .pattern-details {
+      font-size: 11px;
+      color: var(--color-text-secondary);
+    }
+
+    .pattern-suggestions {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--color-border);
+    }
+
+    .pattern-suggestions span {
+      display: block;
+      font-size: 10px;
+      color: var(--color-text-muted);
+      font-style: italic;
+    }
+
+    /* Comparison Section */
+    .comparison-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: var(--color-border);
+    }
+
+    .comparison-panel {
+      background: var(--color-bg);
+      padding: 16px 20px;
+    }
+
+    .comparison-panel.error-panel {
+      background: #fafafa;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--color-text-secondary);
+      margin-bottom: 12px;
+    }
+
+    .panel-content {
+      font-size: 12px;
+      font-family: var(--font-mono);
+      line-height: 1.7;
+      color: var(--color-text-secondary);
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .panel-content.error {
+      color: var(--color-warning);
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding-top: 32px;
+      border-top: 1px solid var(--color-border);
+      color: var(--color-text-muted);
+      font-size: 12px;
+    }
+
+    .footer a {
+      color: var(--color-text-secondary);
+      text-decoration: none;
+    }
+
+    @media (max-width: 768px) {
+      .comparison-section {
+        grid-template-columns: 1fr;
+      }
+
+      .stat-item {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .stat-bar {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="header-meta">
+        <i class="ph ph-calendar"></i>
+        <span>Tuesday, January 20, 2026 at 08:38 PM</span>
+      </div>
+      <h1>Samsung GEO Pipeline Comparison Report</h1>
+      <p class="header-subtitle">Comparing generated content against Samsung's ground truth from Excel</p>
+    </header>
+
+    <section class="summary-grid">
+      <div class="summary-card">
+        <div class="summary-card-label">
+          <i class="ph ph-gauge"></i>
+          Average Score
+        </div>
+        <div class="summary-card-value">84%</div>
+        <div class="summary-card-sub">Good</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-card-label">
+          <i class="ph ph-cube"></i>
+          Products Tested
+        </div>
+        <div class="summary-card-value">15</div>
+        <div class="summary-card-sub">Across 5 categories</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-card-label">
+          <i class="ph ph-check-square"></i>
+          Patterns Checked
+        </div>
+        <div class="summary-card-value">7</div>
+        <div class="summary-card-sub">GEO optimization patterns</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-card-label">
+          <i class="ph ph-trophy"></i>
+          Best Category
+        </div>
+        <div class="summary-card-value">Guided Demo</div>
+        <div class="summary-card-sub">100% average</div>
+      </div>
+    </section>
+
+    <section class="stats-section">
+      <div class="stats-group">
+        <h3><i class="ph ph-folder"></i> By Category</h3>
+        
+      <div class="stat-item">
+        <span class="stat-label">How to</span>
+        <div class="stat-bar">
+          <div class="stat-fill score-excellent" style="width: 86%"></div>
+        </div>
+        <span class="stat-value">86%</span>
+        <span class="stat-count">(8)</span>
+      </div>
+    
+      <div class="stat-item">
+        <span class="stat-label">Unboxing</span>
+        <div class="stat-bar">
+          <div class="stat-fill score-excellent" style="width: 87%"></div>
+        </div>
+        <span class="stat-value">87%</span>
+        <span class="stat-count">(2)</span>
+      </div>
+    
+      <div class="stat-item">
+        <span class="stat-label">Intro</span>
+        <div class="stat-bar">
+          <div class="stat-fill score-good" style="width: 84%"></div>
+        </div>
+        <span class="stat-value">84%</span>
+        <span class="stat-count">(2)</span>
+      </div>
+    
+      <div class="stat-item">
+        <span class="stat-label">CXP</span>
+        <div class="stat-bar">
+          <div class="stat-fill score-warning" style="width: 67%"></div>
+        </div>
+        <span class="stat-value">67%</span>
+        <span class="stat-count">(2)</span>
+      </div>
+    
+      <div class="stat-item">
+        <span class="stat-label">Guided Demo</span>
+        <div class="stat-bar">
+          <div class="stat-fill score-excellent" style="width: 100%"></div>
+        </div>
+        <span class="stat-value">100%</span>
+        <span class="stat-count">(1)</span>
+      </div>
+    
+      </div>
+      <div class="stats-group">
+        <h3><i class="ph ph-list-checks"></i> By Pattern</h3>
+        
+      <div class="stat-item">
+        <span class="stat-label">Hashtags</span>
+        <div class="stat-bar">
+          <div class="stat-fill score-excellent" style="width: 100%"></div>
+        </div>
+        <span class="stat-value">100%</span>
+      </div>
+    
+      <div class="stat-item">
+        <span class="stat-label">Vanity Link</span>
+        <div class="stat-bar">
+          <div class="stat-fill score-excellent" style="width: 100%"></div>
+        </div>
+        <span class="stat-value">100%</span>
+      </div>
+    
+      <div class="stat-item">
+        <span class="stat-label">Opening Statement</span>
+        <div class="stat-bar">
+          <div class="stat-fill score-excellent" style="width: 87%"></div>
+        </div>
+        <span class="stat-value">87%</span>
+      </div>
+    
+      <div class="stat-item">
+        <span class="stat-label">Step-by-Step</span>
+        <div class="stat-bar">
+          <div class="stat-fill score-excellent" style="width: 87%"></div>
+        </div>
+        <span class="stat-value">87%</span>
+      </div>
+    
+      <div class="stat-item">
+        <span class="stat-label">What&#039;s New</span>
+        <div class="stat-bar">
+          <div class="stat-fill score-good" style="width: 73%"></div>
+        </div>
+        <span class="stat-value">73%</span>
+      </div>
+    
+      <div class="stat-item">
+        <span class="stat-label">Q&amp;A Format</span>
+        <div class="stat-bar">
+          <div class="stat-fill score-warning" style="width: 60%"></div>
+        </div>
+        <span class="stat-value">60%</span>
+      </div>
+    
+      <div class="stat-item">
+        <span class="stat-label">Timestamps</span>
+        <div class="stat-bar">
+          <div class="stat-fill score-poor" style="width: 27%"></div>
+        </div>
+        <span class="stat-value">27%</span>
+      </div>
+    
+      </div>
+    </section>
+
+    <section class="feedback-section">
+      <div class="feedback-card">
+        <h3><i class="ph ph-chart-bar"></i> Feedback Summary</h3>
+        <div class="feedback-item">✗ Timestamps: 27% pass rate</div><div class="feedback-item">⚠ Q&amp;A Format: 60% pass rate</div><div class="feedback-item">⚠ What&#039;s New: 73% pass rate</div><div class="feedback-item">✓ Opening Statement: 87% pass rate</div><div class="feedback-item">✓ Step-by-Step: 87% pass rate</div><div class="feedback-item">✓ Hashtags: 100% pass rate</div><div class="feedback-item">✓ Vanity Link: 100% pass rate</div>
+      </div>
+      <div class="feedback-card">
+        <h3><i class="ph ph-arrow-up"></i> Improvement Priorities</h3>
+        <div class="feedback-item">[7x] Remove numbering, add action verbs</div><div class="feedback-item">[6x] Use Q:/A: format with 2-4 pairs</div><div class="feedback-item">[4x] Add &quot;What&#039;s new in [Product]?&quot; section</div><div class="feedback-item">[4x] Format features as numbered list</div><div class="feedback-item">[4x] Add timestamps in &quot;00:00 Action with Feature&quot; format</div><div class="feedback-item">[2x] Add &quot;Follow these simple steps to use [Feature]:&quot;</div><div class="feedback-item">[2x] Include 3-5 numbered steps</div><div class="feedback-item">[1x] Start with: &quot;This is the official video guide on how to use [Feature/Product]&quot;</div><div class="feedback-item">[1x] Start with: &quot;This is the official cxp video for [Feature/Product]&quot;</div>
+      </div>
+    </section>
+
+    <section class="results-section">
+      <div class="section-header">
+        <i class="ph ph-files"></i>
+        Detailed Comparisons
+      </div>
+      
+    <div class="result-card">
+      <div class="result-header">
+        <div class="result-meta">
+          <span class="result-index">#1</span>
+          <span class="result-category">How to</span>
+          <span class="result-product">Galaxy Book5</span>
+        </div>
+        <div class="result-score score-excellent">
+          <i class="ph ph-check-circle"></i>
+          <span>100%</span>
+        </div>
+      </div>
+
+      <h3 class="result-title">Galaxy Book: How to use AI Select | Samsung</h3>
+      <a href="https://www.youtube.com/watch?v=fT0s8t9VVpE" class="youtube-link" target="_blank"><i class="ph ph-youtube-logo"></i> View Video</a>
+
+      <div class="patterns-grid">
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Opening Statement</span>
+              <span class="pattern-score">15/15</span>
+            </div>
+            <div class="pattern-details">Uses proper &quot;How to&quot; opening pattern</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Step-by-Step</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">Header: ✓, Steps: 5/3-5</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">What&#039;s New</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">N/A for this content type</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Q&amp;A Format</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">Pairs: 2/2-4, Colon: ✓</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Hashtags</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">#GalaxyAI first: ✓, #Samsung last: ✓, Count: 5</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Timestamps</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">No numbering: ✓, Action verbs: ✓</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Vanity Link</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">Vanity link: ✓, &quot;Learn more&quot;: ✓</div>
+            
+          </div>
+        
+      </div>
+
+      <div class="comparison-section">
+        <div class="comparison-panel">
+          <div class="panel-header">
+            <i class="ph ph-file-text"></i>
+            <span>Samsung Ground Truth</span>
+          </div>
+          <div class="panel-content">This is the official video guide on how to use AI Select on Galaxy Book. Search effortlessly without interrupting your flow—drag it, draw it, and find it! 🔍 AI Select is here to simplify internet searches for you—from looking up text to scanning QR codes, get on board with AI Select ✨ Explore the endless world of Galaxy AI as more exciting features await you. Stay tuned for in-app translation, image editing, and much more. Learn more: http://smsng.co/GalaxyBook5_How-to_yt
+
+00:00 Intro
+00:16 Search image with AI Select
+01:03 Search text with AI Select
+01:25 Search QR code with AI Select
+
+Follow these simple steps to use AI Select:
+Step 1: Launch &#039;AI Select&#039; from the search bar.
+Step 2: Drag and draw around the object to select the image, text, or QR code you want to search.
+Step ...</div>
+        </div>
+        <div class="comparison-panel error-panel">
+          <div class="panel-header">
+            <i class="ph ph-robot"></i>
+            <span>Generated Output</span>
+          </div>
+          <div class="panel-content error">Network Error: fetch failed</div>
+        </div>
+      </div>
+    </div>
+  
+    <div class="result-card">
+      <div class="result-header">
+        <div class="result-meta">
+          <span class="result-index">#2</span>
+          <span class="result-category">Unboxing</span>
+          <span class="result-product">Galaxy Book5 Pro</span>
+        </div>
+        <div class="result-score score-excellent">
+          <i class="ph ph-check-circle"></i>
+          <span>87%</span>
+        </div>
+      </div>
+
+      <h3 class="result-title">Galaxy Book5 Pro | Book5 Pro 360: Unboxing | Samsung</h3>
+      <a href="https://www.youtube.com/watch?v=rwxposMAV-w" class="youtube-link" target="_blank"><i class="ph ph-youtube-logo"></i> View Video</a>
+
+      <div class="patterns-grid">
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Opening Statement</span>
+              <span class="pattern-score">15/15</span>
+            </div>
+            <div class="pattern-details">Uses proper &quot;Unboxing&quot; opening pattern</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Step-by-Step</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">N/A for non-how-to content</div>
+            
+          </div>
+        
+          <div class="pattern-item failed">
+            <div class="pattern-header">
+              <span class="pattern-name">What&#039;s New</span>
+              <span class="pattern-score">5/10</span>
+            </div>
+            <div class="pattern-details">Header: ✗, Features: 4</div>
+            <div class="pattern-suggestions"><span>Add &quot;What&#039;s new in [Product]?&quot; section</span><span>Format features as numbered list</span></div>
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Q&amp;A Format</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">Pairs: 2/2-4, Colon: ✓</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Hashtags</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">#GalaxyAI first: ✓, #Samsung last: ✓, Count: 5</div>
+            
+          </div>
+        
+          <div class="pattern-item failed">
+            <div class="pattern-header">
+              <span class="pattern-name">Timestamps</span>
+              <span class="pattern-score">5/10</span>
+            </div>
+            <div class="pattern-details">No numbering: ✓, Action verbs: ✗</div>
+            <div class="pattern-suggestions"><span>Remove numbering, add action verbs</span></div>
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Vanity Link</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">Vanity link: ✓, &quot;Learn more&quot;: ✓</div>
+            
+          </div>
+        
+      </div>
+
+      <div class="comparison-section">
+        <div class="comparison-panel">
+          <div class="panel-header">
+            <i class="ph ph-file-text"></i>
+            <span>Samsung Ground Truth</span>
+          </div>
+          <div class="panel-content">This is the official unboxing video for the new Galaxy Book5 Pro and Book5 Pro 360 📦 Pick your work and creativity assistant: Galaxy Book5 Pro or Galaxy Book5 Pro 360 🌌 Experience lightning-fast performance of Copilot+ PC, a stunning AMOLED 2X display, and a seamless interface—powered by high-performance Galaxy AI ✨ Learn more: http://smsng.co/GalaxyBook5Pro_Unboxi...
+
+00:00 Intro
+00:07 Galaxy Book5 Pro 360
+00:10 What&#039;s in the box: Galaxy Book5 Pro 360
+00:15 Design: Galaxy Book5 Pro 360
+00:29 S Pen: Galaxy Book5 Pro 360
+00:42 Galaxy Book5 Pro
+00:44 What&#039;s in the box: Galaxy Book5 Pro
+00:48 Design: Galaxy Book5 Pro
+01:08 Galaxy Book5 Pro | Book5 Pro 360
+01:15 Processor: Galaxy Book5 Pro | Book5 Pro 360
+01:27 Display: Galaxy Book5 Pro | Book5 Pro 360
+01:39 Productivity: Galaxy...</div>
+        </div>
+        <div class="comparison-panel error-panel">
+          <div class="panel-header">
+            <i class="ph ph-robot"></i>
+            <span>Generated Output</span>
+          </div>
+          <div class="panel-content error">Network Error: fetch failed</div>
+        </div>
+      </div>
+    </div>
+  
+    <div class="result-card">
+      <div class="result-header">
+        <div class="result-meta">
+          <span class="result-index">#3</span>
+          <span class="result-category">Intro</span>
+          <span class="result-product">Galaxy Book5 Pro</span>
+        </div>
+        <div class="result-score score-good">
+          <i class="ph ph-check"></i>
+          <span>80%</span>
+        </div>
+      </div>
+
+      <h3 class="result-title">Introducing Galaxy Book5 Pro | Samsung</h3>
+      <a href="https://www.youtube.com/watch?v=vjbK9B9WmPE" class="youtube-link" target="_blank"><i class="ph ph-youtube-logo"></i> View Video</a>
+
+      <div class="patterns-grid">
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Opening Statement</span>
+              <span class="pattern-score">15/15</span>
+            </div>
+            <div class="pattern-details">Uses proper &quot;Intro&quot; opening pattern</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Step-by-Step</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">N/A for non-how-to content</div>
+            
+          </div>
+        
+          <div class="pattern-item failed">
+            <div class="pattern-header">
+              <span class="pattern-name">What&#039;s New</span>
+              <span class="pattern-score">0/10</span>
+            </div>
+            <div class="pattern-details">Header: ✗, Features: 0</div>
+            <div class="pattern-suggestions"><span>Add &quot;What&#039;s new in [Product]?&quot; section</span><span>Format features as numbered list</span></div>
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Q&amp;A Format</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">Pairs: 2/2-4, Colon: ✓</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Hashtags</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">#GalaxyAI first: ✓, #Samsung last: ✓, Count: 4</div>
+            
+          </div>
+        
+          <div class="pattern-item failed">
+            <div class="pattern-header">
+              <span class="pattern-name">Timestamps</span>
+              <span class="pattern-score">5/10</span>
+            </div>
+            <div class="pattern-details">No numbering: ✓, Action verbs: ✗</div>
+            <div class="pattern-suggestions"><span>Remove numbering, add action verbs</span></div>
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Vanity Link</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">Vanity link: ✓, &quot;Learn more&quot;: ✓</div>
+            
+          </div>
+        
+      </div>
+
+      <div class="comparison-section">
+        <div class="comparison-panel">
+          <div class="panel-header">
+            <i class="ph ph-file-text"></i>
+            <span>Samsung Ground Truth</span>
+          </div>
+          <div class="panel-content">Introducing the new Galaxy Book5 Pro. Supercharged by the Intel® Core™ Ultra processor to accelerate boundless AI experiences with its dedicated NPU capable of up to 47 Trillion Operations Per Second (TOPS). Unleash the power of Galaxy AI on PC including AI Select and Writing Assist. Boost your productivity by seamlessly connecting your Galaxy devices with Nearby devices and Storage Share. Learn more: http://smsng.co/GalaxyBook5Pro_Intro_yt
+
+00:00 Intro
+00:06 AI Performance with Intel® Core™ Ultra
+00:30 AI Select
+00:38 Writing Assist
+00:49 Recall
+01:04 Storage Share 
+01:15 Nearby devices
+01:24 Battery life up to 25 hrs
+
+Q: What is the core processor responsible for the AI performance of the Galaxy Book5 Pro?
+A: The device is equipped with the &#039;Intel® Core™ Ultra Processor Serie...</div>
+        </div>
+        <div class="comparison-panel error-panel">
+          <div class="panel-header">
+            <i class="ph ph-robot"></i>
+            <span>Generated Output</span>
+          </div>
+          <div class="panel-content error">Network Error: fetch failed</div>
+        </div>
+      </div>
+    </div>
+  
+    <div class="result-card">
+      <div class="result-header">
+        <div class="result-meta">
+          <span class="result-index">#4</span>
+          <span class="result-category">CXP</span>
+          <span class="result-product">Galaxy S25 Ultra</span>
+        </div>
+        <div class="result-score score-good">
+          <i class="ph ph-check"></i>
+          <span>81%</span>
+        </div>
+      </div>
+
+      <h3 class="result-title">Galaxy AI | Now Brief | Samsung Galaxy S25 Ultra</h3>
+      <a href="https://www.youtube.com/watch?v=kOcEK5TGXV8" class="youtube-link" target="_blank"><i class="ph ph-youtube-logo"></i> View Video</a>
+
+      <div class="patterns-grid">
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Opening Statement</span>
+              <span class="pattern-score">15/15</span>
+            </div>
+            <div class="pattern-details">Uses proper &quot;CXP&quot; opening pattern</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Step-by-Step</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">N/A for non-how-to content</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">What&#039;s New</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">N/A for this content type</div>
+            
+          </div>
+        
+          <div class="pattern-item failed">
+            <div class="pattern-header">
+              <span class="pattern-name">Q&amp;A Format</span>
+              <span class="pattern-score">6/10</span>
+            </div>
+            <div class="pattern-details">Pairs: 1/2-4, Colon: ✓</div>
+            <div class="pattern-suggestions"><span>Use Q:/A: format with 2-4 pairs</span></div>
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Hashtags</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">#GalaxyAI first: ✓, #Samsung last: ✓, Count: 4</div>
+            
+          </div>
+        
+          <div class="pattern-item failed">
+            <div class="pattern-header">
+              <span class="pattern-name">Timestamps</span>
+              <span class="pattern-score">0/10</span>
+            </div>
+            <div class="pattern-details">No timestamps found</div>
+            <div class="pattern-suggestions"><span>Add timestamps in &quot;00:00 Action with Feature&quot; format</span></div>
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Vanity Link</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">Vanity link: ✓, &quot;Learn more&quot;: ✓</div>
+            
+          </div>
+        
+      </div>
+
+      <div class="comparison-section">
+        <div class="comparison-panel">
+          <div class="panel-header">
+            <i class="ph ph-file-text"></i>
+            <span>Samsung Ground Truth</span>
+          </div>
+          <div class="panel-content">This is the official video on Galaxy S25 Ultra&#039;s Now Brief. Get personalized briefings that keep you organized, informed and ahead of schedule all day long. Seize the day the easy way with your very own Now Brief and Now Bar. Learn more: http://smsng.co/S25Ultra_Now-Brief_yt
+
+Q: How do I access Now Brief and what kind of information I can see?
+A: You can access the ‘Now Brief’ straight from the Now Bar or the home screen. It gives you a personal summary of your day curated by Galaxy AI. You can use it to view your energy score, schedule, and routines.
+
+#GalaxyAI #GalaxyS25Ultra #GalaxyS25 #Samsung</div>
+        </div>
+        <div class="comparison-panel error-panel">
+          <div class="panel-header">
+            <i class="ph ph-robot"></i>
+            <span>Generated Output</span>
+          </div>
+          <div class="panel-content error">Network Error: fetch failed</div>
+        </div>
+      </div>
+    </div>
+  
+    <div class="result-card">
+      <div class="result-header">
+        <div class="result-meta">
+          <span class="result-index">#5</span>
+          <span class="result-category">Guided Demo</span>
+          <span class="result-product">Galaxy S25 Ultra</span>
+        </div>
+        <div class="result-score score-excellent">
+          <i class="ph ph-check-circle"></i>
+          <span>100%</span>
+        </div>
+      </div>
+
+      <h3 class="result-title">A Guided Demo of Camera | Galaxy S25 Ultra | Samsung</h3>
+      <a href="https://www.youtube.com/watch?v=4qBL2koKKr8" class="youtube-link" target="_blank"><i class="ph ph-youtube-logo"></i> View Video</a>
+
+      <div class="patterns-grid">
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Opening Statement</span>
+              <span class="pattern-score">15/15</span>
+            </div>
+            <div class="pattern-details">Uses proper &quot;Guided Demo&quot; opening pattern</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Step-by-Step</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">N/A for non-how-to content</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">What&#039;s New</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">N/A for this content type</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Q&amp;A Format</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">Pairs: 2/2-4, Colon: ✓</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Hashtags</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">#GalaxyAI first: ✓, #Samsung last: ✓, Count: 5</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Timestamps</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">No numbering: ✓, Action verbs: ✓</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Vanity Link</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">Vanity link: ✓, &quot;Learn more&quot;: ✓</div>
+            
+          </div>
+        
+      </div>
+
+      <div class="comparison-section">
+        <div class="comparison-panel">
+          <div class="panel-header">
+            <i class="ph ph-file-text"></i>
+            <span>Samsung Ground Truth</span>
+          </div>
+          <div class="panel-content">This is the official guided demo film of Galaxy S25 Ultra for Camera. Experience the Galaxy&#039;s most powerful cameras and the enhanced AI features on Galaxy S25 Ultra, a true AI companion that combines great intelligence and power to open up your world—making everything more personalized and intuitive than ever before. Learn more: http://smsng.co/S25Ultra_Camera_yt
+
+00:00 Introducing Galaxy S25 Ultra
+01:21 Natural Portraits: Detailed photography
+02:14 Filters: Real-time customized filming and editing
+02:58 Nightography video: Next generation ProVisual Engine
+03:59 Audio Eraser: Filter out unwanted background noise from videos
+
+Q: Can I use my custom filter for both photos and videos?
+A: Yes, you can use your filters in both photo and video modes directly in the &#039;Camera&#039; app.
+Q: Wha...</div>
+        </div>
+        <div class="comparison-panel error-panel">
+          <div class="panel-header">
+            <i class="ph ph-robot"></i>
+            <span>Generated Output</span>
+          </div>
+          <div class="panel-content error">Network Error: fetch failed</div>
+        </div>
+      </div>
+    </div>
+  
+    <div class="result-card">
+      <div class="result-header">
+        <div class="result-meta">
+          <span class="result-index">#6</span>
+          <span class="result-category">How to</span>
+          <span class="result-product">Galaxy S25</span>
+        </div>
+        <div class="result-score score-excellent">
+          <i class="ph ph-check-circle"></i>
+          <span>95%</span>
+        </div>
+      </div>
+
+      <h3 class="result-title">How to use Settings Search | Galaxy AI | Galaxy S25 Series | Samsung</h3>
+      <a href="https://www.youtube.com/watch?v=howvpaK1OlE" class="youtube-link" target="_blank"><i class="ph ph-youtube-logo"></i> View Video</a>
+
+      <div class="patterns-grid">
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Opening Statement</span>
+              <span class="pattern-score">15/15</span>
+            </div>
+            <div class="pattern-details">Uses proper &quot;How to&quot; opening pattern</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Step-by-Step</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">Header: ✓, Steps: 3/3-5</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">What&#039;s New</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">N/A for this content type</div>
+            
+          </div>
+        
+          <div class="pattern-item failed">
+            <div class="pattern-header">
+              <span class="pattern-name">Q&amp;A Format</span>
+              <span class="pattern-score">6/10</span>
+            </div>
+            <div class="pattern-details">Pairs: 1/2-4, Colon: ✓</div>
+            <div class="pattern-suggestions"><span>Use Q:/A: format with 2-4 pairs</span></div>
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Hashtags</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">#GalaxyAI first: ✓, #Samsung last: ✓, Count: 4</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Timestamps</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">No numbering: ✓, Action verbs: ✓</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Vanity Link</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">Vanity link: ✓, &quot;Learn more&quot;: ✓</div>
+            
+          </div>
+        
+      </div>
+
+      <div class="comparison-section">
+        <div class="comparison-panel">
+          <div class="panel-header">
+            <i class="ph ph-file-text"></i>
+            <span>Samsung Ground Truth</span>
+          </div>
+          <div class="panel-content">This is the official video guide on how to use Settings Search on Galaxy S25 Series ⚡ Need to locate a certain setting on your phone? Galaxy AI can help you with that, even if you&#039;re unsure of what it&#039;s called or where the menu is. Simply describe the setting or issue and it will be instantly found for you. Learn more: http://smsng.co/S25_Setting-Search_yt
+
+00:00 Intro
+00:08 Locating functions
+01:03 Applying the settings
+
+Follow these simple steps to use Settings Search:
+Step 1: Open &#039;Settings&#039; on your Galaxy S25 Series.
+Step 2: Tap &#039;Search&#039; and type or speak a description of the setting or issue you’re looking for.
+Step 3: Once the menu appears, tap it and toggle the setting on or off to apply your change.
+
+Q: How can I find a phone setting I don&#039;t know the name of?
+A: Just de...</div>
+        </div>
+        <div class="comparison-panel error-panel">
+          <div class="panel-header">
+            <i class="ph ph-robot"></i>
+            <span>Generated Output</span>
+          </div>
+          <div class="panel-content error">Network Error: fetch failed</div>
+        </div>
+      </div>
+    </div>
+  
+    <div class="result-card">
+      <div class="result-header">
+        <div class="result-meta">
+          <span class="result-index">#7</span>
+          <span class="result-category">How to</span>
+          <span class="result-product">Galaxy Book5, Galaxy S25 Ultra</span>
+        </div>
+        <div class="result-score score-excellent">
+          <i class="ph ph-check-circle"></i>
+          <span>100%</span>
+        </div>
+      </div>
+
+      <h3 class="result-title">How to use Storage Share across Galaxy devices | Samsung</h3>
+      <a href="https://www.youtube.com/watch?v=dDi-b154gkU" class="youtube-link" target="_blank"><i class="ph ph-youtube-logo"></i> View Video</a>
+
+      <div class="patterns-grid">
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Opening Statement</span>
+              <span class="pattern-score">15/15</span>
+            </div>
+            <div class="pattern-details">Uses proper &quot;How to&quot; opening pattern</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Step-by-Step</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">Header: ✓, Steps: 4/3-5</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">What&#039;s New</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">N/A for this content type</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Q&amp;A Format</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">Pairs: 2/2-4, Colon: ✓</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Hashtags</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">#GalaxyAI first: ✓, #Samsung last: ✓, Count: 4</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Timestamps</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">No numbering: ✓, Action verbs: ✓</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Vanity Link</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">Vanity link: ✓, &quot;Learn more&quot;: ✓</div>
+            
+          </div>
+        
+      </div>
+
+      <div class="comparison-section">
+        <div class="comparison-panel">
+          <div class="panel-header">
+            <i class="ph ph-file-text"></i>
+            <span>Samsung Ground Truth</span>
+          </div>
+          <div class="panel-content">This is the official video guide on how to use Storage Share across Galaxy devices. Storage Share lets you wirelessly transfer files 🗂️ across your Galaxy devices without the need for external drives or tangled cables. Simply drag and drop files between devices and it&#039;s done! Learn more: http://smsng.co/GalaxyBook5_Storage-S...
+
+00:00 Intro
+00:11 Set things up first
+00:42 Connect between Galaxy devices
+01:30 Explore various uses
+
+Follow these simple steps to use Storage Share:
+Step 1: Sign in to the same Samsung Account on Galaxy Book and smartphone, then turn on Wi-Fi and Bluetooth on both devices.
+Step 2: On Galaxy Book, open &#039;Samsung Settings&#039; → &#039;Connected devices&#039; → turn on &#039;Storage Share&#039;.
+Step 3: Open &#039;File Explorer&#039;, select your phone from the left menu, then tap &#039;Allow&#039; ...</div>
+        </div>
+        <div class="comparison-panel error-panel">
+          <div class="panel-header">
+            <i class="ph ph-robot"></i>
+            <span>Generated Output</span>
+          </div>
+          <div class="panel-content error">Network Error: fetch failed</div>
+        </div>
+      </div>
+    </div>
+  
+    <div class="result-card">
+      <div class="result-header">
+        <div class="result-meta">
+          <span class="result-index">#8</span>
+          <span class="result-category">Unboxing</span>
+          <span class="result-product">Galaxy Tab S10 FE</span>
+        </div>
+        <div class="result-score score-excellent">
+          <i class="ph ph-check-circle"></i>
+          <span>87%</span>
+        </div>
+      </div>
+
+      <h3 class="result-title">Unboxing Galaxy Tab S10 FE | FE+ | Samsung</h3>
+      <a href="https://www.youtube.com/watch?v=hSdQBZxMRFo" class="youtube-link" target="_blank"><i class="ph ph-youtube-logo"></i> View Video</a>
+
+      <div class="patterns-grid">
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Opening Statement</span>
+              <span class="pattern-score">15/15</span>
+            </div>
+            <div class="pattern-details">Uses proper &quot;Unboxing&quot; opening pattern</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Step-by-Step</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">N/A for non-how-to content</div>
+            
+          </div>
+        
+          <div class="pattern-item failed">
+            <div class="pattern-header">
+              <span class="pattern-name">What&#039;s New</span>
+              <span class="pattern-score">5/10</span>
+            </div>
+            <div class="pattern-details">Header: ✗, Features: 4</div>
+            <div class="pattern-suggestions"><span>Add &quot;What&#039;s new in [Product]?&quot; section</span><span>Format features as numbered list</span></div>
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Q&amp;A Format</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">Pairs: 2/2-4, Colon: ✓</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Hashtags</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">#GalaxyAI first: ✓, #Samsung last: ✓, Count: 3</div>
+            
+          </div>
+        
+          <div class="pattern-item failed">
+            <div class="pattern-header">
+              <span class="pattern-name">Timestamps</span>
+              <span class="pattern-score">5/10</span>
+            </div>
+            <div class="pattern-details">No numbering: ✓, Action verbs: ✗</div>
+            <div class="pattern-suggestions"><span>Remove numbering, add action verbs</span></div>
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Vanity Link</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">Vanity link: ✓, &quot;Learn more&quot;: ✓</div>
+            
+          </div>
+        
+      </div>
+
+      <div class="comparison-section">
+        <div class="comparison-panel">
+          <div class="panel-header">
+            <i class="ph ph-file-text"></i>
+            <span>Samsung Ground Truth</span>
+          </div>
+          <div class="panel-content">This is the official unboxing video for the new Galaxy Tab S10 FE and FE+ 📦 Galaxy Tab S10 FE and Galaxy Tab S10 FE+ are here—bigger, smarter, and more creative! 🎨 Enjoy a larger display for all your binge-watching 🎬, AI-powered features 🤖 that make life easier, and an upgraded S Pen 🖊️ for next-level note-taking and doodling! Learn more: http://smsng.co/TabS10FE_Unboxing_yt
+
+00:00 Intro
+00:14 What’s in the box
+00:20 S Pen
+00:30 Color
+00:42 Display
+01:02 Hardware specifications and performance
+01:15 Camera
+01:22 Battery
+
+What’s new in Galaxy Tab S10 FE and FE+?
+1. S Pen: Both models include S Pen, so you can start handwriting, drawing, and editing right away.
+2. Vision Booster: Display tech that stays clear even outdoors in bright conditions.
+3. Slim design: Just 6.0 mm ...</div>
+        </div>
+        <div class="comparison-panel error-panel">
+          <div class="panel-header">
+            <i class="ph ph-robot"></i>
+            <span>Generated Output</span>
+          </div>
+          <div class="panel-content error">Network Error: fetch failed</div>
+        </div>
+      </div>
+    </div>
+  
+    <div class="result-card">
+      <div class="result-header">
+        <div class="result-meta">
+          <span class="result-index">#9</span>
+          <span class="result-category">Intro</span>
+          <span class="result-product">Galaxy S25 Edge</span>
+        </div>
+        <div class="result-score score-excellent">
+          <i class="ph ph-check-circle"></i>
+          <span>87%</span>
+        </div>
+      </div>
+
+      <h3 class="result-title">Cases of Galaxy S25 Edge | Samsung</h3>
+      <a href="https://www.youtube.com/watch?v=JDawyMv4qAU" class="youtube-link" target="_blank"><i class="ph ph-youtube-logo"></i> View Video</a>
+
+      <div class="patterns-grid">
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Opening Statement</span>
+              <span class="pattern-score">15/15</span>
+            </div>
+            <div class="pattern-details">Uses proper &quot;Intro&quot; opening pattern</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Step-by-Step</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">N/A for non-how-to content</div>
+            
+          </div>
+        
+          <div class="pattern-item failed">
+            <div class="pattern-header">
+              <span class="pattern-name">What&#039;s New</span>
+              <span class="pattern-score">5/10</span>
+            </div>
+            <div class="pattern-details">Header: ✗, Features: 3</div>
+            <div class="pattern-suggestions"><span>Add &quot;What&#039;s new in [Product]?&quot; section</span><span>Format features as numbered list</span></div>
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Q&amp;A Format</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">Pairs: 3/2-4, Colon: ✓</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Hashtags</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">#GalaxyAI first: ✓, #Samsung last: ✓, Count: 3</div>
+            
+          </div>
+        
+          <div class="pattern-item failed">
+            <div class="pattern-header">
+              <span class="pattern-name">Timestamps</span>
+              <span class="pattern-score">5/10</span>
+            </div>
+            <div class="pattern-details">No numbering: ✓, Action verbs: ✗</div>
+            <div class="pattern-suggestions"><span>Remove numbering, add action verbs</span></div>
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Vanity Link</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">Vanity link: ✓, &quot;Learn more&quot;: ✓</div>
+            
+          </div>
+        
+      </div>
+
+      <div class="comparison-section">
+        <div class="comparison-panel">
+          <div class="panel-header">
+            <i class="ph ph-file-text"></i>
+            <span>Samsung Ground Truth</span>
+          </div>
+          <div class="panel-content">This is the official introduction video for the new Galaxy S25 Edge case lineup: Silicone Case, Clear Case, and Kindsuit Case. Slim protection to suit the slimmest Galaxy S smartphone yet. Precisely crafted to fit tight, feel light, and keep your Galaxy S25 Edge secure in style. What’s the best case for the new Galaxy S25 Edge? Learn more: http://smsng.co/S25Edge_Cases_yt
+
+00:00 Intro
+00:08 Silicone Case
+00:27 Clear Case
+00:44 Kindsuit Case
+
+Here’s what you’ll find in the lineup:
+1. Silicone Case: Recommended for users who need a secure grip and strong protection. The smooth material feels soft to the touch, and the vibrant colors let you create your own style.
+2. Clear Case: Ideal for minimalists who like simplicity. Enjoy the original design with a transparent clear case.
+3. Ki...</div>
+        </div>
+        <div class="comparison-panel error-panel">
+          <div class="panel-header">
+            <i class="ph ph-robot"></i>
+            <span>Generated Output</span>
+          </div>
+          <div class="panel-content error">Network Error: fetch failed</div>
+        </div>
+      </div>
+    </div>
+  
+    <div class="result-card">
+      <div class="result-header">
+        <div class="result-meta">
+          <span class="result-index">#10</span>
+          <span class="result-category">How to</span>
+          <span class="result-product">Galaxy Watch8</span>
+        </div>
+        <div class="result-score score-excellent">
+          <i class="ph ph-check-circle"></i>
+          <span>93%</span>
+        </div>
+      </div>
+
+      <h3 class="result-title">How to use Running Coach | Galaxy Watch8 Series | Samsung</h3>
+      <a href="https://www.youtube.com/watch?v=nh16o10JOR4" class="youtube-link" target="_blank"><i class="ph ph-youtube-logo"></i> View Video</a>
+
+      <div class="patterns-grid">
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Opening Statement</span>
+              <span class="pattern-score">15/15</span>
+            </div>
+            <div class="pattern-details">Uses proper &quot;How to&quot; opening pattern</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Step-by-Step</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">Header: ✓, Steps: 5/3-5</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">What&#039;s New</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">N/A for this content type</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Q&amp;A Format</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">Pairs: 2/2-4, Colon: ✓</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Hashtags</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">#GalaxyAI first: ✓, #Samsung last: ✓, Count: 3</div>
+            
+          </div>
+        
+          <div class="pattern-item failed">
+            <div class="pattern-header">
+              <span class="pattern-name">Timestamps</span>
+              <span class="pattern-score">5/10</span>
+            </div>
+            <div class="pattern-details">No numbering: ✓, Action verbs: ✗</div>
+            <div class="pattern-suggestions"><span>Remove numbering, add action verbs</span></div>
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Vanity Link</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">Vanity link: ✓, &quot;Learn more&quot;: ✓</div>
+            
+          </div>
+        
+      </div>
+
+      <div class="comparison-section">
+        <div class="comparison-panel">
+          <div class="panel-header">
+            <i class="ph ph-file-text"></i>
+            <span>Samsung Ground Truth</span>
+          </div>
+          <div class="panel-content">This is the official video guide 📝 on how to check your running level and train step by step with Running Coach on Galaxy Watch8 Series. Where does your running ability stand right now? You can find out through Running Coach on Galaxy Watch8 Series. Start with a simple test that measures your running level from 1 to 10, then follow a 3 to 5 week training plan tailored to your results. Running Coach helps you train at your own pace and chart your own path of progress. Learn more: http://smsng.co/Watch8_Running-Coach_yt
+
+00:00 Intro
+00:15 Connect
+00:24 Survey
+00:53 Running test
+01:48 Training plan
+02:15 Daily insights 
+02:28 Level up test
+
+Follow these simple steps to use Running Coach on Galaxy Watch8 Series:
+Step 1: Tap ‘Find your level’ on your Galaxy Watch8 Series to start Ru...</div>
+        </div>
+        <div class="comparison-panel error-panel">
+          <div class="panel-header">
+            <i class="ph ph-robot"></i>
+            <span>Generated Output</span>
+          </div>
+          <div class="panel-content error">Network Error: fetch failed</div>
+        </div>
+      </div>
+    </div>
+  
+    <div class="result-card">
+      <div class="result-header">
+        <div class="result-meta">
+          <span class="result-index">#11</span>
+          <span class="result-category">How to</span>
+          <span class="result-product">Galaxy Z Fold7</span>
+        </div>
+        <div class="result-score score-excellent">
+          <i class="ph ph-check-circle"></i>
+          <span>93%</span>
+        </div>
+      </div>
+
+      <h3 class="result-title">How to use Browsing Assist &amp; Writing Assist | Galaxy Z Fold7 | Samsung</h3>
+      <a href="https://www.youtube.com/watch?v=z4M1Yk2BeuI" class="youtube-link" target="_blank"><i class="ph ph-youtube-logo"></i> View Video</a>
+
+      <div class="patterns-grid">
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Opening Statement</span>
+              <span class="pattern-score">15/15</span>
+            </div>
+            <div class="pattern-details">Uses proper &quot;How to&quot; opening pattern</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Step-by-Step</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">Header: ✓, Steps: 5/3-5</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">What&#039;s New</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">N/A for this content type</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Q&amp;A Format</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">Pairs: 2/2-4, Colon: ✓</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Hashtags</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">#GalaxyAI first: ✓, #Samsung last: ✓, Count: 3</div>
+            
+          </div>
+        
+          <div class="pattern-item failed">
+            <div class="pattern-header">
+              <span class="pattern-name">Timestamps</span>
+              <span class="pattern-score">5/10</span>
+            </div>
+            <div class="pattern-details">No numbering: ✓, Action verbs: ✗</div>
+            <div class="pattern-suggestions"><span>Remove numbering, add action verbs</span></div>
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Vanity Link</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">Vanity link: ✓, &quot;Learn more&quot;: ✓</div>
+            
+          </div>
+        
+      </div>
+
+      <div class="comparison-section">
+        <div class="comparison-panel">
+          <div class="panel-header">
+            <i class="ph ph-file-text"></i>
+            <span>Samsung Ground Truth</span>
+          </div>
+          <div class="panel-content">This is the official video guide on how to multi-task using Browsing Assist and Writing Assist on Galaxy Z Fold7. Whether you’re researching, planning a trip or just saving articles to review later, these features are ideal for anyone who wants to read, summarize and save all in one place ✨ Learn more: http://smsng.co/ZFold7_Multi-tasking_yt
+
+00:00 Intro
+00:15 Browsing Assist
+01:38 Writing Assist
+
+Follow these easy steps to multi-task effortlessly on the big screen of your Galaxy Z Fold7:
+Step 1: Open the website you want to summarize. Unfold your Galaxy Z Fold7 and split the screen to multi-task like a pro. 
+Step 2: Open the ’Messages’ app. Tap ‘Summarize’ and send the summary.
+Step 3: Long press ‘Notes’ in the Edge panel and drag and drop it into the screen. 
+Step 4: Select the...</div>
+        </div>
+        <div class="comparison-panel error-panel">
+          <div class="panel-header">
+            <i class="ph ph-robot"></i>
+            <span>Generated Output</span>
+          </div>
+          <div class="panel-content error">Network Error: fetch failed</div>
+        </div>
+      </div>
+    </div>
+  
+    <div class="result-card">
+      <div class="result-header">
+        <div class="result-meta">
+          <span class="result-index">#12</span>
+          <span class="result-category">How to</span>
+          <span class="result-product">Galaxy Z Flip7</span>
+        </div>
+        <div class="result-score score-warning">
+          <i class="ph ph-warning"></i>
+          <span>68%</span>
+        </div>
+      </div>
+
+      <h3 class="result-title">How to use FlexCam | Galaxy Z Flip7 | Samsung</h3>
+      <a href="https://www.youtube.com/watch?v=_IjUNZlk_ww" class="youtube-link" target="_blank"><i class="ph ph-youtube-logo"></i> View Video</a>
+
+      <div class="patterns-grid">
+        
+          <div class="pattern-item failed">
+            <div class="pattern-header">
+              <span class="pattern-name">Opening Statement</span>
+              <span class="pattern-score">0/15</span>
+            </div>
+            <div class="pattern-details">Missing official opening pattern for &quot;How to&quot; content</div>
+            <div class="pattern-suggestions"><span>Start with: &quot;This is the official video guide on how to use [Feature/Product]&quot;</span></div>
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Step-by-Step</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">Header: ✓, Steps: 4/3-5</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">What&#039;s New</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">N/A for this content type</div>
+            
+          </div>
+        
+          <div class="pattern-item failed">
+            <div class="pattern-header">
+              <span class="pattern-name">Q&amp;A Format</span>
+              <span class="pattern-score">6/10</span>
+            </div>
+            <div class="pattern-details">Pairs: 1/2-4, Colon: ✓</div>
+            <div class="pattern-suggestions"><span>Use Q:/A: format with 2-4 pairs</span></div>
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Hashtags</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">#GalaxyAI first: ✓, #Samsung last: ✓, Count: 5</div>
+            
+          </div>
+        
+          <div class="pattern-item failed">
+            <div class="pattern-header">
+              <span class="pattern-name">Timestamps</span>
+              <span class="pattern-score">5/10</span>
+            </div>
+            <div class="pattern-details">No numbering: ✓, Action verbs: ✗</div>
+            <div class="pattern-suggestions"><span>Remove numbering, add action verbs</span></div>
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Vanity Link</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">Vanity link: ✓, &quot;Learn more&quot;: ✓</div>
+            
+          </div>
+        
+      </div>
+
+      <div class="comparison-section">
+        <div class="comparison-panel">
+          <div class="panel-header">
+            <i class="ph ph-file-text"></i>
+            <span>Samsung Ground Truth</span>
+          </div>
+          <div class="panel-content">This is a video guide on how to use FlexCam on the new Galaxy Z Flip7. Looking to take stunning, hands-free selfies with the AI-powered 50MP camera? 📸 Learn how to get the best shots using FlexCam. It’s ideal for users who want to stay perfectly framed without lifting a finger 😎 Learn more: http://smsng.co/ZFlip7_FlexCam_yt
+
+00:00 Intro
+00:14 Get started
+00:44 New FlexCam with Auto Zoom
+01:07 New FlexCam with Palm Gesture
+
+Follow these simple steps to make full use of FlexCam!
+Step 1: Tap FlexCam and drag it to the center of Galaxy Z Flip7.
+Step 2: Let Auto Zoom automatically calculate the distance and frame you at the right angle.
+Step 3: Take various shots with FlexCam &amp; Palm Gesture, and see how Auto Zoom refines your photos.
+Step 4: Use Camera Controller on the Galaxy Watc...</div>
+        </div>
+        <div class="comparison-panel error-panel">
+          <div class="panel-header">
+            <i class="ph ph-robot"></i>
+            <span>Generated Output</span>
+          </div>
+          <div class="panel-content error">Network Error: fetch failed</div>
+        </div>
+      </div>
+    </div>
+  
+    <div class="result-card">
+      <div class="result-header">
+        <div class="result-meta">
+          <span class="result-index">#13</span>
+          <span class="result-category">How to</span>
+          <span class="result-product">Galaxy S25 FE</span>
+        </div>
+        <div class="result-score score-warning">
+          <i class="ph ph-warning"></i>
+          <span>69%</span>
+        </div>
+      </div>
+
+      <h3 class="result-title">How to apply Anti-reflecting Film | Galaxy S25 FE | Samsung</h3>
+      <a href="https://www.youtube.com/watch?v=mNMoSREN9Qc" class="youtube-link" target="_blank"><i class="ph ph-youtube-logo"></i> View Video</a>
+
+      <div class="patterns-grid">
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Opening Statement</span>
+              <span class="pattern-score">15/15</span>
+            </div>
+            <div class="pattern-details">Uses proper &quot;How to&quot; opening pattern</div>
+            
+          </div>
+        
+          <div class="pattern-item failed">
+            <div class="pattern-header">
+              <span class="pattern-name">Step-by-Step</span>
+              <span class="pattern-score">5/10</span>
+            </div>
+            <div class="pattern-details">Header: ✗, Steps: 5/3-5</div>
+            <div class="pattern-suggestions"><span>Add &quot;Follow these simple steps to use [Feature]:&quot;</span><span>Include 3-5 numbered steps</span></div>
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">What&#039;s New</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">N/A for this content type</div>
+            
+          </div>
+        
+          <div class="pattern-item failed">
+            <div class="pattern-header">
+              <span class="pattern-name">Q&amp;A Format</span>
+              <span class="pattern-score">2/10</span>
+            </div>
+            <div class="pattern-details">Pairs: 0/2-4, Colon: ✓</div>
+            <div class="pattern-suggestions"><span>Use Q:/A: format with 2-4 pairs</span></div>
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Hashtags</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">#GalaxyAI first: ✓, #Samsung last: ✓, Count: 3</div>
+            
+          </div>
+        
+          <div class="pattern-item failed">
+            <div class="pattern-header">
+              <span class="pattern-name">Timestamps</span>
+              <span class="pattern-score">0/10</span>
+            </div>
+            <div class="pattern-details">No timestamps found</div>
+            <div class="pattern-suggestions"><span>Add timestamps in &quot;00:00 Action with Feature&quot; format</span></div>
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Vanity Link</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">Vanity link: ✓, &quot;Learn more&quot;: ✓</div>
+            
+          </div>
+        
+      </div>
+
+      <div class="comparison-section">
+        <div class="comparison-panel">
+          <div class="panel-header">
+            <i class="ph ph-file-text"></i>
+            <span>Samsung Ground Truth</span>
+          </div>
+          <div class="panel-content">This is the official video guide on how to apply Anti-reflecting Film on Galaxy S25 FE. Want to easily apply the film yourself? Learn more: http://smsng.co/S25FE_Film_How-to_yt 00:00 Intro 00:13 What&#039;s in the box 00:16 Set up 00:34 Apply the Anti-reflecting Film 01:33 Finish up Follow the steps below, and you&#039;ll be able to apply the Anti-reflecting Film quickly and easily! 🤓 Step 1: Attach the applicator to your Galaxy S25 FE. Step 2: Clean the screen with microfiber cleaner and dust removal sticker. Step 3: Align the Anti-reflecting Film with the Galaxy S25 FE screen and apply one half. Step 4: Rotate your Galaxy S25 FE and apply the remaining half of the film. Step 5: Finish by smoothing out any bubbles with the squeegee and wiping the screen with the microfiber cleaner. The Anti-reflec...</div>
+        </div>
+        <div class="comparison-panel error-panel">
+          <div class="panel-header">
+            <i class="ph ph-robot"></i>
+            <span>Generated Output</span>
+          </div>
+          <div class="panel-content error">Network Error: fetch failed</div>
+        </div>
+      </div>
+    </div>
+  
+    <div class="result-card">
+      <div class="result-header">
+        <div class="result-meta">
+          <span class="result-index">#14</span>
+          <span class="result-category">How to</span>
+          <span class="result-product">Galaxy Tab S 11 Ultra</span>
+        </div>
+        <div class="result-score score-warning">
+          <i class="ph ph-warning"></i>
+          <span>69%</span>
+        </div>
+      </div>
+
+      <h3 class="result-title">How to use Samsung DeX on Galaxy Tab S11 Series | Samsung</h3>
+      <a href="https://www.youtube.com/watch?v=IzljKlApawo" class="youtube-link" target="_blank"><i class="ph ph-youtube-logo"></i> View Video</a>
+
+      <div class="patterns-grid">
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Opening Statement</span>
+              <span class="pattern-score">15/15</span>
+            </div>
+            <div class="pattern-details">Uses proper &quot;How to&quot; opening pattern</div>
+            
+          </div>
+        
+          <div class="pattern-item failed">
+            <div class="pattern-header">
+              <span class="pattern-name">Step-by-Step</span>
+              <span class="pattern-score">5/10</span>
+            </div>
+            <div class="pattern-details">Header: ✓, Steps: 6/3-5</div>
+            <div class="pattern-suggestions"><span>Add &quot;Follow these simple steps to use [Feature]:&quot;</span><span>Include 3-5 numbered steps</span></div>
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">What&#039;s New</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">N/A for this content type</div>
+            
+          </div>
+        
+          <div class="pattern-item failed">
+            <div class="pattern-header">
+              <span class="pattern-name">Q&amp;A Format</span>
+              <span class="pattern-score">2/10</span>
+            </div>
+            <div class="pattern-details">Pairs: 0/2-4, Colon: ✓</div>
+            <div class="pattern-suggestions"><span>Use Q:/A: format with 2-4 pairs</span></div>
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Hashtags</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">#GalaxyAI first: ✓, #Samsung last: ✓, Count: 4</div>
+            
+          </div>
+        
+          <div class="pattern-item failed">
+            <div class="pattern-header">
+              <span class="pattern-name">Timestamps</span>
+              <span class="pattern-score">0/10</span>
+            </div>
+            <div class="pattern-details">No timestamps found</div>
+            <div class="pattern-suggestions"><span>Add timestamps in &quot;00:00 Action with Feature&quot; format</span></div>
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Vanity Link</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">Vanity link: ✓, &quot;Learn more&quot;: ✓</div>
+            
+          </div>
+        
+      </div>
+
+      <div class="comparison-section">
+        <div class="comparison-panel">
+          <div class="panel-header">
+            <i class="ph ph-file-text"></i>
+            <span>Samsung Ground Truth</span>
+          </div>
+          <div class="panel-content">This is the official video guide 📝 on how to use Samsung DeX on Galaxy Tab S11 Series—your go-to tool for seamless multi-tasking with extended monitor support. Want to boost your productivity with more space and flexibility? With Samsung DeX on Galaxy Tab S11 Series, you can create multiple workspaces and even connect wirelessly to another monitor—giving you more room to multi-task right from your tablet. Learn more: http://smsng.co/TabS11_DeX_yt 00:00 Intro 00:16 Switch to DeX mode 00:38 Create workspaces 01:09 Extend your workspaces 01:37 Exit DeX mode Follow these simple steps to use Samsung DeX on Galaxy Tab S11 Series: Step 1: Switch to Samsung DeX mode to enable a more flexible work environment. Step 2: Resize and arrange app windows as you want. Step 3: Add up to four workspaces, e...</div>
+        </div>
+        <div class="comparison-panel error-panel">
+          <div class="panel-header">
+            <i class="ph ph-robot"></i>
+            <span>Generated Output</span>
+          </div>
+          <div class="panel-content error">Network Error: fetch failed</div>
+        </div>
+      </div>
+    </div>
+  
+    <div class="result-card">
+      <div class="result-header">
+        <div class="result-meta">
+          <span class="result-index">#15</span>
+          <span class="result-category">CXP</span>
+          <span class="result-product">Galaxy Tab S 11</span>
+        </div>
+        <div class="result-score score-warning">
+          <i class="ph ph-warning"></i>
+          <span>53%</span>
+        </div>
+      </div>
+
+      <h3 class="result-title">The S Pen story | Galaxy Tab S11 Series | Samsung</h3>
+      <a href="https://www.youtube.com/watch?v=a4LSE5iHrQE" class="youtube-link" target="_blank"><i class="ph ph-youtube-logo"></i> View Video</a>
+
+      <div class="patterns-grid">
+        
+          <div class="pattern-item failed">
+            <div class="pattern-header">
+              <span class="pattern-name">Opening Statement</span>
+              <span class="pattern-score">0/15</span>
+            </div>
+            <div class="pattern-details">Missing official opening pattern for &quot;CXP&quot; content</div>
+            <div class="pattern-suggestions"><span>Start with: &quot;This is the official cxp video for [Feature/Product]&quot;</span></div>
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Step-by-Step</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">N/A for non-how-to content</div>
+            
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">What&#039;s New</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">N/A for this content type</div>
+            
+          </div>
+        
+          <div class="pattern-item failed">
+            <div class="pattern-header">
+              <span class="pattern-name">Q&amp;A Format</span>
+              <span class="pattern-score">0/10</span>
+            </div>
+            <div class="pattern-details">Pairs: 0/2-4, Colon: ✗</div>
+            <div class="pattern-suggestions"><span>Use Q:/A: format with 2-4 pairs</span></div>
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Hashtags</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">#GalaxyAI first: ✓, #Samsung last: ✓, Count: 4</div>
+            
+          </div>
+        
+          <div class="pattern-item failed">
+            <div class="pattern-header">
+              <span class="pattern-name">Timestamps</span>
+              <span class="pattern-score">0/10</span>
+            </div>
+            <div class="pattern-details">No timestamps found</div>
+            <div class="pattern-suggestions"><span>Add timestamps in &quot;00:00 Action with Feature&quot; format</span></div>
+          </div>
+        
+          <div class="pattern-item passed">
+            <div class="pattern-header">
+              <span class="pattern-name">Vanity Link</span>
+              <span class="pattern-score">10/10</span>
+            </div>
+            <div class="pattern-details">Vanity link: ✓, &quot;Learn more&quot;: ✓</div>
+            
+          </div>
+        
+      </div>
+
+      <div class="comparison-section">
+        <div class="comparison-panel">
+          <div class="panel-header">
+            <i class="ph ph-file-text"></i>
+            <span>Samsung Ground Truth</span>
+          </div>
+          <div class="panel-content">Meet the new S Pen, engineered for comfort and optimized tilt control for more natural, precise drawing. Paired with the Galaxy Tab S11 Series, it&#039;s your ultimate creative companion. Learn more: http://smsng.co/TabS11_SPen-Story_yt #GalaxyAI #GalaxyTabS11Ultra #GalaxyTabS11 #Samsung</div>
+        </div>
+        <div class="comparison-panel error-panel">
+          <div class="panel-header">
+            <i class="ph ph-robot"></i>
+            <span>Generated Output</span>
+          </div>
+          <div class="panel-content error">Network Error: fetch failed</div>
+        </div>
+      </div>
+    </div>
+  
+    </section>
+
+    <footer class="footer">
+      <p>Samsung GEO Tool · Generated with <a href="#">GEO Pipeline v2</a></p>
+    </footer>
+  </div>
+</body>
+</html>
