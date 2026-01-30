@@ -122,6 +122,18 @@ export {
   type ExtendedTikTokCoverResult,
 } from './tiktok-cover-generator'
 
+// Schema.org Generator (GEO Strategy - Structured Data)
+export {
+  generateSchemaOrg,
+  generateJsonLdScript,
+  validateSchema,
+  type TechArticleSchema,
+  type FAQPageSchema,
+  type VideoObjectSchema,
+  type ProductSchema,
+  type SchemaGeneratorResult,
+} from './schema-generator'
+
 // Progress Tracking
 export {
   createInitialProgressState,

@@ -44,6 +44,8 @@ import {
   YoutubeLogo,
   Info,
   Image as ImageIcon,
+  Code,
+  Lightbulb,
 } from '@phosphor-icons/react'
 import {
   VIDEO_FORMAT_LABELS,
@@ -53,10 +55,9 @@ import {
   type EngagementCommentResult,
   type TikTokCoverTextResult,
 } from '@/types/geo-v2'
-import type {
-  InstagramAltTextResult,
-  ThumbnailTextResult,
-} from '@/lib/geo-v2'
+import type { InstagramAltTextResult } from '@/lib/geo-v2/instagram-alt-text-generator'
+import type { ThumbnailTextResult } from '@/lib/geo-v2/thumbnail-text-generator'
+import { generateSchemaOrg, type SchemaGeneratorResult } from '@/lib/geo-v2/schema-generator'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 
@@ -206,6 +207,39 @@ export function OutputDisplay() {
 
     return content
   }, [description, timestamps, faq, hashtags, vanityLinkCode, videoFormat])
+
+  // Generate Schema.org structured data (GEO Strategy)
+  const schemaData = useMemo<SchemaGeneratorResult | null>(() => {
+    if (!description || !productName) return null
+
+    // Parse FAQ from faq string if available
+    const parsedFaqs: { question: string; answer: string; linkedUSPs: string[]; confidence: 'high' | 'medium' | 'low' }[] = []
+    if (faq) {
+      const qaPairs = faq.split(/\n\n/).filter(Boolean)
+      for (const pair of qaPairs) {
+        const qMatch = pair.match(/Q:\s*(.+)/i)
+        const aMatch = pair.match(/A:\s*(.+)/i)
+        if (qMatch && aMatch) {
+          parsedFaqs.push({
+            question: qMatch[1].trim(),
+            answer: aMatch[1].trim(),
+            linkedUSPs: [],
+            confidence: 'high',
+          })
+        }
+      }
+    }
+
+    return generateSchemaOrg({
+      productName,
+      description,
+      platform,
+      contentType,
+      faqs: parsedFaqs,
+      keywords: selectedKeywords,
+      videoUrl: videoUrl || undefined,
+    })
+  }, [description, productName, platform, contentType, faq, selectedKeywords, videoUrl])
 
   const handleSave = useCallback(async (status: 'draft' | 'confirmed') => {
     if (!productId) {
@@ -1205,6 +1239,85 @@ export function OutputDisplay() {
               <div className="p-2 rounded bg-cyan-50 dark:bg-cyan-950/20 border border-cyan-200 dark:border-cyan-900/50">
                 <p className="text-xs text-cyan-700 dark:text-cyan-300">
                   💡 TikTok Tip: Use bold, trendy fonts. Center the text. Keep it Gen-Z friendly!
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Schema.org Structured Data Section (GEO Strategy) */}
+      {schemaData && (
+        <motion.div variants={MOTION_VARIANTS.staggerItem}>
+          <Card className="border-emerald-200 dark:border-emerald-900/50">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Code className="h-4 w-4 text-emerald-500" />
+                  Schema.org Structured Data
+                  <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
+                    JSON-LD
+                  </Badge>
+                </CardTitle>
+                <CopyButton text={schemaData.jsonLd} label="JSON-LD" />
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Recommendations */}
+              {schemaData.recommendations.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                    <Lightbulb className="h-3 w-3" />
+                    SEO Recommendations
+                  </p>
+                  <div className="space-y-1">
+                    {schemaData.recommendations.map((rec, i) => (
+                      <div key={i} className="flex items-start gap-2 text-xs">
+                        <CheckCircle className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0 mt-0.5" weight="fill" />
+                        <span>{rec}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* Schema Types Generated */}
+              <div className="flex flex-wrap gap-2">
+                {schemaData.techArticle && (
+                  <Badge variant="secondary" className="text-xs">TechArticle</Badge>
+                )}
+                {schemaData.faqPage && (
+                  <Badge variant="secondary" className="text-xs">FAQPage</Badge>
+                )}
+                {schemaData.videoObject && (
+                  <Badge variant="secondary" className="text-xs">VideoObject</Badge>
+                )}
+                {schemaData.product && (
+                  <Badge variant="secondary" className="text-xs">Product</Badge>
+                )}
+              </div>
+              {/* JSON-LD Code Preview */}
+              <div className="rounded-lg bg-slate-900 dark:bg-slate-950 p-4 overflow-x-auto">
+                <pre className="text-xs text-slate-100 font-mono whitespace-pre-wrap">
+                  <code>{schemaData.jsonLd}</code>
+                </pre>
+              </div>
+              {/* Copy Script Tag */}
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1">HTML Script Tag</p>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 rounded-lg bg-muted/50 border p-2 font-mono text-xs overflow-hidden text-ellipsis">
+                    {`<script type="application/ld+json">...</script>`}
+                  </div>
+                  <CopyButton 
+                    text={`<script type="application/ld+json">\n${schemaData.jsonLd}\n</script>`} 
+                    label="Script Tag" 
+                  />
+                </div>
+              </div>
+              {/* Info */}
+              <div className="p-2 rounded bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/50">
+                <p className="text-xs text-emerald-700 dark:text-emerald-300">
+                  💡 Add this JSON-LD script to your page's &lt;head&gt; section for enhanced search visibility and AI discoverability.
                 </p>
               </div>
             </CardContent>

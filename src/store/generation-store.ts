@@ -19,10 +19,8 @@ import type {
   ContentClassification,
   ReviewResult,
 } from '@/types/geo-v2'
-import type {
-  InstagramAltTextResult,
-  ThumbnailTextResult,
-} from '@/lib/geo-v2'
+import type { InstagramAltTextResult } from '@/lib/geo-v2/instagram-alt-text-generator'
+import type { ThumbnailTextResult } from '@/lib/geo-v2/thumbnail-text-generator'
 
 export type GenerationStep = 'platform' | 'product' | 'content' | 'keywords' | 'output'
 
