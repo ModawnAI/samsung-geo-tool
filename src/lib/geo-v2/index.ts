@@ -134,6 +134,15 @@ export {
   type SchemaGeneratorResult,
 } from './schema-generator'
 
+// Tonality Checker (Brief Slide 2 - 토날리티 검수)
+export {
+  checkTonality,
+  quickTonalityCheck,
+  SAMSUNG_BRAND_VOICE,
+  type TonalityCheckResult,
+  type TonalityIssue,
+} from './tonality-checker'
+
 // Progress Tracking
 export {
   createInitialProgressState,
