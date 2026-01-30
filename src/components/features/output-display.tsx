@@ -48,6 +48,8 @@ import {
 import {
   VIDEO_FORMAT_LABELS,
   CONTENT_TYPE_LABELS,
+  PLATFORM_CONFIGS,
+  type Platform,
 } from '@/types/geo-v2'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
@@ -138,6 +140,13 @@ export function OutputDisplay() {
   const contentType = useGenerationStore((state) => state.contentType)
   const useFixedHashtags = useGenerationStore((state) => state.useFixedHashtags)
   const vanityLinkCode = useGenerationStore((state) => state.vanityLinkCode)
+  // Platform Selection (GEO Strategy)
+  const platform = useGenerationStore((state) => state.platform)
+  // Platform-specific outputs
+  const title = useGenerationStore((state) => state.title)
+  const metaTags = useGenerationStore((state) => state.metaTags)
+  const instagramDescription = useGenerationStore((state) => state.instagramDescription)
+  const enhancedHashtags = useGenerationStore((state) => state.enhancedHashtags)
 
   // AbortController for cancelable requests
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -672,6 +681,254 @@ export function OutputDisplay() {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* YouTube Title Section (GEO Strategy p.100, Brief Slide 3) */}
+      {platform === 'youtube' && title && (
+        <motion.div variants={MOTION_VARIANTS.staggerItem}>
+          <Card className="border-red-200 dark:border-red-900/50">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <YoutubeLogo className="h-4 w-4 text-red-500" weight="fill" />
+                  YouTube Title
+                  {title.validation.structureValid && (
+                    <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                      Samsung Standard ✓
+                    </Badge>
+                  )}
+                </CardTitle>
+                <CopyButton text={title.primary} label="Title" />
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Primary Title */}
+              <div className="p-3 rounded-lg bg-red-50/50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50">
+                <p className="font-medium text-lg">{title.primary}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {title.charCount}/60 characters • Keywords: {title.keywords.join(', ')}
+                </p>
+              </div>
+              {/* Alternatives */}
+              {title.alternatives.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Alternatives:</p>
+                  {title.alternatives.map((alt, i) => (
+                    <div key={i} className="flex items-center justify-between p-2 rounded bg-muted/50">
+                      <span className="text-sm">{alt}</span>
+                      <CopyButton text={alt} label={`Alternative ${i + 1}`} />
+                    </div>
+                  ))}
+                </div>
+              )}
+              {/* Validation Info */}
+              <div className="flex flex-wrap gap-2 text-xs">
+                <Badge variant={title.validation.withinLimit ? "secondary" : "destructive"}>
+                  {title.validation.withinLimit ? '≤60자 ✓' : '>60자 ✗'}
+                </Badge>
+                <Badge variant={title.validation.hasBrandSuffix ? "secondary" : "outline"}>
+                  {title.validation.hasBrandSuffix ? 'Samsung suffix ✓' : 'No Samsung suffix'}
+                </Badge>
+                <Badge variant="outline">
+                  Keyword: {title.validation.keywordPosition}
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Meta Tags Section (Brief Slide 3) */}
+      {platform === 'youtube' && metaTags && (
+        <motion.div variants={MOTION_VARIANTS.staggerItem}>
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Hash className="h-4 w-4" />
+                  Meta Tags
+                  <Badge variant="outline" className="text-xs">
+                    SEO Score: {metaTags.seoScore}/100
+                  </Badge>
+                </CardTitle>
+                <CopyButton text={metaTags.tags.join(', ')} label="Meta Tags" />
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Tags by Category */}
+              <div className="space-y-3">
+                {metaTags.categories.brand.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Brand</p>
+                    <div className="flex flex-wrap gap-1">
+                      {metaTags.categories.brand.map((tag, i) => (
+                        <Badge key={i} variant="default" className="text-xs">{tag}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {metaTags.categories.product.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Product</p>
+                    <div className="flex flex-wrap gap-1">
+                      {metaTags.categories.product.map((tag, i) => (
+                        <Badge key={i} variant="secondary" className="text-xs">{tag}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {metaTags.categories.feature.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Features</p>
+                    <div className="flex flex-wrap gap-1">
+                      {metaTags.categories.feature.map((tag, i) => (
+                        <Badge key={i} variant="outline" className="text-xs">{tag}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {metaTags.categories.generic.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Generic</p>
+                    <div className="flex flex-wrap gap-1">
+                      {metaTags.categories.generic.map((tag, i) => (
+                        <Badge key={i} variant="outline" className="text-xs bg-muted">{tag}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Instagram Description Section (Brief Slide 4) */}
+      {platform === 'instagram' && instagramDescription && (
+        <motion.div variants={MOTION_VARIANTS.staggerItem}>
+          <Card className="border-pink-200 dark:border-pink-900/50">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  📸 Instagram Description
+                  {instagramDescription.validation.hasCoreMessage && 
+                   instagramDescription.validation.hasCTA && (
+                    <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                      GEO Optimized ✓
+                    </Badge>
+                  )}
+                </CardTitle>
+                <CopyButton text={instagramDescription.extended} label="Instagram Description" />
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* First 125 characters (visible before "more") */}
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1">
+                  First 125 characters (visible before "more")
+                </p>
+                <div className="p-3 rounded-lg bg-pink-50/50 dark:bg-pink-950/20 border border-pink-200 dark:border-pink-900/50">
+                  <p className="font-medium">{instagramDescription.primary}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {instagramDescription.charCount}/125 characters
+                  </p>
+                </div>
+              </div>
+              {/* Full description */}
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1">Full Description</p>
+                <div className="p-3 rounded-lg bg-muted/50 border">
+                  <p className="text-sm whitespace-pre-wrap">{instagramDescription.extended}</p>
+                </div>
+              </div>
+              {/* Validation Badges */}
+              <div className="flex flex-wrap gap-2 text-xs">
+                <Badge variant={instagramDescription.validation.hasProductName ? "secondary" : "outline"}>
+                  {instagramDescription.validation.hasProductName ? 'Product ✓' : 'Product ✗'}
+                </Badge>
+                <Badge variant={instagramDescription.validation.hasFeatureName ? "secondary" : "outline"}>
+                  {instagramDescription.validation.hasFeatureName ? 'Feature ✓' : 'Feature ✗'}
+                </Badge>
+                <Badge variant={instagramDescription.validation.hasBrandName ? "secondary" : "outline"}>
+                  {instagramDescription.validation.hasBrandName ? 'Brand ✓' : 'Brand ✗'}
+                </Badge>
+                <Badge variant={instagramDescription.validation.hasCTA ? "secondary" : "outline"}>
+                  {instagramDescription.validation.hasCTA ? 'CTA ✓' : 'CTA ✗'}
+                </Badge>
+              </div>
+              {/* Keywords found */}
+              {instagramDescription.validation.keywordsFound.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Keywords in first 125 chars</p>
+                  <div className="flex flex-wrap gap-1">
+                    {instagramDescription.validation.keywordsFound.map((kw, i) => (
+                      <Badge key={i} variant="secondary" className="text-xs">{kw}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Enhanced Hashtags with GEO Ordering (Brief Slide 4) */}
+      {enhancedHashtags && (
+        <motion.div variants={MOTION_VARIANTS.staggerItem}>
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Hash className="h-4 w-4" />
+                  GEO Optimized Hashtags
+                  {enhancedHashtags.validation.orderCorrect && (
+                    <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                      Correct Order ✓
+                    </Badge>
+                  )}
+                </CardTitle>
+                <CopyButton text={enhancedHashtags.hashtags.join(' ')} label="Hashtags" />
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex flex-wrap gap-2">
+                {enhancedHashtags.hashtags.map((tag, i) => (
+                  <Badge
+                    key={i}
+                    variant={
+                      enhancedHashtags.validation.officialIncluded.includes(tag) 
+                        ? "default" 
+                        : enhancedHashtags.validation.geoOptimized.includes(tag)
+                          ? "secondary"
+                          : "outline"
+                    }
+                    className="text-sm font-normal"
+                  >
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Order: #GalaxyAI → Product → Series → Features → #Samsung (last)
+              </p>
+              {/* Recommendations */}
+              {(enhancedHashtags.recommendations.add.length > 0 || enhancedHashtags.recommendations.remove.length > 0) && (
+                <div className="p-2 rounded bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900/50">
+                  {enhancedHashtags.recommendations.add.length > 0 && (
+                    <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                      ➕ Consider adding: {enhancedHashtags.recommendations.add.join(', ')}
+                    </p>
+                  )}
+                  {enhancedHashtags.recommendations.remove.length > 0 && (
+                    <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                      ➖ Consider removing: {enhancedHashtags.recommendations.remove.join(', ')}
+                    </p>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       {/* Regeneration Status Indicator */}
       {isGenerating && regenerationFocus && (
