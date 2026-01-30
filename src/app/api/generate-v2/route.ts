@@ -29,6 +29,11 @@ import {
   generateMetaTags,
   generateInstagramDescription,
   generateEnhancedHashtags,
+  // NEW: Additional generators from Brief
+  generateEngagementComments,
+  generateInstagramAltText,
+  generateThumbnailText,
+  generateTikTokCoverText,
 } from '@/lib/geo-v2'
 import {
   loadTuningConfig,
@@ -63,7 +68,13 @@ import type {
   InstagramDescriptionResult,
   EnhancedHashtagResult,
   ContentType,
+  EngagementCommentResult,
+  TikTokCoverTextResult,
 } from '@/types/geo-v2'
+import type {
+  InstagramAltTextResult,
+  ThumbnailTextResult,
+} from '@/lib/geo-v2'
 import type {
   ProductCategory,
   PlaybookSection,
@@ -798,11 +809,16 @@ export async function POST(request: NextRequest) {
     let metaTagsResult: MetaTagsResult | undefined
     let instagramDescriptionResult: InstagramDescriptionResult | undefined
     let enhancedHashtagsResult: EnhancedHashtagResult | undefined
+    // NEW: Additional outputs from Brief
+    let engagementCommentsResult: EngagementCommentResult | undefined
+    let instagramAltTextResult: InstagramAltTextResult | undefined
+    let thumbnailTextResult: ThumbnailTextResult | undefined
+    let tiktokCoverTextResult: TikTokCoverTextResult | undefined
 
     try {
       // Generate platform-specific content
       if (platform === 'youtube') {
-        // YouTube: Title + Meta Tags (Brief Slide 3)
+        // YouTube: Title + Meta Tags + Thumbnail Text (Brief Slide 3)
         console.log(`[GEO v2] YouTube 타이틀 생성 중...`)
         titleResult = await generateYouTubeTitle({
           productName,
@@ -822,8 +838,21 @@ export async function POST(request: NextRequest) {
           briefUsps: uspResult.usps.map(u => u.feature),
         })
         console.log(`[GEO v2] 메타태그 생성 완료: ${metaTagsResult.totalCount}개 태그`)
+
+        // NEW: Thumbnail Text (Brief Slide 3)
+        console.log(`[GEO v2] 썸네일 텍스트 생성 중...`)
+        thumbnailTextResult = await generateThumbnailText({
+          productName,
+          keywords,
+          contentType,
+          platform,
+          srtContent,
+          briefUsps: uspResult.usps.map(u => u.feature),
+        })
+        console.log(`[GEO v2] 썸네일 텍스트 생성 완료: "${thumbnailTextResult.primaryText}"`)
+
       } else if (platform === 'instagram') {
-        // Instagram: Description (125자) + Enhanced Hashtags (Brief Slide 4)
+        // Instagram: Description (125자) + Alt Text (150자) + Engagement Comments (Brief Slide 4)
         console.log(`[GEO v2] Instagram 설명 생성 중...`)
         instagramDescriptionResult = await generateInstagramDescription({
           productName,
@@ -833,6 +862,42 @@ export async function POST(request: NextRequest) {
           briefUsps: uspResult.usps.map(u => u.feature),
         })
         console.log(`[GEO v2] Instagram 설명 생성 완료: ${instagramDescriptionResult.charCount}자`)
+
+        // NEW: Instagram Alt Text (Brief Slide 4 - 150자 이내)
+        console.log(`[GEO v2] Instagram Alt 텍스트 생성 중...`)
+        instagramAltTextResult = await generateInstagramAltText({
+          productName,
+          keywords,
+          contentType,
+          srtContent,
+          briefUsps: uspResult.usps.map(u => u.feature),
+          mediaType: 'video',
+        })
+        console.log(`[GEO v2] Instagram Alt 텍스트 생성 완료: ${instagramAltTextResult.charCount}자`)
+
+        // NEW: Engagement Comments (Brief Slide 4 - IG/LI/X)
+        console.log(`[GEO v2] 인게이지먼트 댓글 생성 중...`)
+        engagementCommentsResult = await generateEngagementComments({
+          productName,
+          keywords,
+          contentType,
+          srtContent,
+          briefUsps: uspResult.usps.map(u => u.feature),
+          platforms: ['instagram', 'linkedin', 'x'],
+        })
+        console.log(`[GEO v2] 인게이지먼트 댓글 생성 완료: ${engagementCommentsResult.comments.length}개`)
+
+      } else if (platform === 'tiktok') {
+        // TikTok: Cover Text (Brief Slide 5)
+        console.log(`[GEO v2] TikTok 커버 텍스트 생성 중...`)
+        tiktokCoverTextResult = await generateTikTokCoverText({
+          productName,
+          keywords,
+          contentType,
+          srtContent,
+          briefUsps: uspResult.usps.map(u => u.feature),
+        })
+        console.log(`[GEO v2] TikTok 커버 텍스트 생성 완료: "${tiktokCoverTextResult.text}"`)
       }
 
       // Generate enhanced hashtags for all platforms (with GEO ordering)
@@ -900,6 +965,11 @@ export async function POST(request: NextRequest) {
       metaTags: metaTagsResult,
       instagramDescription: instagramDescriptionResult,
       enhancedHashtags: enhancedHashtagsResult,
+      // NEW: Additional outputs from Brief implementation
+      engagementComments: engagementCommentsResult,
+      instagramAltText: instagramAltTextResult,
+      thumbnailText: thumbnailTextResult,
+      tiktokCoverText: tiktokCoverTextResult,
     }
 
     // Log successful generation

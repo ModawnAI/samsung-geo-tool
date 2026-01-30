@@ -11,7 +11,13 @@ import type {
   MetaTagsResult,
   InstagramDescriptionResult,
   EnhancedHashtagResult,
+  EngagementCommentResult,
+  TikTokCoverTextResult,
 } from '@/types/geo-v2'
+import type {
+  InstagramAltTextResult,
+  ThumbnailTextResult,
+} from '@/lib/geo-v2'
 
 export type GenerationStep = 'platform' | 'product' | 'content' | 'keywords' | 'output'
 
@@ -125,6 +131,11 @@ export interface GenerationSessionResult {
   metaTags?: MetaTagsResult               // YouTube only
   instagramDescription?: InstagramDescriptionResult  // Instagram only
   enhancedHashtags?: EnhancedHashtagResult
+  // NEW: Brief Implementation outputs (Slide 3-5)
+  engagementComments?: EngagementCommentResult  // IG/LI/X (Brief Slide 4)
+  instagramAltText?: InstagramAltTextResult     // Instagram 150자 Alt (Brief Slide 4)
+  thumbnailText?: ThumbnailTextResult           // YouTube/TikTok (Brief Slide 3/5)
+  tiktokCoverText?: TikTokCoverTextResult       // TikTok cover (Brief Slide 5)
 }
 
 export interface GenerationSession {
@@ -199,6 +210,11 @@ interface GenerationState {
   metaTags: MetaTagsResult | null               // YouTube only
   instagramDescription: InstagramDescriptionResult | null  // Instagram only
   enhancedHashtags: EnhancedHashtagResult | null
+  // NEW: Brief Implementation outputs (Slide 3-5)
+  engagementComments: EngagementCommentResult | null  // IG/LI/X (Brief Slide 4)
+  instagramAltText: InstagramAltTextResult | null     // Instagram 150자 Alt (Brief Slide 4)
+  thumbnailText: ThumbnailTextResult | null           // YouTube/TikTok (Brief Slide 3/5)
+  tiktokCoverText: TikTokCoverTextResult | null       // TikTok cover (Brief Slide 5)
 
   // Saved generation tracking
   generationId: string | null
@@ -243,6 +259,16 @@ interface GenerationState {
     breakdown?: GenerationBreakdown
     tuningMetadata?: TuningMetadata
     imageAltResult?: ImageAltResult
+    // Platform-specific outputs
+    title?: YouTubeTitleResult
+    metaTags?: MetaTagsResult
+    instagramDescription?: InstagramDescriptionResult
+    enhancedHashtags?: EnhancedHashtagResult
+    // NEW: Brief Implementation outputs
+    engagementComments?: EngagementCommentResult
+    instagramAltText?: InstagramAltTextResult
+    thumbnailText?: ThumbnailTextResult
+    tiktokCoverText?: TikTokCoverTextResult
   }) => void
   setIsGenerating: (generating: boolean) => void
   setGenerationStage: (stage: string | null) => void
@@ -332,6 +358,11 @@ const initialState = {
   metaTags: null as MetaTagsResult | null,
   instagramDescription: null as InstagramDescriptionResult | null,
   enhancedHashtags: null as EnhancedHashtagResult | null,
+  // NEW: Brief Implementation outputs
+  engagementComments: null as EngagementCommentResult | null,
+  instagramAltText: null as InstagramAltTextResult | null,
+  thumbnailText: null as ThumbnailTextResult | null,
+  tiktokCoverText: null as TikTokCoverTextResult | null,
   generationId: null,
   generationStatus: 'unsaved' as const,
   isSaving: false,
@@ -406,6 +437,16 @@ export const useGenerationStore = create<GenerationState>()(
     breakdown: output.breakdown || null,
     tuningMetadata: output.tuningMetadata || null,
     imageAltResult: output.imageAltResult || null,
+    // Platform-specific outputs
+    title: output.title || null,
+    metaTags: output.metaTags || null,
+    instagramDescription: output.instagramDescription || null,
+    enhancedHashtags: output.enhancedHashtags || null,
+    // NEW: Brief Implementation outputs
+    engagementComments: output.engagementComments || null,
+    instagramAltText: output.instagramAltText || null,
+    thumbnailText: output.thumbnailText || null,
+    tiktokCoverText: output.tiktokCoverText || null,
   }),
 
   setIsGenerating: (isGenerating) => set({ isGenerating }),
