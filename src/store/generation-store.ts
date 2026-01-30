@@ -13,6 +13,11 @@ import type {
   EnhancedHashtagResult,
   EngagementCommentResult,
   TikTokCoverTextResult,
+  // Review workflow types (Brief Task 1)
+  ReviewMode,
+  ReviewTiming,
+  ContentClassification,
+  ReviewResult,
 } from '@/types/geo-v2'
 import type {
   InstagramAltTextResult,
@@ -168,6 +173,13 @@ interface GenerationState {
   // Step 0: Platform selection (NEW - GEO Strategy p.95-104)
   platform: Platform
 
+  // Review Workflow (Brief Task 1 - Slide 2)
+  reviewMode: ReviewMode                    // 'generate' | 'review'
+  reviewTiming: ReviewTiming               // 'pre' | 'post'
+  contentClassification: ContentClassification  // 'unpacked_event' | 'non_unpacked_general'
+  reviewResult: ReviewResult | null        // Review checklist results
+  isReviewing: boolean                     // Whether review is in progress
+
   // Step 1: Product selection
   categoryId: string | null
   productId: string | null
@@ -232,6 +244,12 @@ interface GenerationState {
   // Actions
   setStep: (step: GenerationStep) => void
   setPlatform: (platform: Platform) => void  // NEW - Platform selection
+  // Review Workflow Actions (Brief Task 1)
+  setReviewMode: (mode: ReviewMode) => void
+  setReviewTiming: (timing: ReviewTiming) => void
+  setContentClassification: (classification: ContentClassification) => void
+  setReviewResult: (result: ReviewResult | null) => void
+  setIsReviewing: (isReviewing: boolean) => void
   setCategory: (categoryId: string) => void
   setProduct: (productId: string, productName: string) => void
   setCampaignTag: (tag: string) => void
@@ -325,6 +343,12 @@ interface GenerationState {
 const initialState = {
   step: 'platform' as GenerationStep,  // Start with platform selection
   platform: 'youtube' as Platform,     // Default to YouTube
+  // Review Workflow (Brief Task 1)
+  reviewMode: 'generate' as ReviewMode,
+  reviewTiming: 'pre' as ReviewTiming,
+  contentClassification: 'non_unpacked_general' as ContentClassification,
+  reviewResult: null as ReviewResult | null,
+  isReviewing: false,
   categoryId: null,
   productId: null,
   productName: null,
@@ -384,6 +408,13 @@ export const useGenerationStore = create<GenerationState>()(
       setStep: (step) => set({ step }),
 
       setPlatform: (platform) => set({ platform }),
+
+  // Review Workflow Actions (Brief Task 1)
+  setReviewMode: (reviewMode) => set({ reviewMode }),
+  setReviewTiming: (reviewTiming) => set({ reviewTiming }),
+  setContentClassification: (contentClassification) => set({ contentClassification }),
+  setReviewResult: (reviewResult) => set({ reviewResult }),
+  setIsReviewing: (isReviewing) => set({ isReviewing }),
 
   setCategory: (categoryId) => set({ categoryId, productId: null, productName: null }),
 
