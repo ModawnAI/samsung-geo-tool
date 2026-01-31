@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { evaluateOutput, calculateAggregateScore } from '@/lib/prompt-studio/evaluation-service'
 import type { PromptStage, StageTestInputData, StageOutput, EvaluateResponse } from '@/types/prompt-studio'
+// Type assertion pattern used for Supabase type compatibility
 
 interface EvaluateRequestBody {
   executionId?: string
@@ -57,9 +58,9 @@ export async function POST(request: NextRequest) {
     let execId = executionId
 
     if (!execId) {
-      // Create a new execution record
-      const { data: execution, error: execError } = await supabase
-        .from('prompt_studio_executions')
+      // Create a new execution record (using type assertion for Supabase compatibility)
+      const { data: execution, error: execError } = await (supabase
+        .from('prompt_studio_executions' as any)
         .insert({
           stage,
           input,
@@ -67,16 +68,16 @@ export async function POST(request: NextRequest) {
           status: 'completed',
           created_by: user.id,
           completed_at: new Date().toISOString(),
-        })
+        } as any)
         .select('id')
-        .single()
+        .single() as any) as { data: { id: string } | null; error: Error | null }
 
       if (execError) {
         console.error('Error creating execution:', execError)
         // Continue without execution record - we can still store feedback
         execId = undefined
       } else {
-        execId = execution.id
+        execId = execution?.id
       }
     }
 
@@ -88,8 +89,8 @@ export async function POST(request: NextRequest) {
     let feedbackId: string | undefined
 
     if (execId) {
-      const { data: feedback, error: feedbackError } = await supabase
-        .from('prompt_studio_feedback')
+      const { data: feedback, error: feedbackError } = await (supabase
+        .from('prompt_studio_feedback' as any)
         .insert({
           execution_id: execId,
           stage,
@@ -109,21 +110,22 @@ export async function POST(request: NextRequest) {
             rawResponse: evaluation.rawResponse,
           },
           created_by: user.id,
-        })
+        } as any)
         .select('id')
-        .single()
+        .single() as any) as { data: { id: string } | null; error: Error | null }
 
       if (feedbackError) {
         console.error('Error storing feedback:', feedbackError)
       } else {
-        feedbackId = feedback.id
+        feedbackId = feedback?.id
       }
     }
 
     // Update test run with evaluation data if provided
     if (testRunId) {
-      await supabase
-        .from('prompt_test_runs')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const testRunsTable = supabase.from('prompt_test_runs' as any) as any
+      await testRunsTable
         .update({
           quality_score: Math.round(aggregateScore * 20), // Convert 1-5 to 0-100
           score_breakdown: {
@@ -173,11 +175,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'executionId is required' }, { status: 400 })
     }
 
-    const { data: feedback, error } = await supabase
-      .from('prompt_studio_feedback')
+    const { data: feedback, error } = await (supabase
+      .from('prompt_studio_feedback' as any)
       .select('*')
       .eq('execution_id', executionId)
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: false }) as any)
 
     if (error) {
       console.error('Error fetching feedback:', error)
