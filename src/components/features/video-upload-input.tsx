@@ -246,7 +246,7 @@ export function VideoUploadInput() {
         
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Lightning className="h-4 w-4 text-violet-500" />
-          <span>Gemini 2.0 Flash가 영상에서 제품 정보, 기능, 스펙을 자동 추출합니다</span>
+          <span>Gemini 3 Flash가 영상에서 제품 정보, 기능, 스펙을 자동 추출합니다</span>
         </div>
       </div>
     )

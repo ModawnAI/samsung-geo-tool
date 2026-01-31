@@ -267,7 +267,7 @@ export function SrtInput() {
             <div>
               <p className="font-medium">AI 비디오 분석</p>
               <p className="text-muted-foreground text-xs">
-                Gemini 2.0 Flash가 동영상에서 제품 정보, 기능, 스펙, USP를 자동 추출합니다.
+                Gemini 3 Flash가 동영상에서 제품 정보, 기능, 스펙, USP를 자동 추출합니다.
               </p>
             </div>
           </div>
