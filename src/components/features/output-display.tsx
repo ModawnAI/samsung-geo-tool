@@ -19,6 +19,7 @@ import {
 import { GenerationBreakdown, type ActionPayload } from './generation-breakdown'
 import { ABCompare } from './ab-compare'
 import { ImageAltDisplay } from './geo-v2/image-alt-display'
+import { QuickCopyPanel } from './quick-copy-panel'
 import {
   Copy,
   Check,
@@ -693,6 +694,21 @@ export function OutputDisplay() {
             </Badge>
           )}
         </div>
+      </motion.div>
+
+      {/* Quick Copy Panel - Iteration 3 */}
+      <motion.div variants={MOTION_VARIANTS.staggerItem}>
+        <QuickCopyPanel
+          platform={platform}
+          description={description}
+          title={title?.primary}
+          timestamps={timestamps}
+          hashtags={hashtags}
+          faq={faq}
+          youtubeReadyContent={youtubeReadyContent}
+          instagramDescription={instagramDescription?.primary}
+          instagramAltText={instagramAltText?.textKo}
+        />
       </motion.div>
 
       {/* YouTube Ready Preview (P0-2) */}
