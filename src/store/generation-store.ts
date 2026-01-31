@@ -11,9 +11,70 @@ import type {
   MetaTagsResult,
   InstagramDescriptionResult,
   EnhancedHashtagResult,
+  EngagementCommentResult,
+  TikTokCoverTextResult,
+  // Review workflow types (Brief Task 1)
+  ReviewMode,
+  ReviewTiming,
+  ContentClassification,
+  ReviewResult,
 } from '@/types/geo-v2'
+import type { InstagramAltTextResult } from '@/lib/geo-v2/instagram-alt-text-generator'
+import type { ThumbnailTextResult } from '@/lib/geo-v2/thumbnail-text-generator'
+import type { VideoAnalysis } from '@/types/video-analysis'
 
 export type GenerationStep = 'platform' | 'product' | 'content' | 'keywords' | 'output'
+
+// Video analysis result for persistence
+export interface VideoAnalysisResult {
+  id: string
+  status: string
+  seo_title?: string
+  meta_description?: string
+  primary_keywords?: string[]
+  secondary_keywords?: string[]
+  long_tail_keywords?: string[]
+  scene_breakdown?: Array<{
+    timestamp: string
+    visual_description: string
+    text_narration: string
+    product_focus?: string
+    emotion_mood?: string
+  }>
+  key_claims?: string[]
+  full_analysis?: string
+  full_transcript?: string
+  on_screen_text?: Array<{ timestamp: string; text: string; type: string }>
+  product_info?: {
+    name?: string
+    model?: string
+    category?: string
+    tagline?: string
+    pricing?: { price?: string; currency?: string; promotion?: string }
+  }
+  features_and_specs?: Array<{
+    feature: string
+    description: string
+    benefit?: string
+    timestamp?: string
+  }>
+  usps?: string[]
+  technical_specs?: Array<{ component: string; specification: string; context?: string }>
+  call_to_actions?: Array<{ cta: string; timestamp: string; type?: string }>
+  hashtags_suggested?: string[]
+  timestamps_chapters?: Array<{ timestamp: string; title: string; description?: string }>
+  target_audience?: { primary?: string; secondary?: string; use_cases?: string[] }
+  tone_sentiment?: string
+  brand_voice?: string
+  color_palette?: string[]
+  visual_style?: string
+  production_quality?: string
+  statistics_mentioned?: string[]
+  competitor_mentions?: Array<{ competitor: string; context: string; comparison?: string }>
+  named_entities?: Array<{ type: string; name: string; context?: string; sentiment?: string }>
+  topic_hierarchy?: { core_theme: string; subtopics: Array<{ name: string; description: string; importance?: string }> }
+  thumbnail_recommendations?: Array<{ timestamp: string; description: string; recommendation: string; text_overlay_suggestion?: string }>
+}
 
 export interface GroundingSource {
   uri: string
@@ -125,6 +186,11 @@ export interface GenerationSessionResult {
   metaTags?: MetaTagsResult               // YouTube only
   instagramDescription?: InstagramDescriptionResult  // Instagram only
   enhancedHashtags?: EnhancedHashtagResult
+  // NEW: Brief Implementation outputs (Slide 3-5)
+  engagementComments?: EngagementCommentResult  // IG/LI/X (Brief Slide 4)
+  instagramAltText?: InstagramAltTextResult     // Instagram 150자 Alt (Brief Slide 4)
+  thumbnailText?: ThumbnailTextResult           // YouTube/TikTok (Brief Slide 3/5)
+  tiktokCoverText?: TikTokCoverTextResult       // TikTok cover (Brief Slide 5)
 }
 
 export interface GenerationSession {
@@ -157,6 +223,13 @@ interface GenerationState {
   // Step 0: Platform selection (NEW - GEO Strategy p.95-104)
   platform: Platform
 
+  // Review Workflow (Brief Task 1 - Slide 2)
+  reviewMode: ReviewMode                    // 'generate' | 'review'
+  reviewTiming: ReviewTiming               // 'pre' | 'post'
+  contentClassification: ContentClassification  // 'unpacked_event' | 'non_unpacked_general'
+  reviewResult: ReviewResult | null        // Review checklist results
+  isReviewing: boolean                     // Whether review is in progress
+
   // Step 1: Product selection
   categoryId: string | null
   productId: string | null
@@ -175,6 +248,8 @@ interface GenerationState {
   // Step 2: Content input
   videoUrl: string
   srtContent: string
+  videoAnalysisResult: VideoAnalysisResult | null
+  videoAnalysisFileName: string | null
 
   // Step 3: Keywords
   selectedBriefId: string | null // Selected brief for generation
@@ -199,6 +274,11 @@ interface GenerationState {
   metaTags: MetaTagsResult | null               // YouTube only
   instagramDescription: InstagramDescriptionResult | null  // Instagram only
   enhancedHashtags: EnhancedHashtagResult | null
+  // NEW: Brief Implementation outputs (Slide 3-5)
+  engagementComments: EngagementCommentResult | null  // IG/LI/X (Brief Slide 4)
+  instagramAltText: InstagramAltTextResult | null     // Instagram 150자 Alt (Brief Slide 4)
+  thumbnailText: ThumbnailTextResult | null           // YouTube/TikTok (Brief Slide 3/5)
+  tiktokCoverText: TikTokCoverTextResult | null       // TikTok cover (Brief Slide 5)
 
   // Saved generation tracking
   generationId: string | null
@@ -216,6 +296,12 @@ interface GenerationState {
   // Actions
   setStep: (step: GenerationStep) => void
   setPlatform: (platform: Platform) => void  // NEW - Platform selection
+  // Review Workflow Actions (Brief Task 1)
+  setReviewMode: (mode: ReviewMode) => void
+  setReviewTiming: (timing: ReviewTiming) => void
+  setContentClassification: (classification: ContentClassification) => void
+  setReviewResult: (result: ReviewResult | null) => void
+  setIsReviewing: (isReviewing: boolean) => void
   setCategory: (categoryId: string) => void
   setProduct: (productId: string, productName: string) => void
   setCampaignTag: (tag: string) => void
@@ -229,6 +315,8 @@ interface GenerationState {
   setVanityLinkCode: (code: string) => void
   setVideoUrl: (url: string) => void
   setSrtContent: (content: string) => void
+  setVideoAnalysisResult: (result: VideoAnalysisResult | null, fileName?: string | null) => void
+  clearVideoAnalysis: () => void
   setSelectedBriefId: (briefId: string | null) => void
   setBriefUsps: (usps: string[]) => void
   setGroundingKeywords: (keywords: GroundingKeyword[]) => void
@@ -243,6 +331,16 @@ interface GenerationState {
     breakdown?: GenerationBreakdown
     tuningMetadata?: TuningMetadata
     imageAltResult?: ImageAltResult
+    // Platform-specific outputs
+    title?: YouTubeTitleResult
+    metaTags?: MetaTagsResult
+    instagramDescription?: InstagramDescriptionResult
+    enhancedHashtags?: EnhancedHashtagResult
+    // NEW: Brief Implementation outputs
+    engagementComments?: EngagementCommentResult
+    instagramAltText?: InstagramAltTextResult
+    thumbnailText?: ThumbnailTextResult
+    tiktokCoverText?: TikTokCoverTextResult
   }) => void
   setIsGenerating: (generating: boolean) => void
   setGenerationStage: (stage: string | null) => void
@@ -299,6 +397,12 @@ interface GenerationState {
 const initialState = {
   step: 'platform' as GenerationStep,  // Start with platform selection
   platform: 'youtube' as Platform,     // Default to YouTube
+  // Review Workflow (Brief Task 1)
+  reviewMode: 'generate' as ReviewMode,
+  reviewTiming: 'pre' as ReviewTiming,
+  contentClassification: 'non_unpacked_general' as ContentClassification,
+  reviewResult: null as ReviewResult | null,
+  isReviewing: false,
   categoryId: null,
   productId: null,
   productName: null,
@@ -313,6 +417,8 @@ const initialState = {
   vanityLinkCode: '',
   videoUrl: '',
   srtContent: '',
+  videoAnalysisResult: null as VideoAnalysisResult | null,
+  videoAnalysisFileName: null as string | null,
   selectedBriefId: null,
   briefUsps: [],
   groundingKeywords: [],
@@ -332,6 +438,11 @@ const initialState = {
   metaTags: null as MetaTagsResult | null,
   instagramDescription: null as InstagramDescriptionResult | null,
   enhancedHashtags: null as EnhancedHashtagResult | null,
+  // NEW: Brief Implementation outputs
+  engagementComments: null as EngagementCommentResult | null,
+  instagramAltText: null as InstagramAltTextResult | null,
+  thumbnailText: null as ThumbnailTextResult | null,
+  tiktokCoverText: null as TikTokCoverTextResult | null,
   generationId: null,
   generationStatus: 'unsaved' as const,
   isSaving: false,
@@ -353,6 +464,13 @@ export const useGenerationStore = create<GenerationState>()(
       setStep: (step) => set({ step }),
 
       setPlatform: (platform) => set({ platform }),
+
+  // Review Workflow Actions (Brief Task 1)
+  setReviewMode: (reviewMode) => set({ reviewMode }),
+  setReviewTiming: (reviewTiming) => set({ reviewTiming }),
+  setContentClassification: (contentClassification) => set({ contentClassification }),
+  setReviewResult: (reviewResult) => set({ reviewResult }),
+  setIsReviewing: (isReviewing) => set({ isReviewing }),
 
   setCategory: (categoryId) => set({ categoryId, productId: null, productName: null }),
 
@@ -378,6 +496,16 @@ export const useGenerationStore = create<GenerationState>()(
   setVideoUrl: (videoUrl) => set({ videoUrl }),
 
   setSrtContent: (srtContent) => set({ srtContent }),
+
+  setVideoAnalysisResult: (result, fileName = null) => set({
+    videoAnalysisResult: result,
+    videoAnalysisFileName: fileName ?? get().videoAnalysisFileName,
+  }),
+
+  clearVideoAnalysis: () => set({
+    videoAnalysisResult: null,
+    videoAnalysisFileName: null,
+  }),
 
   setSelectedBriefId: (selectedBriefId) => set({ selectedBriefId }),
 
@@ -406,6 +534,16 @@ export const useGenerationStore = create<GenerationState>()(
     breakdown: output.breakdown || null,
     tuningMetadata: output.tuningMetadata || null,
     imageAltResult: output.imageAltResult || null,
+    // Platform-specific outputs
+    title: output.title || null,
+    metaTags: output.metaTags || null,
+    instagramDescription: output.instagramDescription || null,
+    enhancedHashtags: output.enhancedHashtags || null,
+    // NEW: Brief Implementation outputs
+    engagementComments: output.engagementComments || null,
+    instagramAltText: output.instagramAltText || null,
+    thumbnailText: output.thumbnailText || null,
+    tiktokCoverText: output.tiktokCoverText || null,
   }),
 
   setIsGenerating: (isGenerating) => set({ isGenerating }),
@@ -693,6 +831,8 @@ export const useGenerationStore = create<GenerationState>()(
         vanityLinkCode: state.vanityLinkCode,
         videoUrl: state.videoUrl,
         srtContent: state.srtContent,
+        videoAnalysisResult: state.videoAnalysisResult,
+        videoAnalysisFileName: state.videoAnalysisFileName,
         selectedBriefId: state.selectedBriefId,
         briefUsps: state.briefUsps,
         selectedKeywords: state.selectedKeywords,

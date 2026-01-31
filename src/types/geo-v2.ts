@@ -109,7 +109,7 @@ export const PLATFORM_CONFIGS: Record<Platform, PlatformConfig> = {
       description: 2200,
     },
     outputs: ['description', 'coverText', 'hashtags'],
-    enabled: false, // TBD per Brief
+    enabled: true,
   },
 }
 
@@ -647,6 +647,43 @@ export interface GEOv2GenerateResponse {
   metaTags?: MetaTagsResult               // YouTube only (Brief Slide 3)
   instagramDescription?: InstagramDescriptionResult  // Instagram only (Brief Slide 4)
   enhancedHashtags?: EnhancedHashtagResult  // All platforms (GEO ordered)
+  // NEW: Additional outputs from Brief implementation
+  engagementComments?: EngagementCommentResult  // IG/LI/X (Brief Slide 4)
+  instagramAltText?: {                          // Instagram only (Brief Slide 4 - 150자)
+    text: string
+    textKo: string
+    charCount: number
+    charCountKo: number
+    keywords: string[]
+    visualElements: string[]
+    validation: {
+      hasProductName: boolean
+      hasSceneDescription: boolean
+      hasKeyword: boolean
+      withinLimit: boolean
+      accessibilityScore: number
+    }
+  }
+  thumbnailText?: {                             // YouTube/TikTok (Brief Slide 3/5)
+    primaryText: string
+    alternativeTexts: string[]
+    keywords: string[]
+    suggestedFileName: string
+    validation: {
+      isShort: boolean
+      hasKeyword: boolean
+      isClickworthy: boolean
+      fileNameOptimized: boolean
+    }
+    styleRecommendations: {
+      fontSize: string
+      fontWeight: string
+      color: string
+      placement: string
+      background: string
+    }
+  }
+  tiktokCoverText?: TikTokCoverTextResult       // TikTok only (Brief Slide 5)
 }
 
 export interface GEOv2Score {

@@ -29,6 +29,11 @@ import {
   generateMetaTags,
   generateInstagramDescription,
   generateEnhancedHashtags,
+  // NEW: Additional generators from Brief
+  generateEngagementComments,
+  generateInstagramAltText,
+  generateThumbnailText,
+  generateTikTokCoverText,
 } from '@/lib/geo-v2'
 import {
   loadTuningConfig,
@@ -63,7 +68,13 @@ import type {
   InstagramDescriptionResult,
   EnhancedHashtagResult,
   ContentType,
+  EngagementCommentResult,
+  TikTokCoverTextResult,
 } from '@/types/geo-v2'
+import type {
+  InstagramAltTextResult,
+  ThumbnailTextResult,
+} from '@/lib/geo-v2'
 import type {
   ProductCategory,
   PlaybookSection,
@@ -261,6 +272,22 @@ interface RegenerationConfig {
   fullRegeneration?: boolean
 }
 
+interface VideoAnalysisData {
+  productInfo?: {
+    name?: string
+    model?: string
+    category?: string
+    tagline?: string
+    pricing?: { price?: string; currency?: string; promotion?: string }
+  }
+  features?: Array<{ feature: string; description: string; benefit?: string }>
+  usps?: string[]
+  technicalSpecs?: Array<{ component: string; specification: string }>
+  keyClaims?: string[]
+  targetAudience?: { primary?: string; secondary?: string; use_cases?: string[] }
+  transcript?: string
+}
+
 interface GEOv2GenerateRequest {
   productName: string
   youtubeUrl: string
@@ -281,6 +308,8 @@ interface GEOv2GenerateRequest {
   fixedHashtags?: string[]
   useFixedHashtags?: boolean
   vanityLinkCode?: string
+  // Video Analysis Result (from Gemini 3 Flash)
+  videoAnalysis?: VideoAnalysisData
 }
 
 interface GroundingSignal {
@@ -436,11 +465,11 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json() as GEOv2GenerateRequest
     const {
-      productName,
+      productName: rawProductName,
       youtubeUrl,
-      srtContent,
+      srtContent: rawSrtContent,
       existingDescription,
-      keywords,
+      keywords: rawKeywords,
       productCategory,
       usePlaybook = true,
       launchDate,
@@ -455,7 +484,56 @@ export async function POST(request: NextRequest) {
       fixedHashtags = [],
       useFixedHashtags = false,
       vanityLinkCode = '',
+      // Video Analysis Result
+      videoAnalysis,
     } = body
+
+    // Use video analysis data to enhance inputs
+    // Video analysis product name takes precedence if available
+    const productName = videoAnalysis?.productInfo?.name || rawProductName
+    
+    // Enhance SRT content with video analysis data
+    let srtContent = rawSrtContent
+    if (videoAnalysis) {
+      const videoContext: string[] = []
+      
+      // Add transcript if not already in SRT
+      if (videoAnalysis.transcript && !rawSrtContent.includes(videoAnalysis.transcript.substring(0, 50))) {
+        videoContext.push(`[Video Transcript]\n${videoAnalysis.transcript}`)
+      }
+      
+      // Add features/specs from video
+      if (videoAnalysis.features?.length) {
+        videoContext.push(`[Product Features]\n${videoAnalysis.features.map(f => `- ${f.feature}: ${f.description}`).join('\n')}`)
+      }
+      
+      // Add USPs from video
+      if (videoAnalysis.usps?.length) {
+        videoContext.push(`[Key USPs]\n${videoAnalysis.usps.map(u => `- ${u}`).join('\n')}`)
+      }
+      
+      // Add technical specs
+      if (videoAnalysis.technicalSpecs?.length) {
+        videoContext.push(`[Technical Specs]\n${videoAnalysis.technicalSpecs.map(s => `- ${s.component}: ${s.specification}`).join('\n')}`)
+      }
+      
+      // Add key claims
+      if (videoAnalysis.keyClaims?.length) {
+        videoContext.push(`[Key Claims]\n${videoAnalysis.keyClaims.map(c => `- ${c}`).join('\n')}`)
+      }
+      
+      if (videoContext.length > 0) {
+        srtContent = `${rawSrtContent}\n\n=== Video Analysis Context ===\n${videoContext.join('\n\n')}`
+      }
+    }
+    
+    // Enhance keywords with video analysis data
+    let keywords = [...rawKeywords]
+    if (videoAnalysis?.usps) {
+      // Add USPs as keywords (deduplicated)
+      const uspKeywords = videoAnalysis.usps.filter(u => !keywords.some(k => k.toLowerCase() === u.toLowerCase()))
+      keywords = [...keywords, ...uspKeywords.slice(0, 5)]
+    }
 
     // Validation
     if (!productName || !srtContent) {
@@ -474,6 +552,7 @@ export async function POST(request: NextRequest) {
     // ==========================================
     const cacheKey = createGenerationCacheKey({
       productName,
+      platform,
       srtContent,
       keywords,
       language,
@@ -798,11 +877,16 @@ export async function POST(request: NextRequest) {
     let metaTagsResult: MetaTagsResult | undefined
     let instagramDescriptionResult: InstagramDescriptionResult | undefined
     let enhancedHashtagsResult: EnhancedHashtagResult | undefined
+    // NEW: Additional outputs from Brief
+    let engagementCommentsResult: EngagementCommentResult | undefined
+    let instagramAltTextResult: InstagramAltTextResult | undefined
+    let thumbnailTextResult: ThumbnailTextResult | undefined
+    let tiktokCoverTextResult: TikTokCoverTextResult | undefined
 
     try {
       // Generate platform-specific content
       if (platform === 'youtube') {
-        // YouTube: Title + Meta Tags (Brief Slide 3)
+        // YouTube: Title + Meta Tags + Thumbnail Text (Brief Slide 3)
         console.log(`[GEO v2] YouTube 타이틀 생성 중...`)
         titleResult = await generateYouTubeTitle({
           productName,
@@ -822,8 +906,21 @@ export async function POST(request: NextRequest) {
           briefUsps: uspResult.usps.map(u => u.feature),
         })
         console.log(`[GEO v2] 메타태그 생성 완료: ${metaTagsResult.totalCount}개 태그`)
+
+        // NEW: Thumbnail Text (Brief Slide 3)
+        console.log(`[GEO v2] 썸네일 텍스트 생성 중...`)
+        thumbnailTextResult = await generateThumbnailText({
+          productName,
+          keywords,
+          contentType,
+          platform,
+          srtContent,
+          briefUsps: uspResult.usps.map(u => u.feature),
+        })
+        console.log(`[GEO v2] 썸네일 텍스트 생성 완료: "${thumbnailTextResult.primaryText}"`)
+
       } else if (platform === 'instagram') {
-        // Instagram: Description (125자) + Enhanced Hashtags (Brief Slide 4)
+        // Instagram: Description (125자) + Alt Text (150자) + Engagement Comments (Brief Slide 4)
         console.log(`[GEO v2] Instagram 설명 생성 중...`)
         instagramDescriptionResult = await generateInstagramDescription({
           productName,
@@ -833,6 +930,42 @@ export async function POST(request: NextRequest) {
           briefUsps: uspResult.usps.map(u => u.feature),
         })
         console.log(`[GEO v2] Instagram 설명 생성 완료: ${instagramDescriptionResult.charCount}자`)
+
+        // NEW: Instagram Alt Text (Brief Slide 4 - 150자 이내)
+        console.log(`[GEO v2] Instagram Alt 텍스트 생성 중...`)
+        instagramAltTextResult = await generateInstagramAltText({
+          productName,
+          keywords,
+          contentType,
+          srtContent,
+          briefUsps: uspResult.usps.map(u => u.feature),
+          mediaType: 'video',
+        })
+        console.log(`[GEO v2] Instagram Alt 텍스트 생성 완료: ${instagramAltTextResult.charCount}자`)
+
+        // NEW: Engagement Comments (Brief Slide 4 - IG/LI/X)
+        console.log(`[GEO v2] 인게이지먼트 댓글 생성 중...`)
+        engagementCommentsResult = await generateEngagementComments({
+          productName,
+          keywords,
+          contentType,
+          srtContent,
+          briefUsps: uspResult.usps.map(u => u.feature),
+          platforms: ['instagram', 'linkedin', 'x'],
+        })
+        console.log(`[GEO v2] 인게이지먼트 댓글 생성 완료: ${engagementCommentsResult.comments.length}개`)
+
+      } else if (platform === 'tiktok') {
+        // TikTok: Cover Text (Brief Slide 5)
+        console.log(`[GEO v2] TikTok 커버 텍스트 생성 중...`)
+        tiktokCoverTextResult = await generateTikTokCoverText({
+          productName,
+          keywords,
+          contentType,
+          srtContent,
+          briefUsps: uspResult.usps.map(u => u.feature),
+        })
+        console.log(`[GEO v2] TikTok 커버 텍스트 생성 완료: "${tiktokCoverTextResult.text}"`)
       }
 
       // Generate enhanced hashtags for all platforms (with GEO ordering)
@@ -900,6 +1033,11 @@ export async function POST(request: NextRequest) {
       metaTags: metaTagsResult,
       instagramDescription: instagramDescriptionResult,
       enhancedHashtags: enhancedHashtagsResult,
+      // NEW: Additional outputs from Brief implementation
+      engagementComments: engagementCommentsResult,
+      instagramAltText: instagramAltTextResult,
+      thumbnailText: thumbnailTextResult,
+      tiktokCoverText: tiktokCoverTextResult,
     }
 
     // Log successful generation

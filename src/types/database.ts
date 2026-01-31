@@ -1070,6 +1070,158 @@ export interface Database {
           updated_at?: string
         }
       }
+      video_analyses: {
+        Row: {
+          id: string
+          user_id: string
+          video_url: string
+          video_name: string
+          video_size: number | null
+          video_duration_seconds: number | null
+          mime_type: string | null
+          status: 'pending' | 'processing' | 'completed' | 'failed'
+          error_message: string | null
+          seo_title: string | null
+          meta_description: string | null
+          primary_keywords: string[] | null
+          secondary_keywords: string[] | null
+          long_tail_keywords: string[] | null
+          search_intent: string | null
+          full_transcript: string | null
+          on_screen_text: Json | null
+          product_info: Json | null
+          features_and_specs: Json | null
+          usps: string[] | null
+          scene_breakdown: Json | null
+          technical_specs: Json | null
+          call_to_actions: Json | null
+          timestamps_chapters: Json | null
+          topic_hierarchy: Json | null
+          named_entities: Json | null
+          key_claims: string[] | null
+          target_audience: string | null
+          tone_sentiment: string | null
+          brand_voice: string | null
+          statistics_mentioned: string[] | null
+          competitor_mentions: Json | null
+          color_palette: string[] | null
+          visual_style: string | null
+          production_quality: string | null
+          thumbnails: Json | null
+          selected_thumbnail_url: string | null
+          hashtags_suggested: string[] | null
+          schema_video_object: Json | null
+          schema_faq: Json | null
+          content_gaps: string[] | null
+          follow_up_suggestions: string[] | null
+          full_analysis: string | null
+          created_at: string
+          completed_at: string | null
+          prompt_tokens: number | null
+          completion_tokens: number | null
+          video_tokens: number | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          video_url: string
+          video_name: string
+          video_size?: number | null
+          video_duration_seconds?: number | null
+          mime_type?: string | null
+          status?: 'pending' | 'processing' | 'completed' | 'failed'
+          error_message?: string | null
+          seo_title?: string | null
+          meta_description?: string | null
+          primary_keywords?: string[] | null
+          secondary_keywords?: string[] | null
+          long_tail_keywords?: string[] | null
+          search_intent?: string | null
+          full_transcript?: string | null
+          on_screen_text?: Json | null
+          product_info?: Json | null
+          features_and_specs?: Json | null
+          usps?: string[] | null
+          scene_breakdown?: Json | null
+          technical_specs?: Json | null
+          call_to_actions?: Json | null
+          timestamps_chapters?: Json | null
+          topic_hierarchy?: Json | null
+          named_entities?: Json | null
+          key_claims?: string[] | null
+          target_audience?: string | null
+          tone_sentiment?: string | null
+          brand_voice?: string | null
+          statistics_mentioned?: string[] | null
+          competitor_mentions?: Json | null
+          color_palette?: string[] | null
+          visual_style?: string | null
+          production_quality?: string | null
+          thumbnails?: Json | null
+          selected_thumbnail_url?: string | null
+          hashtags_suggested?: string[] | null
+          schema_video_object?: Json | null
+          schema_faq?: Json | null
+          content_gaps?: string[] | null
+          follow_up_suggestions?: string[] | null
+          full_analysis?: string | null
+          created_at?: string
+          completed_at?: string | null
+          prompt_tokens?: number | null
+          completion_tokens?: number | null
+          video_tokens?: number | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          video_url?: string
+          video_name?: string
+          video_size?: number | null
+          video_duration_seconds?: number | null
+          mime_type?: string | null
+          status?: 'pending' | 'processing' | 'completed' | 'failed'
+          error_message?: string | null
+          seo_title?: string | null
+          meta_description?: string | null
+          primary_keywords?: string[] | null
+          secondary_keywords?: string[] | null
+          long_tail_keywords?: string[] | null
+          search_intent?: string | null
+          full_transcript?: string | null
+          on_screen_text?: Json | null
+          product_info?: Json | null
+          features_and_specs?: Json | null
+          usps?: string[] | null
+          scene_breakdown?: Json | null
+          technical_specs?: Json | null
+          call_to_actions?: Json | null
+          timestamps_chapters?: Json | null
+          topic_hierarchy?: Json | null
+          named_entities?: Json | null
+          key_claims?: string[] | null
+          target_audience?: string | null
+          tone_sentiment?: string | null
+          brand_voice?: string | null
+          statistics_mentioned?: string[] | null
+          competitor_mentions?: Json | null
+          color_palette?: string[] | null
+          visual_style?: string | null
+          production_quality?: string | null
+          thumbnails?: Json | null
+          selected_thumbnail_url?: string | null
+          hashtags_suggested?: string[] | null
+          schema_video_object?: Json | null
+          schema_faq?: Json | null
+          content_gaps?: string[] | null
+          follow_up_suggestions?: string[] | null
+          full_analysis?: string | null
+          created_at?: string
+          completed_at?: string | null
+          prompt_tokens?: number | null
+          completion_tokens?: number | null
+          video_tokens?: number | null
+        }
+      }
       prompt_studio_executions: {
         Row: {
           id: string

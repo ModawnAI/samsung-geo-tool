@@ -88,6 +88,61 @@ export {
   getPlatformHashtagGuide,
 } from './hashtag-generator'
 
+// Engagement Comment Generator (Brief Slide 4)
+export {
+  generateEngagementComments,
+  generateInfluencerCollabComments,
+  PLATFORM_GUIDELINES,
+  COMMENT_TYPE_TEMPLATES,
+} from './engagement-comment-generator'
+
+// Instagram Alt Text Generator (Brief Slide 4)
+export {
+  generateInstagramAltText,
+  generateAltTextVariations,
+  INSTAGRAM_ALT_CONSTRAINTS,
+  type InstagramAltTextResult,
+} from './instagram-alt-text-generator'
+
+// Thumbnail Text Generator (Brief Slide 3 & 5)
+export {
+  generateThumbnailText,
+  generateThumbnailVariations,
+  THUMBNAIL_GUIDELINES,
+  POWER_WORDS,
+  type ThumbnailTextResult,
+} from './thumbnail-text-generator'
+
+// TikTok Cover Text Generator (Brief Slide 5)
+export {
+  generateTikTokCoverText,
+  generateExtendedTikTokCover,
+  TIKTOK_COVER_GUIDELINES,
+  TIKTOK_TEXT_STYLES,
+  type ExtendedTikTokCoverResult,
+} from './tiktok-cover-generator'
+
+// Schema.org Generator (GEO Strategy - Structured Data)
+export {
+  generateSchemaOrg,
+  generateJsonLdScript,
+  validateSchema,
+  type TechArticleSchema,
+  type FAQPageSchema,
+  type VideoObjectSchema,
+  type ProductSchema,
+  type SchemaGeneratorResult,
+} from './schema-generator'
+
+// Tonality Checker (Brief Slide 2 - 토날리티 검수)
+export {
+  checkTonality,
+  quickTonalityCheck,
+  SAMSUNG_BRAND_VOICE,
+  type TonalityCheckResult,
+  type TonalityIssue,
+} from './tonality-checker'
+
 // Progress Tracking
 export {
   createInitialProgressState,
@@ -142,6 +197,9 @@ export type {
   ContentSubmissionForm,
   ReviewCheckItem,
   ReviewResult,
+  TikTokCoverTextResult,
+  EngagementPlatform,
+  CommentType,
 } from '@/types/geo-v2'
 
 export {

@@ -19,6 +19,7 @@ import {
 import { GenerationBreakdown, type ActionPayload } from './generation-breakdown'
 import { ABCompare } from './ab-compare'
 import { ImageAltDisplay } from './geo-v2/image-alt-display'
+import { QuickCopyPanel } from './quick-copy-panel'
 import {
   Copy,
   Check,
@@ -44,13 +45,20 @@ import {
   YoutubeLogo,
   Info,
   Image as ImageIcon,
+  Code,
+  Lightbulb,
 } from '@phosphor-icons/react'
 import {
   VIDEO_FORMAT_LABELS,
   CONTENT_TYPE_LABELS,
   PLATFORM_CONFIGS,
   type Platform,
+  type EngagementCommentResult,
+  type TikTokCoverTextResult,
 } from '@/types/geo-v2'
+import type { InstagramAltTextResult } from '@/lib/geo-v2/instagram-alt-text-generator'
+import type { ThumbnailTextResult } from '@/lib/geo-v2/thumbnail-text-generator'
+import { generateSchemaOrg, type SchemaGeneratorResult } from '@/lib/geo-v2/schema-generator'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 
@@ -147,6 +155,11 @@ export function OutputDisplay() {
   const metaTags = useGenerationStore((state) => state.metaTags)
   const instagramDescription = useGenerationStore((state) => state.instagramDescription)
   const enhancedHashtags = useGenerationStore((state) => state.enhancedHashtags)
+  // NEW: Brief Implementation outputs (Slide 3-5)
+  const engagementComments = useGenerationStore((state) => state.engagementComments)
+  const instagramAltText = useGenerationStore((state) => state.instagramAltText)
+  const thumbnailText = useGenerationStore((state) => state.thumbnailText)
+  const tiktokCoverText = useGenerationStore((state) => state.tiktokCoverText)
 
   // AbortController for cancelable requests
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -195,6 +208,39 @@ export function OutputDisplay() {
 
     return content
   }, [description, timestamps, faq, hashtags, vanityLinkCode, videoFormat])
+
+  // Generate Schema.org structured data (GEO Strategy)
+  const schemaData = useMemo<SchemaGeneratorResult | null>(() => {
+    if (!description || !productName) return null
+
+    // Parse FAQ from faq string if available
+    const parsedFaqs: { question: string; answer: string; linkedUSPs: string[]; confidence: 'high' | 'medium' | 'low' }[] = []
+    if (faq) {
+      const qaPairs = faq.split(/\n\n/).filter(Boolean)
+      for (const pair of qaPairs) {
+        const qMatch = pair.match(/Q:\s*(.+)/i)
+        const aMatch = pair.match(/A:\s*(.+)/i)
+        if (qMatch && aMatch) {
+          parsedFaqs.push({
+            question: qMatch[1].trim(),
+            answer: aMatch[1].trim(),
+            linkedUSPs: [],
+            confidence: 'high',
+          })
+        }
+      }
+    }
+
+    return generateSchemaOrg({
+      productName,
+      description,
+      platform,
+      contentType,
+      faqs: parsedFaqs,
+      keywords: selectedKeywords,
+      videoUrl: videoUrl || undefined,
+    })
+  }, [description, productName, platform, contentType, faq, selectedKeywords, videoUrl])
 
   const handleSave = useCallback(async (status: 'draft' | 'confirmed') => {
     if (!productId) {
@@ -650,6 +696,21 @@ export function OutputDisplay() {
         </div>
       </motion.div>
 
+      {/* Quick Copy Panel - Iteration 3 */}
+      <motion.div variants={MOTION_VARIANTS.staggerItem}>
+        <QuickCopyPanel
+          platform={platform}
+          description={description}
+          title={title?.primary}
+          timestamps={timestamps}
+          hashtags={hashtags}
+          faq={faq}
+          youtubeReadyContent={youtubeReadyContent}
+          instagramDescription={instagramDescription?.primary}
+          instagramAltText={instagramAltText?.textKo}
+        />
+      </motion.div>
+
       {/* YouTube Ready Preview (P0-2) */}
       <motion.div variants={MOTION_VARIANTS.staggerItem}>
         <Card className="border-[#040523]/10 dark:border-slate-700">
@@ -925,6 +986,356 @@ export function OutputDisplay() {
                   )}
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* ==========================================
+          NEW SECTIONS: Brief Implementation (Slide 3-5)
+          ========================================== */}
+
+      {/* 1. Engagement Comments Section (Brief Slide 4) - Instagram/LinkedIn/X */}
+      {platform === 'instagram' && engagementComments && engagementComments.comments.length > 0 && (
+        <motion.div variants={MOTION_VARIANTS.staggerItem}>
+          <Card className="border-purple-200 dark:border-purple-900/50">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <ChatCircleText className="h-4 w-4 text-purple-500" />
+                Engagement Comments
+                <Badge variant="outline" className="text-xs">
+                  {engagementComments.comments.length} comments
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Group by platform */}
+              {(['instagram', 'linkedin', 'x'] as const).map((plat) => {
+                const platComments = engagementComments.byPlatform[plat]
+                if (!platComments || platComments.length === 0) return null
+                
+                const platformLabels = {
+                  instagram: { icon: '📸', name: 'Instagram' },
+                  linkedin: { icon: '💼', name: 'LinkedIn' },
+                  x: { icon: '𝕏', name: 'X (Twitter)' },
+                }
+                
+                return (
+                  <div key={plat} className="space-y-2">
+                    <p className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+                      <span>{platformLabels[plat].icon}</span>
+                      {platformLabels[plat].name}
+                    </p>
+                    <div className="space-y-2">
+                      {platComments.map((comment, i) => (
+                        <div 
+                          key={i} 
+                          className="flex items-start justify-between p-3 rounded-lg bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-900/50"
+                        >
+                          <div className="flex-1 pr-2">
+                            <p className="text-sm">{comment.text}</p>
+                            <div className="flex gap-2 mt-2">
+                              <Badge variant="outline" className="text-xs">
+                                {comment.type}
+                              </Badge>
+                              {comment.isInfluencerCollab && (
+                                <Badge variant="secondary" className="text-xs">
+                                  Influencer Collab
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          <CopyButton text={comment.text} label={`${plat} comment`} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* 2. Instagram Alt Text Section (Brief Slide 4) - 150자 */}
+      {platform === 'instagram' && instagramAltText && (
+        <motion.div variants={MOTION_VARIANTS.staggerItem}>
+          <Card className="border-pink-200 dark:border-pink-900/50">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <ImageIcon className="h-4 w-4 text-pink-500" />
+                  Instagram Alt Text
+                  {instagramAltText.validation.accessibilityScore >= 80 && (
+                    <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                      접근성 점수: {instagramAltText.validation.accessibilityScore}/100
+                    </Badge>
+                  )}
+                </CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Korean Alt Text */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs font-medium text-muted-foreground">한국어 (150자 이내)</p>
+                  <CopyButton text={instagramAltText.textKo} label="Korean Alt Text" />
+                </div>
+                <div className="p-3 rounded-lg bg-pink-50/50 dark:bg-pink-950/20 border border-pink-200 dark:border-pink-900/50">
+                  <p className="text-sm">{instagramAltText.textKo}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {instagramAltText.charCountKo}/150자
+                  </p>
+                </div>
+              </div>
+              {/* English Alt Text */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs font-medium text-muted-foreground">English (150 chars)</p>
+                  <CopyButton text={instagramAltText.text} label="English Alt Text" />
+                </div>
+                <div className="p-3 rounded-lg bg-muted/50 border">
+                  <p className="text-sm">{instagramAltText.text}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {instagramAltText.charCount}/150 characters
+                  </p>
+                </div>
+              </div>
+              {/* Validation Badges */}
+              <div className="flex flex-wrap gap-2 text-xs">
+                <Badge variant={instagramAltText.validation.hasProductName ? "secondary" : "outline"}>
+                  {instagramAltText.validation.hasProductName ? '제품명 ✓' : '제품명 ✗'}
+                </Badge>
+                <Badge variant={instagramAltText.validation.hasSceneDescription ? "secondary" : "outline"}>
+                  {instagramAltText.validation.hasSceneDescription ? '장면설명 ✓' : '장면설명 ✗'}
+                </Badge>
+                <Badge variant={instagramAltText.validation.hasKeyword ? "secondary" : "outline"}>
+                  {instagramAltText.validation.hasKeyword ? '키워드 ✓' : '키워드 ✗'}
+                </Badge>
+                <Badge variant={instagramAltText.validation.withinLimit ? "secondary" : "destructive"}>
+                  {instagramAltText.validation.withinLimit ? '≤150자 ✓' : '>150자 ✗'}
+                </Badge>
+              </div>
+              {/* Keywords & Visual Elements */}
+              {instagramAltText.keywords.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">포함된 키워드</p>
+                  <div className="flex flex-wrap gap-1">
+                    {instagramAltText.keywords.map((kw, i) => (
+                      <Badge key={i} variant="secondary" className="text-xs">{kw}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* 3. Thumbnail Text Section (Brief Slide 3) - YouTube */}
+      {platform === 'youtube' && thumbnailText && (
+        <motion.div variants={MOTION_VARIANTS.staggerItem}>
+          <Card className="border-red-200 dark:border-red-900/50">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <ImageIcon className="h-4 w-4 text-red-500" />
+                  Thumbnail Text
+                  {thumbnailText.validation.isClickworthy && (
+                    <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                      Clickworthy ✓
+                    </Badge>
+                  )}
+                </CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Primary Thumbnail Text */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs font-medium text-muted-foreground">Primary Text</p>
+                  <CopyButton text={thumbnailText.primaryText} label="Thumbnail Text" />
+                </div>
+                <div className="p-4 rounded-lg bg-red-50/50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 text-center">
+                  <p className="font-bold text-xl">{thumbnailText.primaryText}</p>
+                </div>
+              </div>
+              {/* Alternatives */}
+              {thumbnailText.alternativeTexts.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">Alternatives</p>
+                  {thumbnailText.alternativeTexts.map((alt, i) => (
+                    <div key={i} className="flex items-center justify-between p-2 rounded bg-muted/50">
+                      <span className="text-sm font-medium">{alt}</span>
+                      <CopyButton text={alt} label={`Alternative ${i + 1}`} />
+                    </div>
+                  ))}
+                </div>
+              )}
+              {/* File Name Suggestion */}
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1">SEO-Optimized File Name</p>
+                <div className="flex items-center justify-between p-2 rounded bg-muted/50 font-mono text-xs">
+                  <span>{thumbnailText.suggestedFileName}</span>
+                  <CopyButton text={thumbnailText.suggestedFileName} label="File Name" />
+                </div>
+              </div>
+              {/* Validation Badges */}
+              <div className="flex flex-wrap gap-2 text-xs">
+                <Badge variant={thumbnailText.validation.isShort ? "secondary" : "outline"}>
+                  {thumbnailText.validation.isShort ? '≤5 words ✓' : '>5 words ✗'}
+                </Badge>
+                <Badge variant={thumbnailText.validation.hasKeyword ? "secondary" : "outline"}>
+                  {thumbnailText.validation.hasKeyword ? 'Keyword ✓' : 'Keyword ✗'}
+                </Badge>
+                <Badge variant={thumbnailText.validation.fileNameOptimized ? "secondary" : "outline"}>
+                  {thumbnailText.validation.fileNameOptimized ? 'File SEO ✓' : 'File SEO ✗'}
+                </Badge>
+              </div>
+              {/* Style Recommendations */}
+              <div className="p-3 rounded-lg bg-muted/30 border">
+                <p className="text-xs font-medium text-muted-foreground mb-2">Style Recommendations</p>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span className="text-muted-foreground">Font Size:</span> {thumbnailText.styleRecommendations.fontSize}
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Font Weight:</span> {thumbnailText.styleRecommendations.fontWeight}
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Color:</span> {thumbnailText.styleRecommendations.color}
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Placement:</span> {thumbnailText.styleRecommendations.placement}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* 4. TikTok Cover Text Section (Brief Slide 5) */}
+      {platform === 'tiktok' && tiktokCoverText && (
+        <motion.div variants={MOTION_VARIANTS.staggerItem}>
+          <Card className="border-cyan-200 dark:border-cyan-900/50">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  🎵 TikTok Cover Text
+                  {tiktokCoverText.charCount <= 30 && (
+                    <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                      ≤30자 ✓
+                    </Badge>
+                  )}
+                </CardTitle>
+                <CopyButton text={tiktokCoverText.text} label="TikTok Cover" />
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Cover Text Display */}
+              <div className="p-6 rounded-lg bg-gradient-to-br from-cyan-500/20 to-pink-500/20 dark:from-cyan-900/40 dark:to-pink-900/40 border border-cyan-200 dark:border-cyan-900/50 text-center">
+                <p className="font-bold text-2xl">{tiktokCoverText.text}</p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  {tiktokCoverText.charCount}/30자
+                </p>
+              </div>
+              {/* Keywords */}
+              {tiktokCoverText.keywords.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">키워드</p>
+                  <div className="flex flex-wrap gap-1">
+                    {tiktokCoverText.keywords.map((kw, i) => (
+                      <Badge key={i} variant="secondary" className="text-xs">{kw}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* TikTok Guidelines */}
+              <div className="p-2 rounded bg-cyan-50 dark:bg-cyan-950/20 border border-cyan-200 dark:border-cyan-900/50">
+                <p className="text-xs text-cyan-700 dark:text-cyan-300">
+                  💡 TikTok Tip: Use bold, trendy fonts. Center the text. Keep it Gen-Z friendly!
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Schema.org Structured Data Section (GEO Strategy) */}
+      {schemaData && (
+        <motion.div variants={MOTION_VARIANTS.staggerItem}>
+          <Card className="border-emerald-200 dark:border-emerald-900/50">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Code className="h-4 w-4 text-emerald-500" />
+                  Schema.org Structured Data
+                  <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
+                    JSON-LD
+                  </Badge>
+                </CardTitle>
+                <CopyButton text={schemaData.jsonLd} label="JSON-LD" />
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Recommendations */}
+              {schemaData.recommendations.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                    <Lightbulb className="h-3 w-3" />
+                    SEO Recommendations
+                  </p>
+                  <div className="space-y-1">
+                    {schemaData.recommendations.map((rec, i) => (
+                      <div key={i} className="flex items-start gap-2 text-xs">
+                        <CheckCircle className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0 mt-0.5" weight="fill" />
+                        <span>{rec}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* Schema Types Generated */}
+              <div className="flex flex-wrap gap-2">
+                {schemaData.techArticle && (
+                  <Badge variant="secondary" className="text-xs">TechArticle</Badge>
+                )}
+                {schemaData.faqPage && (
+                  <Badge variant="secondary" className="text-xs">FAQPage</Badge>
+                )}
+                {schemaData.videoObject && (
+                  <Badge variant="secondary" className="text-xs">VideoObject</Badge>
+                )}
+                {schemaData.product && (
+                  <Badge variant="secondary" className="text-xs">Product</Badge>
+                )}
+              </div>
+              {/* JSON-LD Code Preview */}
+              <div className="rounded-lg bg-slate-900 dark:bg-slate-950 p-4 overflow-x-auto">
+                <pre className="text-xs text-slate-100 font-mono whitespace-pre-wrap">
+                  <code>{schemaData.jsonLd}</code>
+                </pre>
+              </div>
+              {/* Copy Script Tag */}
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1">HTML Script Tag</p>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 rounded-lg bg-muted/50 border p-2 font-mono text-xs overflow-hidden text-ellipsis">
+                    {`<script type="application/ld+json">...</script>`}
+                  </div>
+                  <CopyButton 
+                    text={`<script type="application/ld+json">\n${schemaData.jsonLd}\n</script>`} 
+                    label="Script Tag" 
+                  />
+                </div>
+              </div>
+              {/* Info */}
+              <div className="p-2 rounded bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/50">
+                <p className="text-xs text-emerald-700 dark:text-emerald-300">
+                  💡 Add this JSON-LD script to your page's &lt;head&gt; section for enhanced search visibility and AI discoverability.
+                </p>
+              </div>
             </CardContent>
           </Card>
         </motion.div>

@@ -14,6 +14,7 @@ import {
   FolderOpen,
   Wrench,
   Gear,
+  MagnifyingGlass,
 } from '@phosphor-icons/react'
 import type { NavItem } from '@/types/navigation'
 
@@ -27,6 +28,11 @@ export const primaryNavItems: NavItem[] = [
     href: '/generate',
     label: 'Create',
     icon: Sparkle,
+  },
+  {
+    href: '/review',
+    label: 'Review',
+    icon: MagnifyingGlass,
   },
   {
     href: '/content',
@@ -133,15 +139,14 @@ export const mobileBottomNavItems: NavItem[] = [
     icon: Sparkle,
   },
   {
+    href: '/review',
+    label: 'Review',
+    icon: MagnifyingGlass,
+  },
+  {
     href: '/history',
     label: 'History',
     icon: ClockCounterClockwise,
-  },
-  {
-    href: '/tuning',
-    label: 'Tuning',
-    icon: Sliders,
-    phase: 1,
   },
 ]
 

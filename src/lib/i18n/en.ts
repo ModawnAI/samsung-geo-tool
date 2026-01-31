@@ -96,6 +96,8 @@ export const en: TranslationDictionary = {
   nav: {
     dashboard: 'Dashboard',
     generate: 'Generate',
+    videoAnalysis: 'Video Analysis',
+    review: 'Review',
     history: 'History',
     briefs: 'Briefs',
     analytics: 'Analytics',
@@ -311,7 +313,7 @@ export const en: TranslationDictionary = {
       contentInputs: 'Content Inputs',
       atLeastOneRequired: 'At least 1 required',
       oneInputProvided: '1 input provided',
-      multipleInputsProvided: ' inputs provided',
+      multipleInputsProvided: '{count} inputs provided',
       noInputYet: 'No input yet',
       howToUse: 'How to use',
       scenario1Title: 'Scenario 1: YouTube video only',
@@ -340,6 +342,8 @@ export const en: TranslationDictionary = {
       bestQualityHint: 'Best combination: Both video metadata and subtitles/text will be used.',
       urlOnlyHint: 'YouTube captions will be auto-extracted. Add SRT/text for more accurate results.',
       textOnlyHint: 'Will generate using provided text. Add YouTube URL to also use video metadata.',
+      videoUpload: 'AI Video Analysis',
+      videoUploadDesc: 'Auto-extract product info from video (manual input takes priority)',
     },
     // Keyword selector
     keywordSelector: {

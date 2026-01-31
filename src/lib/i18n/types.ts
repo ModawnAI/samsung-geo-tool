@@ -98,6 +98,8 @@ export interface TranslationDictionary {
   nav: {
     dashboard: string
     generate: string
+    videoAnalysis: string
+    review: string
     history: string
     briefs: string
     analytics: string
@@ -342,6 +344,8 @@ export interface TranslationDictionary {
       bestQualityHint: string
       urlOnlyHint: string
       textOnlyHint: string
+      videoUpload: string
+      videoUploadDesc: string
     }
     // Keyword selector
     keywordSelector: {
