@@ -312,7 +312,7 @@ export const ko: TranslationDictionary = {
       contentInputs: '콘텐츠 입력',
       atLeastOneRequired: '최소 1개 필수',
       oneInputProvided: '1개 입력됨',
-      multipleInputsProvided: '개 입력됨',
+      multipleInputsProvided: '{count}개 입력됨',
       noInputYet: '아직 입력 없음',
       howToUse: '입력 방법 안내',
       scenario1Title: '시나리오 1: YouTube 영상만 있는 경우',

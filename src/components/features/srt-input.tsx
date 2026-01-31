@@ -266,7 +266,7 @@ export function SrtInput() {
               <CheckCircle className="h-4 w-4" weight="fill" />
               {inputStatus.inputCount === 1
                 ? (t.generate.srtInput.oneInputProvided || '1개 입력됨')
-                : (t.generate.srtInput.multipleInputsProvided || `${inputStatus.inputCount}개 입력됨`)}
+                : ((t.generate.srtInput.multipleInputsProvided || '{count}개 입력됨').replace('{count}', String(inputStatus.inputCount)))}
             </span>
           ) : (
             <span className="flex items-center gap-1.5 text-sm text-amber-600 dark:text-amber-400">

@@ -312,7 +312,7 @@ export const en: TranslationDictionary = {
       contentInputs: 'Content Inputs',
       atLeastOneRequired: 'At least 1 required',
       oneInputProvided: '1 input provided',
-      multipleInputsProvided: ' inputs provided',
+      multipleInputsProvided: '{count} inputs provided',
       noInputYet: 'No input yet',
       howToUse: 'How to use',
       scenario1Title: 'Scenario 1: YouTube video only',
