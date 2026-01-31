@@ -1,0 +1,188 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import {
+  analyzeVideoWithGemini,
+  uploadVideoToGemini,
+  waitForFileProcessing,
+} from '@/lib/video-analysis/gemini-analyzer'
+import type { VideoAnalysis } from '@/types/video-analysis'
+
+export const maxDuration = 300 // 5 minutes for video analysis
+
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { analysis_id } = await request.json()
+
+    if (!analysis_id) {
+      return NextResponse.json({ error: 'analysis_id is required' }, { status: 400 })
+    }
+
+    // Get the analysis record (use type assertion for new table)
+    const { data: analysis, error: fetchError } = await (supabase as any)
+      .from('video_analyses')
+      .select('*')
+      .eq('id', analysis_id)
+      .eq('user_id', user.id)
+      .single() as { data: VideoAnalysis | null; error: any }
+
+    if (fetchError || !analysis) {
+      return NextResponse.json({ error: 'Analysis record not found' }, { status: 404 })
+    }
+
+    if (analysis.status === 'completed') {
+      return NextResponse.json({ error: 'Analysis already completed' }, { status: 400 })
+    }
+
+    // Update status to processing
+    await (supabase as any)
+      .from('video_analyses')
+      .update({ status: 'processing' })
+      .eq('id', analysis_id)
+
+    try {
+      // Download video from Supabase Storage
+      const videoUrl = analysis.video_url
+      const videoResponse = await fetch(videoUrl)
+      
+      if (!videoResponse.ok) {
+        throw new Error('Failed to fetch video from storage')
+      }
+
+      const videoBuffer = Buffer.from(await videoResponse.arrayBuffer())
+      const videoSizeMB = videoBuffer.length / (1024 * 1024)
+
+      let geminiResult
+
+      if (videoSizeMB > 20) {
+        // For large videos, upload to Gemini Files API first
+        console.log(`Uploading large video (${videoSizeMB.toFixed(2)}MB) to Gemini...`)
+        
+        const uploadResult = await uploadVideoToGemini(
+          videoBuffer,
+          analysis.video_name,
+          analysis.mime_type || 'video/mp4'
+        )
+
+        // Wait for processing
+        await waitForFileProcessing(uploadResult.uri)
+
+        // Analyze with file URI
+        geminiResult = await analyzeVideoWithGemini({
+          type: 'uri',
+          uri: uploadResult.uri,
+          mimeType: uploadResult.mimeType,
+        })
+      } else {
+        // For smaller videos, use inline base64
+        console.log(`Analyzing video inline (${videoSizeMB.toFixed(2)}MB)...`)
+        
+        geminiResult = await analyzeVideoWithGemini({
+          type: 'base64',
+          data: videoBuffer.toString('base64'),
+          mimeType: analysis.mime_type || 'video/mp4',
+        })
+      }
+
+      const { analysis: analysisData, usage, rawText } = geminiResult
+
+      // Find video tokens from usage
+      const videoTokens = usage.promptTokensDetails?.find(
+        (d) => d.modality === 'VIDEO'
+      )?.tokenCount || 0
+
+      // Update the analysis record with results
+      const { error: updateError } = await (supabase as any)
+        .from('video_analyses')
+        .update({
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+          
+          // SEO metadata
+          seo_title: analysisData.seo_title,
+          meta_description: analysisData.meta_description,
+          primary_keywords: analysisData.primary_keywords,
+          secondary_keywords: analysisData.secondary_keywords,
+          long_tail_keywords: analysisData.long_tail_keywords,
+          search_intent: analysisData.search_intent,
+          
+          // Content breakdown
+          scene_breakdown: analysisData.scene_breakdown,
+          technical_specs: analysisData.technical_specs,
+          
+          // Semantic analysis
+          topic_hierarchy: analysisData.topic_hierarchy,
+          named_entities: analysisData.named_entities,
+          key_claims: analysisData.key_claims,
+          target_audience: analysisData.target_audience,
+          tone_sentiment: analysisData.tone_sentiment,
+          
+          // Visual analysis
+          color_palette: analysisData.color_palette,
+          visual_style: analysisData.visual_style,
+          production_quality: analysisData.production_quality,
+          
+          // Thumbnails (recommendations, not extracted yet)
+          thumbnails: analysisData.thumbnail_recommendations?.map((t) => ({
+            timestamp: t.timestamp,
+            description: t.description,
+            recommendation: t.recommendation,
+            url: null, // Will be populated when thumbnails are extracted
+          })),
+          
+          // Structured data
+          schema_video_object: analysisData.schema_video_object,
+          schema_faq: analysisData.schema_faq,
+          
+          // Content gaps
+          content_gaps: analysisData.content_gaps,
+          follow_up_suggestions: analysisData.follow_up_suggestions,
+          
+          // Full analysis text
+          full_analysis: rawText,
+          
+          // Token usage
+          prompt_tokens: usage.promptTokenCount,
+          completion_tokens: usage.candidatesTokenCount,
+          video_tokens: videoTokens,
+        })
+        .eq('id', analysis_id)
+
+      if (updateError) {
+        throw new Error(`Failed to save analysis: ${updateError.message}`)
+      }
+
+      // Fetch updated record
+      const { data: updatedAnalysis } = await (supabase as any)
+        .from('video_analyses')
+        .select('*')
+        .eq('id', analysis_id)
+        .single()
+
+      return NextResponse.json(updatedAnalysis)
+    } catch (analysisError) {
+      // Update status to failed
+      await (supabase as any)
+        .from('video_analyses')
+        .update({
+          status: 'failed',
+          error_message: analysisError instanceof Error ? analysisError.message : 'Unknown error',
+        })
+        .eq('id', analysis_id)
+
+      throw analysisError
+    }
+  } catch (error) {
+    console.error('Video analysis error:', error)
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Failed to analyze video' },
+      { status: 500 }
+    )
+  }
+}

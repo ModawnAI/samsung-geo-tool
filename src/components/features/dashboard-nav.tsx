@@ -25,6 +25,7 @@ import {
   ListBullets,
   ChartLineUp,
   MagnifyingGlass,
+  VideoCamera,
 } from '@phosphor-icons/react'
 import type { User } from '@supabase/supabase-js'
 import { cn } from '@/lib/utils'
@@ -36,6 +37,7 @@ interface DashboardNavProps {
 const navItemsConfig = [
   { href: '/dashboard', labelKey: 'dashboard' as const, icon: ChartBar },
   { href: '/generate', labelKey: 'generate' as const, icon: Sparkle },
+  { href: '/video-analysis', labelKey: 'videoAnalysis' as const, icon: VideoCamera },
   { href: '/review', labelKey: 'review' as const, icon: MagnifyingGlass },
   { href: '/history', labelKey: 'history' as const, icon: ClockCounterClockwise },
   { href: '/briefs', labelKey: 'briefs' as const, icon: FileText },

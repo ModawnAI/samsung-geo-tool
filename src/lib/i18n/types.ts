@@ -98,6 +98,7 @@ export interface TranslationDictionary {
   nav: {
     dashboard: string
     generate: string
+    videoAnalysis: string
     review: string
     history: string
     briefs: string
