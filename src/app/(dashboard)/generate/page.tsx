@@ -10,6 +10,7 @@ import { SrtInput } from '@/components/features/srt-input'
 import { GenerationProgress } from '@/components/features/generation-progress'
 import { GenerationQueuePanel } from '@/components/features/generation-queue-panel'
 import { StepProgressIndicator } from '@/components/features/step-progress-indicator'
+import { QuickStartButton } from '@/components/features/quick-start-button'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -355,6 +356,9 @@ export default function GeneratePage() {
           {t.generate.subtitle}
         </p>
       </div>
+
+      {/* Quick Start - for experienced users (Iteration 4) */}
+      {step === 'platform' && <QuickStartButton />}
 
       {/* Enhanced Step Progress Indicator */}
       <StepProgressIndicator
