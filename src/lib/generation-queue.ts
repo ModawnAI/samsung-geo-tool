@@ -369,10 +369,17 @@ class GenerationQueueManager {
 
   /**
    * Format FAQ items to string
+   * Strips any leading "Q:" or "A:" prefixes from LLM output to avoid duplication
    */
   private formatFAQ(faqs: Array<{ question: string; answer: string }>): string {
     return faqs
-      .map((faq, i) => `Q${i + 1}: ${faq.question}\nA${i + 1}: ${faq.answer}`)
+      .map((faq, i) => {
+        // Strip leading "Q:" or "Q: " from question (case insensitive)
+        const cleanQuestion = faq.question.replace(/^Q:\s*/i, '').trim()
+        // Strip leading "A:" or "A: " from answer (case insensitive)
+        const cleanAnswer = faq.answer.replace(/^A:\s*/i, '').trim()
+        return `Q: ${cleanQuestion}\nA: ${cleanAnswer}`
+      })
       .join('\n\n')
   }
 

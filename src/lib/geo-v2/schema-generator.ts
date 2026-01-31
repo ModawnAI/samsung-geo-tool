@@ -274,10 +274,12 @@ function generateFAQPage(faqs: FAQItem[]): FAQPageSchema {
     '@type': 'FAQPage',
     mainEntity: faqs.slice(0, 10).map((faq) => ({
       '@type': 'Question',
-      name: faq.question,
+      // Strip any leading "Q:" prefix from question
+      name: faq.question.replace(/^Q:\s*/i, '').trim(),
       acceptedAnswer: {
         '@type': 'Answer',
-        text: faq.answer,
+        // Strip any leading "A:" prefix from answer
+        text: faq.answer.replace(/^A:\s*/i, '').trim(),
       },
     })),
   }
