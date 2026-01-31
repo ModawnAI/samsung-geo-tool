@@ -58,15 +58,28 @@ export async function POST(request: NextRequest) {
       .eq('id', analysis_id)
 
     try {
-      // Download video from Supabase Storage
-      const videoUrl = analysis.video_url
-      const videoResponse = await fetch(videoUrl)
-      
-      if (!videoResponse.ok) {
-        throw new Error('Failed to fetch video from storage')
+      // Download video from Supabase Storage using admin client
+      // Extract file path from the public URL
+      const videoUrl = analysis.video_url as string
+      const urlParts = videoUrl.split('/storage/v1/object/public/videos/')
+      const filePath = urlParts[1] || ''
+
+      if (!filePath) {
+        throw new Error('Could not extract file path from video URL')
       }
 
-      const videoBuffer = Buffer.from(await videoResponse.arrayBuffer())
+      console.log('[VideoAnalysis] Downloading video from path:', filePath)
+
+      const { data: videoBlob, error: downloadError } = await adminClient.storage
+        .from('videos')
+        .download(filePath)
+
+      if (downloadError || !videoBlob) {
+        console.error('[VideoAnalysis] Download error:', downloadError)
+        throw new Error(`Failed to download video: ${downloadError?.message || 'Unknown error'}`)
+      }
+
+      const videoBuffer = Buffer.from(await videoBlob.arrayBuffer())
       const videoSizeMB = videoBuffer.length / (1024 * 1024)
 
       let geminiResult
@@ -114,7 +127,7 @@ export async function POST(request: NextRequest) {
         .update({
           status: 'completed',
           completed_at: new Date().toISOString(),
-          
+
           // SEO metadata
           seo_title: analysisData.seo_title,
           meta_description: analysisData.meta_description,
@@ -122,42 +135,68 @@ export async function POST(request: NextRequest) {
           secondary_keywords: analysisData.secondary_keywords,
           long_tail_keywords: analysisData.long_tail_keywords,
           search_intent: analysisData.search_intent,
-          
+
+          // NEW: Full transcript and on-screen text
+          full_transcript: analysisData.full_transcript,
+          on_screen_text: analysisData.on_screen_text,
+
+          // NEW: Product info
+          product_info: analysisData.product_info,
+
+          // NEW: Features, specs, USPs
+          features_and_specs: analysisData.features_and_specs,
+          usps: analysisData.usps,
+
           // Content breakdown
           scene_breakdown: analysisData.scene_breakdown,
           technical_specs: analysisData.technical_specs,
-          
+
+          // NEW: CTAs and chapters
+          call_to_actions: analysisData.call_to_actions,
+          timestamps_chapters: analysisData.timestamps_chapters,
+
           // Semantic analysis
           topic_hierarchy: analysisData.topic_hierarchy,
           named_entities: analysisData.named_entities,
           key_claims: analysisData.key_claims,
-          target_audience: analysisData.target_audience,
+          target_audience: typeof analysisData.target_audience === 'object'
+            ? analysisData.target_audience.primary
+            : analysisData.target_audience,
           tone_sentiment: analysisData.tone_sentiment,
-          
+
+          // NEW: Brand voice, stats, competitors
+          brand_voice: analysisData.brand_voice,
+          statistics_mentioned: analysisData.statistics_mentioned,
+          competitor_mentions: analysisData.competitor_mentions,
+
           // Visual analysis
           color_palette: analysisData.color_palette,
           visual_style: analysisData.visual_style,
           production_quality: analysisData.production_quality,
-          
+
           // Thumbnails (recommendations, not extracted yet)
-          thumbnails: analysisData.thumbnail_recommendations?.map((t) => ({
+          thumbnails: analysisData.thumbnail_recommendations?.map((t: any) => ({
             timestamp: t.timestamp,
             description: t.description,
             recommendation: t.recommendation,
-            url: null, // Will be populated when thumbnails are extracted
+            text_overlay_suggestion: t.text_overlay_suggestion,
+            url: null,
           })),
-          
+
+          // NEW: Suggested hashtags
+          hashtags_suggested: analysisData.hashtags_suggested,
+
           // Structured data
           schema_video_object: analysisData.schema_video_object,
           schema_faq: analysisData.schema_faq,
-          
+
           // Content gaps
           content_gaps: analysisData.content_gaps,
           follow_up_suggestions: analysisData.follow_up_suggestions,
-          
+
           // Full analysis text
           full_analysis: rawText,
-          
+
           // Token usage
           prompt_tokens: usage.promptTokenCount,
           completion_tokens: usage.candidatesTokenCount,

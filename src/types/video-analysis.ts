@@ -33,21 +33,65 @@ export interface ThumbnailOption {
   file_path?: string
 }
 
+export interface OnScreenText {
+  timestamp: string
+  text: string
+  type: string
+}
+
+export interface ProductInfo {
+  name?: string
+  model?: string
+  category?: string
+  tagline?: string
+  launch_date?: string
+  pricing?: {
+    price?: string
+    currency?: string
+    promotion?: string
+  }
+}
+
+export interface FeatureSpec {
+  feature: string
+  description: string
+  benefit?: string
+  timestamp?: string
+}
+
+export interface CallToAction {
+  cta: string
+  timestamp: string
+  type?: string
+}
+
+export interface TimestampChapter {
+  timestamp: string
+  title: string
+  description?: string
+}
+
+export interface CompetitorMention {
+  competitor: string
+  context: string
+  comparison?: string
+}
+
 export interface VideoAnalysis {
   id: string
   user_id: string
-  
+
   // Video info
   video_url: string
   video_name: string
   video_size?: number
   video_duration_seconds?: number
   mime_type?: string
-  
+
   // Analysis status
   status: 'pending' | 'processing' | 'completed' | 'failed'
   error_message?: string
-  
+
   // SEO Metadata
   seo_title?: string
   meta_description?: string
@@ -55,42 +99,65 @@ export interface VideoAnalysis {
   secondary_keywords?: string[]
   long_tail_keywords?: string[]
   search_intent?: string
-  
+
+  // Full transcript and on-screen text
+  full_transcript?: string
+  on_screen_text?: OnScreenText[]
+
+  // Product info
+  product_info?: ProductInfo
+
+  // Features and USPs
+  features_and_specs?: FeatureSpec[]
+  usps?: string[]
+
   // Content breakdown
   scene_breakdown?: SceneBreakdown[]
   technical_specs?: TechnicalSpec[]
-  
+
+  // CTAs and chapters
+  call_to_actions?: CallToAction[]
+  timestamps_chapters?: TimestampChapter[]
+
   // Semantic analysis
   topic_hierarchy?: TopicHierarchy
   named_entities?: NamedEntity[]
   key_claims?: string[]
   target_audience?: string
   tone_sentiment?: string
-  
+
+  // Brand and stats
+  brand_voice?: string
+  statistics_mentioned?: string[]
+  competitor_mentions?: CompetitorMention[]
+
   // Visual analysis
   color_palette?: string[]
   visual_style?: string
   production_quality?: string
-  
+
   // Thumbnails
   thumbnails?: ThumbnailOption[]
   selected_thumbnail_url?: string
-  
+
+  // Hashtags
+  hashtags_suggested?: string[]
+
   // Structured data
   schema_video_object?: Record<string, unknown>
   schema_faq?: Record<string, unknown>
-  
+
   // Content gaps
   content_gaps?: string[]
   follow_up_suggestions?: string[]
-  
+
   // Full analysis text
   full_analysis?: string
-  
+
   // Timestamps
   created_at: string
   completed_at?: string
-  
+
   // Token usage
   prompt_tokens?: number
   completion_tokens?: number

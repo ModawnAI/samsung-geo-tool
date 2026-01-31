@@ -21,8 +21,60 @@ import type {
 } from '@/types/geo-v2'
 import type { InstagramAltTextResult } from '@/lib/geo-v2/instagram-alt-text-generator'
 import type { ThumbnailTextResult } from '@/lib/geo-v2/thumbnail-text-generator'
+import type { VideoAnalysis } from '@/types/video-analysis'
 
 export type GenerationStep = 'platform' | 'product' | 'content' | 'keywords' | 'output'
+
+// Video analysis result for persistence
+export interface VideoAnalysisResult {
+  id: string
+  status: string
+  seo_title?: string
+  meta_description?: string
+  primary_keywords?: string[]
+  secondary_keywords?: string[]
+  long_tail_keywords?: string[]
+  scene_breakdown?: Array<{
+    timestamp: string
+    visual_description: string
+    text_narration: string
+    product_focus?: string
+    emotion_mood?: string
+  }>
+  key_claims?: string[]
+  full_analysis?: string
+  full_transcript?: string
+  on_screen_text?: Array<{ timestamp: string; text: string; type: string }>
+  product_info?: {
+    name?: string
+    model?: string
+    category?: string
+    tagline?: string
+    pricing?: { price?: string; currency?: string; promotion?: string }
+  }
+  features_and_specs?: Array<{
+    feature: string
+    description: string
+    benefit?: string
+    timestamp?: string
+  }>
+  usps?: string[]
+  technical_specs?: Array<{ component: string; specification: string; context?: string }>
+  call_to_actions?: Array<{ cta: string; timestamp: string; type?: string }>
+  hashtags_suggested?: string[]
+  timestamps_chapters?: Array<{ timestamp: string; title: string; description?: string }>
+  target_audience?: { primary?: string; secondary?: string; use_cases?: string[] }
+  tone_sentiment?: string
+  brand_voice?: string
+  color_palette?: string[]
+  visual_style?: string
+  production_quality?: string
+  statistics_mentioned?: string[]
+  competitor_mentions?: Array<{ competitor: string; context: string; comparison?: string }>
+  named_entities?: Array<{ type: string; name: string; context?: string; sentiment?: string }>
+  topic_hierarchy?: { core_theme: string; subtopics: Array<{ name: string; description: string; importance?: string }> }
+  thumbnail_recommendations?: Array<{ timestamp: string; description: string; recommendation: string; text_overlay_suggestion?: string }>
+}
 
 export interface GroundingSource {
   uri: string
@@ -196,6 +248,8 @@ interface GenerationState {
   // Step 2: Content input
   videoUrl: string
   srtContent: string
+  videoAnalysisResult: VideoAnalysisResult | null
+  videoAnalysisFileName: string | null
 
   // Step 3: Keywords
   selectedBriefId: string | null // Selected brief for generation
@@ -261,6 +315,8 @@ interface GenerationState {
   setVanityLinkCode: (code: string) => void
   setVideoUrl: (url: string) => void
   setSrtContent: (content: string) => void
+  setVideoAnalysisResult: (result: VideoAnalysisResult | null, fileName?: string | null) => void
+  clearVideoAnalysis: () => void
   setSelectedBriefId: (briefId: string | null) => void
   setBriefUsps: (usps: string[]) => void
   setGroundingKeywords: (keywords: GroundingKeyword[]) => void
@@ -361,6 +417,8 @@ const initialState = {
   vanityLinkCode: '',
   videoUrl: '',
   srtContent: '',
+  videoAnalysisResult: null as VideoAnalysisResult | null,
+  videoAnalysisFileName: null as string | null,
   selectedBriefId: null,
   briefUsps: [],
   groundingKeywords: [],
@@ -438,6 +496,16 @@ export const useGenerationStore = create<GenerationState>()(
   setVideoUrl: (videoUrl) => set({ videoUrl }),
 
   setSrtContent: (srtContent) => set({ srtContent }),
+
+  setVideoAnalysisResult: (result, fileName = null) => set({
+    videoAnalysisResult: result,
+    videoAnalysisFileName: fileName ?? get().videoAnalysisFileName,
+  }),
+
+  clearVideoAnalysis: () => set({
+    videoAnalysisResult: null,
+    videoAnalysisFileName: null,
+  }),
 
   setSelectedBriefId: (selectedBriefId) => set({ selectedBriefId }),
 
@@ -763,6 +831,8 @@ export const useGenerationStore = create<GenerationState>()(
         vanityLinkCode: state.vanityLinkCode,
         videoUrl: state.videoUrl,
         srtContent: state.srtContent,
+        videoAnalysisResult: state.videoAnalysisResult,
+        videoAnalysisFileName: state.videoAnalysisFileName,
         selectedBriefId: state.selectedBriefId,
         briefUsps: state.briefUsps,
         selectedKeywords: state.selectedKeywords,

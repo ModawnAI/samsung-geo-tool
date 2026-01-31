@@ -272,6 +272,22 @@ interface RegenerationConfig {
   fullRegeneration?: boolean
 }
 
+interface VideoAnalysisData {
+  productInfo?: {
+    name?: string
+    model?: string
+    category?: string
+    tagline?: string
+    pricing?: { price?: string; currency?: string; promotion?: string }
+  }
+  features?: Array<{ feature: string; description: string; benefit?: string }>
+  usps?: string[]
+  technicalSpecs?: Array<{ component: string; specification: string }>
+  keyClaims?: string[]
+  targetAudience?: { primary?: string; secondary?: string; use_cases?: string[] }
+  transcript?: string
+}
+
 interface GEOv2GenerateRequest {
   productName: string
   youtubeUrl: string
@@ -292,6 +308,8 @@ interface GEOv2GenerateRequest {
   fixedHashtags?: string[]
   useFixedHashtags?: boolean
   vanityLinkCode?: string
+  // Video Analysis Result (from Gemini 3 Flash)
+  videoAnalysis?: VideoAnalysisData
 }
 
 interface GroundingSignal {
@@ -447,11 +465,11 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json() as GEOv2GenerateRequest
     const {
-      productName,
+      productName: rawProductName,
       youtubeUrl,
-      srtContent,
+      srtContent: rawSrtContent,
       existingDescription,
-      keywords,
+      keywords: rawKeywords,
       productCategory,
       usePlaybook = true,
       launchDate,
@@ -466,7 +484,56 @@ export async function POST(request: NextRequest) {
       fixedHashtags = [],
       useFixedHashtags = false,
       vanityLinkCode = '',
+      // Video Analysis Result
+      videoAnalysis,
     } = body
+
+    // Use video analysis data to enhance inputs
+    // Video analysis product name takes precedence if available
+    const productName = videoAnalysis?.productInfo?.name || rawProductName
+    
+    // Enhance SRT content with video analysis data
+    let srtContent = rawSrtContent
+    if (videoAnalysis) {
+      const videoContext: string[] = []
+      
+      // Add transcript if not already in SRT
+      if (videoAnalysis.transcript && !rawSrtContent.includes(videoAnalysis.transcript.substring(0, 50))) {
+        videoContext.push(`[Video Transcript]\n${videoAnalysis.transcript}`)
+      }
+      
+      // Add features/specs from video
+      if (videoAnalysis.features?.length) {
+        videoContext.push(`[Product Features]\n${videoAnalysis.features.map(f => `- ${f.feature}: ${f.description}`).join('\n')}`)
+      }
+      
+      // Add USPs from video
+      if (videoAnalysis.usps?.length) {
+        videoContext.push(`[Key USPs]\n${videoAnalysis.usps.map(u => `- ${u}`).join('\n')}`)
+      }
+      
+      // Add technical specs
+      if (videoAnalysis.technicalSpecs?.length) {
+        videoContext.push(`[Technical Specs]\n${videoAnalysis.technicalSpecs.map(s => `- ${s.component}: ${s.specification}`).join('\n')}`)
+      }
+      
+      // Add key claims
+      if (videoAnalysis.keyClaims?.length) {
+        videoContext.push(`[Key Claims]\n${videoAnalysis.keyClaims.map(c => `- ${c}`).join('\n')}`)
+      }
+      
+      if (videoContext.length > 0) {
+        srtContent = `${rawSrtContent}\n\n=== Video Analysis Context ===\n${videoContext.join('\n\n')}`
+      }
+    }
+    
+    // Enhance keywords with video analysis data
+    let keywords = [...rawKeywords]
+    if (videoAnalysis?.usps) {
+      // Add USPs as keywords (deduplicated)
+      const uspKeywords = videoAnalysis.usps.filter(u => !keywords.some(k => k.toLowerCase() === u.toLowerCase()))
+      keywords = [...keywords, ...uspKeywords.slice(0, 5)]
+    }
 
     // Validation
     if (!productName || !srtContent) {

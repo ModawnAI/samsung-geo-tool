@@ -181,14 +181,19 @@ export default function GeneratePage() {
         fixedHashtags,
         useFixedHashtags,
         vanityLinkCode,
+        // Video analysis result
+        videoAnalysisResult,
       } = useGenerationStore.getState()
+
+      // Use video analysis product info if available, otherwise use selected product
+      const effectiveProductName = videoAnalysisResult?.product_info?.name || productName
 
       // Use v2 API with full GEO pipeline (RAG, Perplexity grounding, tuning)
       const response = await fetch('/api/generate-v2', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          productName,
+          productName: effectiveProductName,
           platform,
           youtubeUrl: videoUrl || '',
           srtContent,
@@ -204,6 +209,16 @@ export default function GeneratePage() {
           fixedHashtags,
           useFixedHashtags,
           vanityLinkCode,
+          // Video analysis data for context
+          videoAnalysis: videoAnalysisResult ? {
+            productInfo: videoAnalysisResult.product_info,
+            features: videoAnalysisResult.features_and_specs,
+            usps: videoAnalysisResult.usps,
+            technicalSpecs: videoAnalysisResult.technical_specs,
+            keyClaims: videoAnalysisResult.key_claims,
+            targetAudience: videoAnalysisResult.target_audience,
+            transcript: videoAnalysisResult.full_transcript,
+          } : undefined,
         }),
         signal: abortControllerRef.current.signal,
       })

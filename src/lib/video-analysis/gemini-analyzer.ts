@@ -9,30 +9,95 @@ export interface GeminiVideoAnalysisResult {
   secondary_keywords: string[]
   long_tail_keywords: string[]
   search_intent: string
+
+  // Full transcript and on-screen text
+  full_transcript?: string
+  on_screen_text?: Array<{
+    timestamp: string
+    text: string
+    type: string
+  }>
+
+  // Product info
+  product_info?: {
+    name?: string
+    model?: string
+    category?: string
+    tagline?: string
+    launch_date?: string
+    pricing?: {
+      price?: string
+      currency?: string
+      promotion?: string
+    }
+  }
+
+  // Features and USPs
+  features_and_specs?: Array<{
+    feature: string
+    description: string
+    benefit?: string
+    timestamp?: string
+  }>
+  usps?: string[]
+
   scene_breakdown: Array<{
     timestamp: string
     visual_description: string
     text_narration: string
+    product_focus?: string
+    emotion_mood?: string
   }>
   technical_specs: Array<{
     component: string
     specification: string
+    context?: string
   }>
+
+  // CTAs and chapters
+  call_to_actions?: Array<{
+    cta: string
+    timestamp: string
+    type?: string
+  }>
+  timestamps_chapters?: Array<{
+    timestamp: string
+    title: string
+    description?: string
+  }>
+
   topic_hierarchy: {
     core_theme: string
     subtopics: Array<{
       name: string
       description: string
+      importance?: string
     }>
   }
   named_entities: Array<{
     type: string
     name: string
     context?: string
+    sentiment?: string
   }>
   key_claims: string[]
-  target_audience: string
+  statistics_mentioned?: string[]
+
+  target_audience: string | {
+    primary?: string
+    secondary?: string
+    use_cases?: string[]
+  }
   tone_sentiment: string
+  brand_voice?: string
+
+  // Competitor mentions
+  competitor_mentions?: Array<{
+    competitor: string
+    context: string
+    comparison?: string
+  }>
+
   color_palette: string[]
   visual_style: string
   production_quality: string
@@ -40,7 +105,12 @@ export interface GeminiVideoAnalysisResult {
     timestamp: string
     description: string
     recommendation: string
+    text_overlay_suggestion?: string
   }>
+
+  // Hashtags
+  hashtags_suggested?: string[]
+
   schema_video_object: Record<string, unknown>
   schema_faq: Record<string, unknown>
   content_gaps: string[]
