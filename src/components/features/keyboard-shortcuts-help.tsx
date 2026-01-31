@@ -40,7 +40,7 @@ const SHORTCUTS: Shortcut[] = [
   // Platform selection
   { keys: ['1'], description: 'YouTube 선택', context: '플랫폼 단계' },
   { keys: ['2'], description: 'Instagram 선택', context: '플랫폼 단계' },
-  { keys: ['3'], description: 'TikTok 선택', context: '플랫폼 단계 (준비 중)' },
+  { keys: ['3'], description: 'TikTok 선택', context: '플랫폼 단계' },
   { keys: ['Enter'], description: '다음 단계로 계속', context: '플랫폼 단계' },
   
   // General

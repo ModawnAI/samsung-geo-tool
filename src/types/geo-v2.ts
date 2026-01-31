@@ -109,7 +109,7 @@ export const PLATFORM_CONFIGS: Record<Platform, PlatformConfig> = {
       description: 2200,
     },
     outputs: ['description', 'coverText', 'hashtags'],
-    enabled: false, // TBD per Brief
+    enabled: true,
   },
 }
 
