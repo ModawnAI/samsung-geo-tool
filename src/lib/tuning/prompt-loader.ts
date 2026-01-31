@@ -486,10 +486,25 @@ export interface StagePromptConfig {
   contentType?: 'intro' | 'unboxing' | 'how_to' | 'shorts' | 'teaser' | 'brand' | 'esg' | 'documentary' | 'official_replay'
   videoFormat?: 'feed_16x9' | 'shorts_9x16'
   vanityLinkCode?: string
+  /**
+   * Optional stage-specific prompt from Prompt Studio (stage_prompts table)
+   * If provided, this will be used instead of the hardcoded stageInstructions
+   */
+  databaseStagePrompt?: string | null
 }
 
+/**
+ * Compose a complete prompt for a pipeline stage
+ *
+ * Priority for stage instructions:
+ * 1. databaseStagePrompt (from Prompt Studio stage_prompts table, if active)
+ * 2. Hardcoded stageInstructions (fallback)
+ *
+ * @param config - Stage prompt configuration
+ * @returns Complete composed prompt string
+ */
 export function composeStagePrompt(config: StagePromptConfig): string {
-  const { stage, basePrompt, language, contentType, videoFormat, vanityLinkCode } = config
+  const { stage, basePrompt, language, contentType, videoFormat, vanityLinkCode, databaseStagePrompt } = config
 
   const languageInstruction = language === 'ko'
     ? '\n\nOutput in Korean (한국어).'
@@ -1686,10 +1701,18 @@ EXAMPLE:
 \`\`\``,
   }
 
+  // Use database stage prompt if available, otherwise use hardcoded instructions
+  const effectiveStageInstructions = databaseStagePrompt || stageInstructions[stage] || ''
+
+  // Log which source is being used for debugging
+  if (databaseStagePrompt) {
+    console.log(`[PromptLoader] Using database stage prompt for ${stage}`)
+  }
+
   return `${basePrompt}
 
 ## STAGE-SPECIFIC INSTRUCTIONS
-${stageInstructions[stage] || ''}${contentTypeInstructions}${languageInstruction}`
+${effectiveStageInstructions}${contentTypeInstructions}${languageInstruction}`
 }
 
 /**

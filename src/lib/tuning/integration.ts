@@ -25,7 +25,45 @@ import {
   type ScoreBreakdown,
 } from './weights-loader'
 import type { Engine, WeightValues } from '@/types/tuning'
+import type { PromptStage } from '@/types/prompt-studio'
 import { GEO_SCORE_CONFIG } from '@/lib/scoring/scoring-config'
+
+// ==========================================
+// STAGE PROMPT TYPES (Prompt Studio Integration)
+// ==========================================
+
+/**
+ * Stage prompt record from stage_prompts table
+ * Used when Prompt Studio prompts are active for production
+ */
+export interface StagePromptRecord {
+  id: string
+  stage: PromptStage
+  stage_system_prompt: string | null
+  temperature: number
+  max_tokens: number
+  top_p: number
+  model: string
+  workflow_status: 'draft' | 'testing' | 'pending_approval' | 'active' | 'archived'
+  prompt_version_id: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+/**
+ * All pipeline stages that can have custom prompts
+ */
+export const PIPELINE_STAGES: PromptStage[] = [
+  'grounding',
+  'description',
+  'usp',
+  'faq',
+  'chapters',
+  'case_studies',
+  'keywords',
+  'hashtags',
+]
 
 // ==========================================
 // CONFIGURATION TYPES
@@ -34,6 +72,8 @@ import { GEO_SCORE_CONFIG } from '@/lib/scoring/scoring-config'
 export interface TuningConfig {
   prompts: Record<Engine, PromptLoaderResult>
   weights: WeightsLoaderResult
+  /** Stage-specific prompts from Prompt Studio (active workflow_status) */
+  stagePrompts: Partial<Record<PromptStage, StagePromptRecord>>
   loadedAt: string
   source: 'database' | 'default' | 'mixed'
 }
@@ -66,24 +106,65 @@ export interface GEOScoreResult {
 // ==========================================
 
 /**
+ * Load active stage prompts from Prompt Studio
+ * Returns prompts with workflow_status='active' for each stage
+ */
+export async function loadActiveStagePrompts(): Promise<Partial<Record<PromptStage, StagePromptRecord>>> {
+  try {
+    const supabase = await createClient()
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any)
+      .from('stage_prompts')
+      .select('*')
+      .eq('workflow_status', 'active')
+
+    if (error) {
+      console.warn('[Integration] Failed to load stage prompts:', error.message)
+      return {}
+    }
+
+    if (!data || data.length === 0) {
+      console.log('[Integration] No active stage prompts found, using hardcoded defaults')
+      return {}
+    }
+
+    // Map to stage -> record
+    const stagePrompts: Partial<Record<PromptStage, StagePromptRecord>> = {}
+    for (const row of data as StagePromptRecord[]) {
+      stagePrompts[row.stage] = row
+    }
+
+    console.log(`[Integration] Loaded ${Object.keys(stagePrompts).length} active stage prompts`)
+    return stagePrompts
+  } catch (error) {
+    console.error('[Integration] Error loading stage prompts:', error)
+    return {}
+  }
+}
+
+/**
  * Load complete tuning configuration for a generation run
- * Fetches active prompts for all engines and active weights
+ * Fetches active prompts for all engines, active weights, and active stage prompts
  */
 export async function loadTuningConfig(): Promise<TuningConfig> {
-  const [prompts, weights] = await Promise.all([
+  const [prompts, weights, stagePrompts] = await Promise.all([
     loadActivePrompts(['gemini', 'perplexity', 'cohere']),
     loadActiveWeights(),
+    loadActiveStagePrompts(),
   ])
 
   // Determine overall source
   const promptSources = Object.values(prompts).map(p => p.source)
+  const hasStagePrompts = Object.keys(stagePrompts).length > 0
   const allDatabase = promptSources.every(s => s === 'database') && weights.source === 'database'
-  const allDefault = promptSources.every(s => s === 'default') && weights.source === 'default'
+  const allDefault = promptSources.every(s => s === 'default') && weights.source === 'default' && !hasStagePrompts
   const source = allDatabase ? 'database' : allDefault ? 'default' : 'mixed'
 
   return {
     prompts,
     weights,
+    stagePrompts,
     loadedAt: new Date().toISOString(),
     source,
   }
@@ -96,18 +177,21 @@ export async function loadTuningConfig(): Promise<TuningConfig> {
 export async function loadTuningConfigForEngines(
   engines: Engine[]
 ): Promise<TuningConfig> {
-  const [prompts, weights] = await Promise.all([
+  const [prompts, weights, stagePrompts] = await Promise.all([
     loadActivePrompts(engines),
     loadActiveWeights(),
+    loadActiveStagePrompts(),
   ])
 
   const promptSources = Object.values(prompts).map(p => p.source)
+  const hasStagePrompts = Object.keys(stagePrompts).length > 0
   const allDatabase = promptSources.every(s => s === 'database') && weights.source === 'database'
-  const allDefault = promptSources.every(s => s === 'default') && weights.source === 'default'
+  const allDefault = promptSources.every(s => s === 'default') && weights.source === 'default' && !hasStagePrompts
 
   return {
     prompts,
     weights,
+    stagePrompts,
     loadedAt: new Date().toISOString(),
     source: allDatabase ? 'database' : allDefault ? 'default' : 'mixed',
   }
@@ -139,17 +223,31 @@ interface StagePromptOptions {
 }
 
 /**
+ * Result of getStagePrompt including tracking IDs
+ */
+export interface StagePromptResult {
+  prompt: string
+  /** ID of the engine prompt_versions record */
+  promptVersionId: string | null
+  /** ID of the stage_prompts record (from Prompt Studio) */
+  stagePromptId: string | null
+  /** Source of the stage instructions */
+  stagePromptSource: 'database' | 'default'
+  source: 'database' | 'default'
+}
+
+/**
  * Get composed prompt for a specific pipeline stage
  * Combines base prompt from database with stage-specific instructions
+ *
+ * Priority for stage instructions:
+ * 1. Active stage prompt from Prompt Studio (config.stagePrompts)
+ * 2. Hardcoded stage instructions (fallback)
  */
 export function getStagePrompt(
   config: TuningConfig,
   options: StagePromptOptions
-): {
-  prompt: string
-  promptVersionId: string | null
-  source: 'database' | 'default'
-} {
+): StagePromptResult {
   const {
     stage,
     engine,
@@ -165,7 +263,12 @@ export function getStagePrompt(
   const promptResult = config.prompts[engine]
   const basePrompt = promptResult.prompt?.systemPrompt || getDefaultPrompt(engine)
 
+  // Get stage-specific prompt from Prompt Studio if available
+  const stagePromptRecord = config.stagePrompts[stage as PromptStage]
+  const databaseStagePrompt = stagePromptRecord?.stage_system_prompt || null
+
   // Compose with stage-specific instructions (including Samsung fields)
+  // Pass database stage prompt to override hardcoded instructions if available
   const composed = composeStagePrompt({
     stage,
     basePrompt,
@@ -175,6 +278,8 @@ export function getStagePrompt(
     contentType,
     videoFormat,
     vanityLinkCode,
+    // Prompt Studio integration
+    databaseStagePrompt,
   })
 
   // Interpolate variables if provided
@@ -185,6 +290,8 @@ export function getStagePrompt(
   return {
     prompt: finalPrompt,
     promptVersionId: promptResult.source === 'database' ? promptResult.prompt?.id || null : null,
+    stagePromptId: stagePromptRecord?.id || null,
+    stagePromptSource: databaseStagePrompt ? 'database' : 'default',
     source: promptResult.source,
   }
 }
@@ -450,18 +557,24 @@ export function hasConfigErrors(config: TuningConfig): {
 }
 
 // ==========================================
-// EXPORTS FOR GENERATE-V2
+// RE-EXPORTS FOR GENERATE-V2
 // ==========================================
 
+// Re-export from prompt-loader
 export {
   loadActivePrompt,
   loadActivePrompts,
-  loadActiveWeights,
   interpolatePrompt,
   getDefaultPrompt,
-  getDefaultWeights,
   type LoadedPrompt,
+} from './prompt-loader'
+
+// Re-export from weights-loader
+export {
+  loadActiveWeights,
+  getDefaultWeights,
   type LoadedWeights,
-  type WeightValues,
-  type Engine,
-}
+} from './weights-loader'
+
+// Re-export from types
+export type { WeightValues, Engine } from '@/types/tuning'

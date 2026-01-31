@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useTheme } from 'next-themes'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/lib/i18n'
@@ -39,6 +40,8 @@ import {
   CaretRight,
   CubeTransparent,
   Prohibit,
+  ArrowSquareOut,
+  Flask,
 } from '@phosphor-icons/react'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 import type { Language } from '@/lib/i18n'
@@ -638,6 +641,33 @@ export default function SettingsPage() {
 
         {/* Prompts Tab */}
         <TabsContent value="prompts" className="space-y-6">
+          {/* Prompt Studio Link Card */}
+          <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
+            <CardContent className="flex items-center justify-between py-4">
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-lg bg-primary/10">
+                  <Flask className="h-6 w-6 text-primary" weight="duotone" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">
+                    {language === 'ko' ? 'Prompt Studio' : 'Prompt Studio'}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {language === 'ko'
+                      ? '스테이지별 프롬프트 관리, 테스트 및 버전 관리'
+                      : 'Stage-by-stage prompt management, testing and versioning'}
+                  </p>
+                </div>
+              </div>
+              <Button asChild>
+                <Link href="/admin/prompt-studio">
+                  {language === 'ko' ? '열기' : 'Open'}
+                  <ArrowSquareOut className="h-4 w-4 ml-2" />
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+
           {/* Visual Flow Diagram */}
           <Card>
             <CardHeader>

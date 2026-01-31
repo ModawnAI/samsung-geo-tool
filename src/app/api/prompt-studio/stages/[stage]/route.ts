@@ -153,6 +153,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 /**
  * PATCH /api/prompt-studio/stages/[stage]
  * Update an existing stage prompt configuration
+ *
+ * Special handling for activation:
+ * - When workflowStatus is set to 'active', this prompt will be used in production
+ * - Only one prompt per stage can be active at a time (others are archived)
  */
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
@@ -223,6 +227,23 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ stagePrompt: data }, { status: 201 })
     }
 
+    // If activating this prompt, deactivate any other active prompts for this stage
+    // This ensures only one prompt per stage is active at a time
+    if (workflowStatus === 'active') {
+      const { error: deactivateError } = await (supabase
+        .from('stage_prompts' as any) as any)
+        .update({ workflow_status: 'archived' })
+        .eq('stage', stage)
+        .eq('workflow_status', 'active')
+        .neq('id', existing.id)
+
+      if (deactivateError) {
+        console.warn('[API] Warning: Failed to deactivate other prompts:', deactivateError)
+      }
+
+      console.log(`[API] Activating stage prompt ${existing.id} for ${stage} stage - will be used in production`)
+    }
+
     // Update existing record
     const { data, error } = await (supabase
       .from('stage_prompts' as any) as any)
@@ -233,7 +254,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     if (error) throw error
 
-    return NextResponse.json({ stagePrompt: data })
+    // Include activation info in response
+    const response: Record<string, unknown> = { stagePrompt: data }
+    if (workflowStatus === 'active') {
+      response.activated = true
+      response.message = `Stage prompt for "${stage}" is now active and will be used in production.`
+    }
+
+    return NextResponse.json(response)
   } catch (error) {
     console.error('[API] Error updating stage prompt:', error)
     return NextResponse.json(
