@@ -31,9 +31,28 @@ interface VideoAnalysisResult {
     timestamp: string
     visual_description: string
     text_narration: string
+    product_focus?: string
   }>
   key_claims: string[]
   full_analysis: string
+  full_transcript?: string
+  on_screen_text?: Array<{ timestamp: string; text: string; type: string }>
+  product_info?: {
+    name?: string
+    model?: string
+    tagline?: string
+    pricing?: { price?: string; promotion?: string }
+  }
+  features_and_specs?: Array<{
+    feature: string
+    description: string
+    benefit?: string
+  }>
+  usps?: string[]
+  technical_specs?: Array<{ component: string; specification: string }>
+  call_to_actions?: Array<{ cta: string; timestamp: string }>
+  hashtags_suggested?: string[]
+  timestamps_chapters?: Array<{ timestamp: string; title: string }>
   status: string
 }
 
@@ -146,36 +165,135 @@ export function VideoUploadInput() {
   const applyToContent = useCallback(() => {
     if (!result) return
 
-    // Build SRT-like content from scene breakdown
-    let content = ''
+    const { srtContent: existingContent } = useGenerationStore.getState()
+
+    // Build comprehensive extracted content
+    let extractedContent = ''
     
-    if (result.scene_breakdown && result.scene_breakdown.length > 0) {
-      result.scene_breakdown.forEach((scene, index) => {
-        content += `${index + 1}\n`
-        content += `${scene.timestamp}\n`
-        content += `${scene.text_narration || scene.visual_description}\n\n`
+    // 1. Full transcript is the best source
+    if (result.full_transcript) {
+      extractedContent += `=== 전체 스크립트 ===\n${result.full_transcript}\n\n`
+    }
+    
+    // 2. Product info
+    if (result.product_info) {
+      const p = result.product_info
+      extractedContent += `=== 제품 정보 ===\n`
+      if (p.name) extractedContent += `제품명: ${p.name}\n`
+      if (p.model) extractedContent += `모델: ${p.model}\n`
+      if (p.tagline) extractedContent += `태그라인: ${p.tagline}\n`
+      if (p.pricing?.price) extractedContent += `가격: ${p.pricing.price}\n`
+      if (p.pricing?.promotion) extractedContent += `프로모션: ${p.pricing.promotion}\n`
+      extractedContent += '\n'
+    }
+    
+    // 3. Features and specs
+    if (result.features_and_specs && result.features_and_specs.length > 0) {
+      extractedContent += `=== 주요 기능 ===\n`
+      result.features_and_specs.forEach(f => {
+        extractedContent += `• ${f.feature}: ${f.description}`
+        if (f.benefit) extractedContent += ` (${f.benefit})`
+        extractedContent += '\n'
       })
-    } else if (result.full_analysis) {
-      // Fallback to full analysis text
-      content = result.full_analysis
-    } else if (result.meta_description) {
-      content = result.meta_description
+      extractedContent += '\n'
+    }
+    
+    // 4. Technical specs
+    if (result.technical_specs && result.technical_specs.length > 0) {
+      extractedContent += `=== 기술 사양 ===\n`
+      result.technical_specs.forEach(s => {
+        extractedContent += `• ${s.component}: ${s.specification}\n`
+      })
+      extractedContent += '\n'
+    }
+    
+    // 5. USPs
+    if (result.usps && result.usps.length > 0) {
+      extractedContent += `=== USP (핵심 차별점) ===\n`
+      result.usps.forEach(u => {
+        extractedContent += `• ${u}\n`
+      })
+      extractedContent += '\n'
+    }
+    
+    // 6. Key claims
+    if (result.key_claims && result.key_claims.length > 0) {
+      extractedContent += `=== 핵심 메시지 ===\n`
+      result.key_claims.forEach(c => {
+        extractedContent += `• ${c}\n`
+      })
+      extractedContent += '\n'
+    }
+    
+    // 7. Scene breakdown as SRT format
+    if (result.scene_breakdown && result.scene_breakdown.length > 0) {
+      extractedContent += `=== 장면별 내용 ===\n`
+      result.scene_breakdown.forEach((scene, index) => {
+        extractedContent += `${index + 1}\n`
+        extractedContent += `${scene.timestamp}\n`
+        extractedContent += `${scene.text_narration || scene.visual_description}\n`
+        if (scene.product_focus) extractedContent += `[${scene.product_focus}]\n`
+        extractedContent += '\n'
+      })
+    }
+    
+    // 8. Timestamps/chapters
+    if (result.timestamps_chapters && result.timestamps_chapters.length > 0) {
+      extractedContent += `=== 챕터 ===\n`
+      result.timestamps_chapters.forEach(ch => {
+        extractedContent += `${ch.timestamp} ${ch.title}\n`
+      })
+      extractedContent += '\n'
+    }
+    
+    // 9. CTAs
+    if (result.call_to_actions && result.call_to_actions.length > 0) {
+      extractedContent += `=== CTA ===\n`
+      result.call_to_actions.forEach(cta => {
+        extractedContent += `• ${cta.cta} (${cta.timestamp})\n`
+      })
+      extractedContent += '\n'
+    }
+    
+    // Fallback if nothing else
+    if (!extractedContent.trim() && result.full_analysis) {
+      extractedContent = result.full_analysis
+    } else if (!extractedContent.trim() && result.meta_description) {
+      extractedContent = result.meta_description
     }
 
-    setSrtContent(content)
+    // If user already has content, append extracted content below with separator
+    // Manual input takes precedence - it stays on top
+    if (existingContent.trim()) {
+      const separator = '\n\n--- AI 분석 추출 내용 (참고용) ---\n\n'
+      setSrtContent(existingContent + separator + extractedContent)
+    } else {
+      // No existing content, use extracted directly
+      setSrtContent(extractedContent)
+    }
   }, [result, setSrtContent])
 
   const applyKeywords = useCallback(() => {
     if (!result) return
 
+    // Collect all keywords from various sources
     const allKeywords = [
       ...(result.primary_keywords || []),
       ...(result.secondary_keywords || []),
-    ].slice(0, 10)
+      ...(result.long_tail_keywords || []),
+      ...(result.usps || []),
+      // Extract keywords from features
+      ...(result.features_and_specs?.map(f => f.feature) || []),
+      // Clean hashtags (remove #)
+      ...(result.hashtags_suggested?.map(h => h.replace(/^#/, '')) || []),
+    ]
+    
+    // Deduplicate and limit
+    const uniqueKeywords = [...new Set(allKeywords)].slice(0, 15)
 
     // Merge with existing keywords, avoiding duplicates
     const existingSet = new Set(selectedKeywords.map(k => k.toLowerCase()))
-    const newKeywords = allKeywords.filter(k => !existingSet.has(k.toLowerCase()))
+    const newKeywords = uniqueKeywords.filter(k => !existingSet.has(k.toLowerCase()))
     
     setSelectedKeywords([...selectedKeywords, ...newKeywords])
   }, [result, selectedKeywords, setSelectedKeywords])
@@ -209,7 +327,7 @@ export function VideoUploadInput() {
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {t.generate?.srtInput?.videoUploadDesc || '동영상 업로드 → AI가 내용 분석 → 자동 텍스트 추출'}
+              {t.generate?.srtInput?.videoUploadDesc || '동영상에서 제품 정보 자동 추출 (직접 입력 우선)'}
             </p>
           </div>
         </div>
@@ -305,11 +423,48 @@ export function VideoUploadInput() {
               </Button>
             </div>
 
+            {/* Product Info */}
+            {result.product_info?.name && (
+              <div className="mb-3">
+                <p className="text-xs text-muted-foreground mb-1">제품</p>
+                <p className="text-sm font-medium">
+                  {result.product_info.name}
+                  {result.product_info.model && ` (${result.product_info.model})`}
+                </p>
+                {result.product_info.tagline && (
+                  <p className="text-xs text-muted-foreground italic">"{result.product_info.tagline}"</p>
+                )}
+              </div>
+            )}
+
             {/* SEO Title */}
             {result.seo_title && (
               <div className="mb-3">
                 <p className="text-xs text-muted-foreground mb-1">추천 제목</p>
                 <p className="text-sm font-medium">{result.seo_title}</p>
+              </div>
+            )}
+
+            {/* Features Count */}
+            {result.features_and_specs && result.features_and_specs.length > 0 && (
+              <div className="mb-3">
+                <p className="text-xs text-muted-foreground mb-1">추출된 기능</p>
+                <p className="text-sm">{result.features_and_specs.length}개 기능/사양 발견</p>
+              </div>
+            )}
+
+            {/* USPs */}
+            {result.usps && result.usps.length > 0 && (
+              <div className="mb-3">
+                <p className="text-xs text-muted-foreground mb-1">핵심 USP</p>
+                <ul className="text-xs space-y-0.5">
+                  {result.usps.slice(0, 3).map((usp, i) => (
+                    <li key={i} className="flex items-start gap-1">
+                      <span className="text-green-500">✓</span>
+                      <span>{usp}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
 
@@ -332,12 +487,18 @@ export function VideoUploadInput() {
               </div>
             )}
 
-            {/* Scene Count */}
-            {result.scene_breakdown?.length > 0 && (
-              <p className="text-xs text-muted-foreground">
-                {result.scene_breakdown.length}개 장면 분석됨
-              </p>
-            )}
+            {/* Extraction Stats */}
+            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+              {result.scene_breakdown?.length > 0 && (
+                <span>{result.scene_breakdown.length}개 장면</span>
+              )}
+              {(result.technical_specs?.length ?? 0) > 0 && (
+                <span>• {result.technical_specs?.length}개 사양</span>
+              )}
+              {result.full_transcript && (
+                <span>• 전체 스크립트 추출됨</span>
+              )}
+            </div>
           </div>
 
           {/* Action Buttons */}
@@ -360,7 +521,7 @@ export function VideoUploadInput() {
               disabled={!result.primary_keywords?.length && !result.secondary_keywords?.length}
             >
               <Tag className="h-4 w-4" />
-              키워드에 적용
+              키워드에 추가
               <ArrowRight className="h-3 w-3" />
             </Button>
           </div>
@@ -368,8 +529,8 @@ export function VideoUploadInput() {
           <div className="flex items-start gap-1.5 text-xs text-muted-foreground bg-muted/50 p-2 rounded">
             <Info className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-violet-500" />
             <span>
-              "텍스트에 적용"을 클릭하면 아래 텍스트 입력란에 분석 결과가 채워집니다.
-              키워드는 다음 단계에서 사용됩니다.
+              직접 입력한 내용이 우선됩니다. AI 분석 결과는 참고용으로 추가됩니다.
+              키워드는 기존 선택에 병합됩니다.
             </span>
           </div>
         </div>

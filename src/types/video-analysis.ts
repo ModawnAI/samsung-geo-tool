@@ -118,54 +118,114 @@ export interface ExtractThumbnailsRequest {
   timestamps?: string[] // If not provided, extract at regular intervals
 }
 
-export const VIDEO_ANALYSIS_PROMPT = `You are an expert SEO/AEO/GEO content analyst. Provide an EXHAUSTIVE analysis of this video for search optimization purposes. Return your analysis as a JSON object with the following structure:
+export const VIDEO_ANALYSIS_PROMPT = `You are an expert SEO/AEO/GEO content analyst specializing in product marketing videos. 
+Your task is to EXHAUSTIVELY extract ALL information from this video for content generation.
+
+## CRITICAL INSTRUCTIONS
+1. Extract EVERY piece of text shown on screen (titles, subtitles, labels, prices, specs)
+2. Transcribe ALL spoken narration word-for-word
+3. Identify ALL product features, specifications, and benefits mentioned
+4. Note ALL visual elements, transitions, and product shots
+5. Capture pricing, promotions, offers, and call-to-actions
+6. Identify competitor mentions or comparisons
+7. Extract brand guidelines visible (colors, fonts, logo usage)
+
+Return your analysis as a JSON object:
 
 {
   "seo_title": "SEO optimized title (60 chars max)",
   "meta_description": "Meta description (155 chars max)",
-  "primary_keywords": ["array", "of", "primary", "keywords"],
-  "secondary_keywords": ["array", "of", "secondary", "keywords"],
-  "long_tail_keywords": ["long tail keyword phrase 1", "long tail keyword phrase 2"],
+  
+  "full_transcript": "Complete word-for-word transcription of all speech and narration in the video",
+  
+  "on_screen_text": [
+    {"timestamp": "MM:SS", "text": "Exact text shown on screen", "type": "title|subtitle|label|cta|price|spec"}
+  ],
+  
+  "product_info": {
+    "name": "Product name",
+    "model": "Model number if mentioned",
+    "category": "Product category",
+    "tagline": "Product tagline or slogan",
+    "launch_date": "If mentioned",
+    "pricing": {
+      "price": "Price if mentioned",
+      "currency": "Currency",
+      "promotion": "Any promotional pricing"
+    }
+  },
+  
+  "features_and_specs": [
+    {
+      "feature": "Feature name",
+      "description": "How it's described in the video",
+      "benefit": "User benefit mentioned",
+      "timestamp": "When it's shown/mentioned"
+    }
+  ],
+  
+  "usps": ["Unique selling point 1", "USP 2", "USP 3"],
+  
+  "primary_keywords": ["high-volume", "search", "keywords"],
+  "secondary_keywords": ["supporting", "keywords"],
+  "long_tail_keywords": ["specific long tail phrase 1", "long tail phrase 2"],
   "search_intent": "transactional|informational|navigational|commercial",
   
   "scene_breakdown": [
     {
       "timestamp": "MM:SS - MM:SS",
-      "visual_description": "What is shown visually",
-      "text_narration": "Any text or speech"
+      "visual_description": "Detailed description of what is shown",
+      "text_narration": "Exact words spoken or shown",
+      "product_focus": "What product/feature is highlighted",
+      "emotion_mood": "The mood/emotion conveyed"
     }
   ],
   
   "technical_specs": [
-    {"component": "Component name", "specification": "Spec value"}
+    {"component": "e.g., Display", "specification": "e.g., 6.8-inch Dynamic AMOLED 2X", "context": "How it's presented"}
   ],
   
   "topic_hierarchy": {
-    "core_theme": "Main theme of the video",
+    "core_theme": "Main message of the video",
     "subtopics": [
-      {"name": "Subtopic 1", "description": "Brief description"}
+      {"name": "Subtopic", "description": "Brief description", "importance": "high|medium|low"}
     ]
   },
   
   "named_entities": [
-    {"type": "brand|product|technology", "name": "Entity name", "context": "How it's mentioned"}
+    {"type": "brand|product|technology|person|feature|competitor", "name": "Entity name", "context": "How mentioned", "sentiment": "positive|neutral|negative"}
   ],
   
-  "key_claims": ["Claim 1 from video", "Claim 2 from video"],
-  "target_audience": "Description of target audience",
-  "tone_sentiment": "Description of tone and sentiment",
+  "key_claims": ["Specific claim 1", "Claim 2 - quote exactly from video"],
+  "statistics_mentioned": ["Any numbers, percentages, or stats mentioned"],
   
-  "color_palette": ["#hex1", "#hex2", "color names"],
-  "visual_style": "Description of visual style",
-  "production_quality": "Assessment of production quality",
+  "target_audience": {
+    "primary": "Primary audience description",
+    "secondary": "Secondary audience",
+    "use_cases": ["Use case 1", "Use case 2"]
+  },
+  
+  "tone_sentiment": "Detailed description of tone and sentiment",
+  "brand_voice": "Description of brand voice characteristics",
+  
+  "call_to_actions": [
+    {"cta": "CTA text", "timestamp": "When shown", "type": "buy|learn_more|subscribe|preorder"}
+  ],
+  
+  "color_palette": ["#hex1", "#hex2"],
+  "visual_style": "Detailed visual style description",
+  "production_quality": "Assessment with specific observations",
   
   "thumbnail_recommendations": [
     {
       "timestamp": "MM:SS",
-      "description": "What's in this frame",
-      "recommendation": "Why this would make a good thumbnail"
+      "description": "Frame description",
+      "recommendation": "Why this is good for thumbnail",
+      "text_overlay_suggestion": "Suggested text for thumbnail"
     }
   ],
+  
+  "hashtags_suggested": ["#hashtag1", "#hashtag2"],
   
   "schema_video_object": {
     "@context": "https://schema.org",
@@ -181,17 +241,29 @@ export const VIDEO_ANALYSIS_PROMPT = `You are an expert SEO/AEO/GEO content anal
     "mainEntity": [
       {
         "@type": "Question",
-        "name": "Question from video",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Answer from video"
-        }
+        "name": "Question answered in video",
+        "acceptedAnswer": {"@type": "Answer", "text": "Answer from video"}
       }
     ]
   },
   
-  "content_gaps": ["Gap 1", "Gap 2"],
-  "follow_up_suggestions": ["Suggested follow-up content 1", "Suggested follow-up content 2"]
+  "content_gaps": ["Information that should have been included but wasn't"],
+  "follow_up_suggestions": ["Suggested follow-up content topics"],
+  
+  "competitor_mentions": [
+    {"competitor": "Name", "context": "How mentioned", "comparison": "What was compared"}
+  ],
+  
+  "timestamps_chapters": [
+    {"timestamp": "00:00", "title": "Chapter title", "description": "What this section covers"}
+  ]
 }
 
-Analyze the video thoroughly and provide comprehensive data for each field. Be extremely detailed in scene_breakdown, covering every 5-10 seconds of the video.`
+## REQUIREMENTS
+- Be EXTREMELY thorough in scene_breakdown - cover every 3-5 seconds
+- Transcribe speech EXACTLY as spoken in full_transcript
+- Extract ALL on-screen text verbatim
+- Include EVERY product feature and specification mentioned
+- Capture ALL numbers, prices, dates, and statistics
+- Note ALL brand/product names mentioned
+- Do NOT summarize - extract the actual content`

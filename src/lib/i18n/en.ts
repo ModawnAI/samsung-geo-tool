@@ -343,7 +343,7 @@ export const en: TranslationDictionary = {
       urlOnlyHint: 'YouTube captions will be auto-extracted. Add SRT/text for more accurate results.',
       textOnlyHint: 'Will generate using provided text. Add YouTube URL to also use video metadata.',
       videoUpload: 'AI Video Analysis',
-      videoUploadDesc: 'Upload video → AI analyzes content → Auto-extract text',
+      videoUploadDesc: 'Auto-extract product info from video (manual input takes priority)',
     },
     // Keyword selector
     keywordSelector: {
