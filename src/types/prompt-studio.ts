@@ -11,6 +11,13 @@ export type PromptTestRun = Tables<'prompt_test_runs'>
 export type StageTestInput = Tables<'stage_test_inputs'>
 export type PromptRefineSession = Tables<'prompt_refine_sessions'>
 
+// Evolution system types
+export type PromptStudioExecution = Tables<'prompt_studio_executions'>
+export type PromptStudioFeedback = Tables<'prompt_studio_feedback'>
+export type PromptStudioEvolutionConfig = Tables<'prompt_studio_evolution_config'>
+export type PromptStudioEvolutionCycle = Tables<'prompt_studio_evolution_cycles'>
+export type PromptStudioEvolutionCandidate = Tables<'prompt_studio_evolution_candidates'>
+
 // Alias for store compatibility
 export type StageTestRun = PromptTestRun
 
@@ -620,9 +627,9 @@ export const DEFAULT_LLM_PARAMETERS = {
 }
 
 export const AVAILABLE_MODELS = [
-  { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash (Preview)' },
-  { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro (Preview)' },
-  { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+  { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash (Latest)' },
+  { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro (Latest)' },
+  { value: 'gemini-2.5-flash-preview-05-20', label: 'Gemini 2.5 Flash' },
 ]
 
 // ============================================================================
@@ -700,4 +707,161 @@ export interface RefineSessionSummary {
   messageCount: number
   isFavorite: boolean
   updatedAt: string
+}
+
+// ============================================================================
+// LLM-as-Judge Evaluation Types
+// ============================================================================
+
+/**
+ * Evaluation scores (1-5 scale)
+ */
+export interface EvaluationScores {
+  overall: number
+  relevance: number
+  quality: number
+  creativity: number
+}
+
+/**
+ * Detailed evaluation feedback
+ */
+export interface EvaluationFeedback {
+  strengths: string[]
+  weaknesses: string[]
+  suggestions: string[]
+  summary: string
+}
+
+/**
+ * Full LLM-as-Judge evaluation result
+ */
+export interface LLMJudgeEvaluation {
+  scores: EvaluationScores
+  feedback: EvaluationFeedback
+  judgeModel: string
+  rawResponse: string
+}
+
+/**
+ * Request for evaluating a test execution
+ */
+export interface EvaluateRequest {
+  executionId: string
+  stage: PromptStage
+  input: StageTestInputData
+  output: StageOutput
+  prompt: string
+}
+
+/**
+ * Response from evaluation API
+ */
+export interface EvaluateResponse {
+  feedbackId: string
+  evaluation: LLMJudgeEvaluation
+}
+
+// ============================================================================
+// Feedback Analysis Types
+// ============================================================================
+
+/**
+ * Aggregated feedback statistics
+ */
+export interface FeedbackStats {
+  totalFeedback: number
+  averageScores: EvaluationScores
+  scoreDistribution: {
+    overall: Record<string, number>
+    relevance: Record<string, number>
+    quality: Record<string, number>
+    creativity: Record<string, number>
+  }
+  recentTrend: 'improving' | 'stable' | 'declining'
+  weakestDimension: keyof EvaluationScores
+}
+
+/**
+ * Common weakness pattern
+ */
+export interface WeaknessPattern {
+  pattern: string
+  frequency: number
+  affectedDimensions: (keyof EvaluationScores)[]
+  suggestedFix: string
+}
+
+/**
+ * Feedback analysis result
+ */
+export interface FeedbackAnalysis {
+  stats: FeedbackStats
+  weaknessPatterns: WeaknessPattern[]
+  improvementPriorities: {
+    dimension: keyof EvaluationScores
+    currentScore: number
+    targetScore: number
+    suggestions: string[]
+  }[]
+  timeSeriesData: {
+    date: string
+    avgScore: number
+  }[]
+}
+
+// ============================================================================
+// Evolution System Types
+// ============================================================================
+
+/**
+ * Evolution cycle status
+ */
+export type EvolutionCycleStatus = 'pending' | 'analyzing' | 'generating' | 'testing' | 'completed' | 'failed'
+
+/**
+ * Evolution candidate status
+ */
+export type EvolutionCandidateStatus = 'pending' | 'testing' | 'completed' | 'approved' | 'rejected'
+
+/**
+ * Feedback summary for evolution cycle
+ */
+export interface EvolutionFeedbackSummary {
+  feedbackCount: number
+  averageScores: EvaluationScores
+  commonWeaknesses: string[]
+  suggestedImprovements: string[]
+}
+
+/**
+ * A/B test comparison result
+ */
+export interface ABTestResult {
+  baselineScore: number
+  candidateScore: number
+  improvementDelta: number
+  isStatisticallySignificant: boolean
+  sampleSize: number
+  detailedComparison: {
+    dimension: keyof EvaluationScores
+    baseline: number
+    candidate: number
+    delta: number
+  }[]
+}
+
+/**
+ * Evolution candidate with test results
+ */
+export interface EvolutionCandidateWithResults {
+  id: string
+  candidateVersion: number
+  systemPrompt: string
+  generationRationale: string
+  status: EvolutionCandidateStatus
+  abTestResult?: ABTestResult
+  reviewedBy?: string
+  reviewedAt?: string
+  reviewNotes?: string
 }

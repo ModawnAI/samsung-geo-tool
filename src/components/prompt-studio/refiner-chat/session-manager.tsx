@@ -17,6 +17,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -120,13 +125,20 @@ export function SessionManager({
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-8 px-2">
-            <ClockCounterClockwise className="h-4 w-4 mr-1" />
-            History
-            {isLoading && <Spinner className="h-3 w-3 ml-1 animate-spin" />}
-          </Button>
-        </DropdownMenuTrigger>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 px-2">
+                <ClockCounterClockwise className="h-4 w-4 mr-1" />
+                History
+                {isLoading && <Spinner className="h-3 w-3 ml-1 animate-spin" />}
+              </Button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>이전 대화 세션 불러오기</p>
+          </TooltipContent>
+        </Tooltip>
         <DropdownMenuContent align="end" className="w-64">
           <DropdownMenuItem onClick={onNewSession}>
             <Plus className="h-4 w-4 mr-2" />
@@ -197,18 +209,18 @@ export function SessionManager({
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Session</AlertDialogTitle>
+            <AlertDialogTitle>세션 삭제</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this session? This action cannot be undone.
+              이 세션을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>취소</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              삭제
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

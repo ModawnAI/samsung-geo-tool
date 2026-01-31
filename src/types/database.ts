@@ -1070,6 +1070,241 @@ export interface Database {
           updated_at?: string
         }
       }
+      prompt_studio_executions: {
+        Row: {
+          id: string
+          stage: 'grounding' | 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
+          session_id: string | null
+          input: Json
+          output: Json | null
+          raw_response: string | null
+          latency_ms: number | null
+          input_tokens: number | null
+          output_tokens: number | null
+          status: 'running' | 'completed' | 'failed'
+          error_message: string | null
+          prompt_version: number
+          stage_prompt_id: string | null
+          created_by: string | null
+          created_at: string
+          completed_at: string | null
+        }
+        Insert: {
+          id?: string
+          stage: 'grounding' | 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
+          session_id?: string | null
+          input: Json
+          output?: Json | null
+          raw_response?: string | null
+          latency_ms?: number | null
+          input_tokens?: number | null
+          output_tokens?: number | null
+          status?: 'running' | 'completed' | 'failed'
+          error_message?: string | null
+          prompt_version?: number
+          stage_prompt_id?: string | null
+          created_by?: string | null
+          created_at?: string
+          completed_at?: string | null
+        }
+        Update: {
+          id?: string
+          stage?: 'grounding' | 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
+          session_id?: string | null
+          input?: Json
+          output?: Json | null
+          raw_response?: string | null
+          latency_ms?: number | null
+          input_tokens?: number | null
+          output_tokens?: number | null
+          status?: 'running' | 'completed' | 'failed'
+          error_message?: string | null
+          prompt_version?: number
+          stage_prompt_id?: string | null
+          created_by?: string | null
+          created_at?: string
+          completed_at?: string | null
+        }
+      }
+      prompt_studio_feedback: {
+        Row: {
+          id: string
+          execution_id: string
+          stage: 'grounding' | 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
+          feedback_type: 'user' | 'llm_judge' | 'automated'
+          overall_score: number | null
+          relevance_score: number | null
+          quality_score: number | null
+          creativity_score: number | null
+          feedback_text: string | null
+          strengths: string[] | null
+          weaknesses: string[] | null
+          suggestions: string[] | null
+          judge_model: string | null
+          raw_evaluation: Json | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          execution_id: string
+          stage: 'grounding' | 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
+          feedback_type: 'user' | 'llm_judge' | 'automated'
+          overall_score?: number | null
+          relevance_score?: number | null
+          quality_score?: number | null
+          creativity_score?: number | null
+          feedback_text?: string | null
+          strengths?: string[] | null
+          weaknesses?: string[] | null
+          suggestions?: string[] | null
+          judge_model?: string | null
+          raw_evaluation?: Json | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          execution_id?: string
+          stage?: 'grounding' | 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
+          feedback_type?: 'user' | 'llm_judge' | 'automated'
+          overall_score?: number | null
+          relevance_score?: number | null
+          quality_score?: number | null
+          creativity_score?: number | null
+          feedback_text?: string | null
+          strengths?: string[] | null
+          weaknesses?: string[] | null
+          suggestions?: string[] | null
+          judge_model?: string | null
+          raw_evaluation?: Json | null
+          created_by?: string | null
+          created_at?: string
+        }
+      }
+      prompt_studio_evolution_config: {
+        Row: {
+          id: string
+          stage: 'grounding' | 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
+          enabled: boolean
+          min_feedback_count: number
+          min_improvement_threshold: number
+          auto_promote_threshold: number
+          require_human_approval: boolean
+          max_candidates_per_cycle: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          stage: 'grounding' | 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
+          enabled?: boolean
+          min_feedback_count?: number
+          min_improvement_threshold?: number
+          auto_promote_threshold?: number
+          require_human_approval?: boolean
+          max_candidates_per_cycle?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          stage?: 'grounding' | 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
+          enabled?: boolean
+          min_feedback_count?: number
+          min_improvement_threshold?: number
+          auto_promote_threshold?: number
+          require_human_approval?: boolean
+          max_candidates_per_cycle?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      prompt_studio_evolution_cycles: {
+        Row: {
+          id: string
+          stage: 'grounding' | 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
+          status: 'pending' | 'analyzing' | 'generating' | 'testing' | 'completed' | 'failed'
+          feedback_summary: Json | null
+          error_message: string | null
+          created_by: string | null
+          created_at: string
+          completed_at: string | null
+        }
+        Insert: {
+          id?: string
+          stage: 'grounding' | 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
+          status?: 'pending' | 'analyzing' | 'generating' | 'testing' | 'completed' | 'failed'
+          feedback_summary?: Json | null
+          error_message?: string | null
+          created_by?: string | null
+          created_at?: string
+          completed_at?: string | null
+        }
+        Update: {
+          id?: string
+          stage?: 'grounding' | 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
+          status?: 'pending' | 'analyzing' | 'generating' | 'testing' | 'completed' | 'failed'
+          feedback_summary?: Json | null
+          error_message?: string | null
+          created_by?: string | null
+          created_at?: string
+          completed_at?: string | null
+        }
+      }
+      prompt_studio_evolution_candidates: {
+        Row: {
+          id: string
+          cycle_id: string
+          stage: 'grounding' | 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
+          candidate_version: number
+          system_prompt: string
+          generation_rationale: string | null
+          status: 'pending' | 'testing' | 'completed' | 'approved' | 'rejected'
+          test_results: Json | null
+          baseline_score: number | null
+          candidate_score: number | null
+          improvement_delta: number | null
+          reviewed_by: string | null
+          reviewed_at: string | null
+          review_notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          cycle_id: string
+          stage: 'grounding' | 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
+          candidate_version: number
+          system_prompt: string
+          generation_rationale?: string | null
+          status?: 'pending' | 'testing' | 'completed' | 'approved' | 'rejected'
+          test_results?: Json | null
+          baseline_score?: number | null
+          candidate_score?: number | null
+          improvement_delta?: number | null
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          review_notes?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          cycle_id?: string
+          stage?: 'grounding' | 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
+          candidate_version?: number
+          system_prompt?: string
+          generation_rationale?: string | null
+          status?: 'pending' | 'testing' | 'completed' | 'approved' | 'rejected'
+          test_results?: Json | null
+          baseline_score?: number | null
+          candidate_score?: number | null
+          improvement_delta?: number | null
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          review_notes?: string | null
+          created_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never

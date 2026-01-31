@@ -3,6 +3,12 @@
 import * as React from 'react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { Rows, Columns } from '@phosphor-icons/react'
 import type { DiffMode } from './hooks/use-refiner-state'
 
@@ -253,26 +259,40 @@ export function DiffViewer({
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-1">
-          <Button
-            variant={mode === 'inline' ? 'secondary' : 'ghost'}
-            size="sm"
-            className="h-7 px-2 text-xs"
-            onClick={() => onModeChange('inline')}
-            title="Inline view"
-          >
-            <Rows className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant={mode === 'side-by-side' ? 'secondary' : 'ghost'}
-            size="sm"
-            className="h-7 px-2 text-xs"
-            onClick={() => onModeChange('side-by-side')}
-            title="Side-by-side view"
-          >
-            <Columns className="h-3.5 w-3.5" />
-          </Button>
-        </div>
+        <TooltipProvider>
+          <div className="flex items-center gap-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={mode === 'inline' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => onModeChange('inline')}
+                >
+                  <Rows className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Inline view - show changes in single column</p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={mode === 'side-by-side' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => onModeChange('side-by-side')}
+                >
+                  <Columns className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Side-by-side view - compare before and after</p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </TooltipProvider>
       </div>
 
       {/* Diff content */}
