@@ -11,6 +11,7 @@ import { GenerationProgress } from '@/components/features/generation-progress'
 import { GenerationQueuePanel } from '@/components/features/generation-queue-panel'
 import { StepProgressIndicator } from '@/components/features/step-progress-indicator'
 import { QuickStartButton } from '@/components/features/quick-start-button'
+import { KeyboardShortcutsHelp, KeyboardHint } from '@/components/features/keyboard-shortcuts-help'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -350,11 +351,15 @@ export default function GeneratePage() {
 
   return (
     <div className="space-y-4 sm:space-y-8">
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold">{t.generate.title}</h1>
-        <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-          {t.generate.subtitle}
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold">{t.generate.title}</h1>
+          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
+            {t.generate.subtitle}
+          </p>
+        </div>
+        {/* Keyboard Shortcuts Help (Iteration 5) */}
+        <KeyboardShortcutsHelp />
       </div>
 
       {/* Quick Start - for experienced users (Iteration 4) */}
@@ -433,6 +438,9 @@ export default function GeneratePage() {
           defaultExpanded={true}
         />
       )}
+
+      {/* Keyboard Hint - shows briefly for new users (Iteration 5) */}
+      {step === 'platform' && <KeyboardHint />}
     </div>
   )
 }
