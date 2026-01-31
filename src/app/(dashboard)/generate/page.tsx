@@ -9,6 +9,7 @@ import { PlatformSelector } from '@/components/features/platform-selector'
 import { SrtInput } from '@/components/features/srt-input'
 import { GenerationProgress } from '@/components/features/generation-progress'
 import { GenerationQueuePanel } from '@/components/features/generation-queue-panel'
+import { StepProgressIndicator } from '@/components/features/step-progress-indicator'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -355,61 +356,14 @@ export default function GeneratePage() {
         </p>
       </div>
 
-      {/* Step Indicator */}
-      <nav aria-label="Progress" className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-        <ol className="flex items-center min-w-max sm:min-w-0">
-          {steps.map((s, index) => {
-            const Icon = s.icon
-            const isActive = s.id === step
-            const isCompleted = index < currentStepIndex
-            const isClickable = index <= currentStepIndex
-
-            return (
-              <li key={s.id} className="flex items-center">
-                <button
-                  onClick={() => isClickable && setStep(s.id)}
-                  disabled={!isClickable}
-                  className={cn(
-                    'flex items-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2 rounded-lg transition-all min-h-[44px]',
-                    isActive && 'bg-primary text-primary-foreground',
-                    isCompleted && 'text-primary',
-                    !isActive && !isCompleted && 'text-muted-foreground',
-                    isClickable && !isActive && 'hover:bg-muted cursor-pointer',
-                    !isClickable && 'cursor-not-allowed'
-                  )}
-                >
-                  <span
-                    className={cn(
-                      'flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 transition-all flex-shrink-0',
-                      isActive && 'border-primary-foreground bg-primary-foreground/20',
-                      isCompleted && 'border-primary bg-primary text-primary-foreground',
-                      !isActive && !isCompleted && 'border-muted-foreground/50'
-                    )}
-                  >
-                    {isCompleted ? (
-                      <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4" weight="bold" />
-                    ) : (
-                      <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    )}
-                  </span>
-                  <span className="font-medium hidden sm:inline">{s.label}</span>
-                </button>
-                {index < steps.length - 1 && (
-                  <CaretRight className="w-4 h-4 sm:w-5 sm:h-5 mx-1 sm:mx-2 text-muted-foreground flex-shrink-0" />
-                )}
-              </li>
-            )
-          })}
-        </ol>
-      </nav>
-
-      {/* Step Requirements Indicator - only show success state when ready */}
-      {step !== 'output' && canProceed() && (
-        <div className="flex items-center gap-2 px-4 py-3 rounded-lg text-sm transition-colors bg-green-50 text-green-800 dark:bg-green-900/30 dark:text-green-200 border border-green-200 dark:border-green-800">
-          <CheckCircle className="h-4 w-4 flex-shrink-0" weight="fill" />
-          <span>{t.generate.readyToProceed}</span>
-        </div>
-      )}
+      {/* Enhanced Step Progress Indicator */}
+      <StepProgressIndicator
+        steps={steps}
+        currentStep={step}
+        onStepClick={setStep}
+        canProceed={canProceed()}
+        isGenerating={isGenerating}
+      />
 
       {/* Step Content */}
       <Card>
