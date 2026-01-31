@@ -13,6 +13,7 @@ import {
   Check,
   Info,
   Robot,
+  ChartBar,
 } from '@phosphor-icons/react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -38,6 +39,7 @@ import {
   saveRefinerPromptData,
   type RefinerPromptData,
 } from '@/components/prompt-studio/refiner-fullscreen'
+import { FeedbackSummaryWidget } from '@/components/prompt-studio/feedback-dashboard'
 import {
   STAGE_CONFIG,
   DEFAULT_LLM_PARAMETERS,
@@ -198,12 +200,19 @@ export default function StageEditorPage({ params }: { params: Promise<PageParams
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/admin/prompt-studio">
-                <ArrowLeft className="h-4 w-4 mr-1" />
-                Back
-              </Link>
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href="/admin/prompt-studio">
+                    <ArrowLeft className="h-4 w-4 mr-1" />
+                    Back
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>대시보드로 돌아가기</p>
+              </TooltipContent>
+            </Tooltip>
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-semibold">{config.label}</h2>
@@ -230,28 +239,49 @@ export default function StageEditorPage({ params }: { params: Promise<PageParams
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Open AI-assisted prompt refinement (fullscreen)</p>
+                <p>AI 기반 프롬프트 개선 도구 (전체화면)</p>
               </TooltipContent>
             </Tooltip>
 
-            <Button variant="outline" size="sm" onClick={handleReset} disabled={!hasChanges}>
-              <ArrowCounterClockwise className="h-4 w-4 mr-1" />
-              Reset
-            </Button>
-            <Button variant="outline" size="sm" asChild>
-              <Link href={`/admin/prompt-studio/${stageId}/test`}>
-                <Play className="h-4 w-4 mr-1" />
-                Test
-              </Link>
-            </Button>
-            <Button size="sm" onClick={handleSave} disabled={isSaving}>
-              {isSaving ? (
-                <Spinner className="h-4 w-4 mr-1 animate-spin" />
-              ) : (
-                <FloppyDisk className="h-4 w-4 mr-1" />
-              )}
-              Save
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="sm" onClick={handleReset} disabled={!hasChanges}>
+                  <ArrowCounterClockwise className="h-4 w-4 mr-1" />
+                  Reset
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>변경사항 되돌리기</p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/admin/prompt-studio/${stageId}/test`}>
+                    <Play className="h-4 w-4 mr-1" />
+                    Test
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>실제 제품으로 프롬프트 테스트</p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button size="sm" onClick={handleSave} disabled={isSaving}>
+                  {isSaving ? (
+                    <Spinner className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <FloppyDisk className="h-4 w-4 mr-1" />
+                  )}
+                  Save
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>프롬프트 설정 저장</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
         </div>
 
@@ -306,7 +336,7 @@ export default function StageEditorPage({ params }: { params: Promise<PageParams
                         </TooltipTrigger>
                         <TooltipContent>
                           <p className="max-w-xs">
-                            Variables are replaced with actual values during test execution
+                            변수는 테스트 실행 시 실제 값으로 대체됩니다
                           </p>
                         </TooltipContent>
                       </Tooltip>
@@ -346,7 +376,17 @@ export default function StageEditorPage({ params }: { params: Promise<PageParams
               <CardContent className="space-y-6">
                 {/* Model Selection */}
                 <div className="space-y-2">
-                  <Label>Model</Label>
+                  <div className="flex items-center gap-2">
+                    <Label>Model</Label>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Info className="h-4 w-4 text-muted-foreground" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="max-w-xs">사용할 AI 모델 선택. Flash는 빠르고 경제적, Pro는 더 높은 품질</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                   <Select
                     value={model}
                     onValueChange={(value) => {
@@ -370,7 +410,17 @@ export default function StageEditorPage({ params }: { params: Promise<PageParams
                 {/* Temperature */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <Label>Temperature</Label>
+                    <div className="flex items-center gap-2">
+                      <Label>Temperature</Label>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <Info className="h-4 w-4 text-muted-foreground" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="max-w-xs">출력의 무작위성 조절. 낮을수록 일관된 결과, 높을수록 다양한 결과</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
                     <span className="text-sm text-muted-foreground font-mono">
                       {temperature.toFixed(2)}
                     </span>
@@ -393,7 +443,17 @@ export default function StageEditorPage({ params }: { params: Promise<PageParams
                 {/* Max Tokens */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label>Max Tokens</Label>
+                    <div className="flex items-center gap-2">
+                      <Label>Max Tokens</Label>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <Info className="h-4 w-4 text-muted-foreground" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="max-w-xs">생성할 최대 토큰 수. 더 긴 출력이 필요하면 값을 높이세요</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
                     <span className="text-sm text-muted-foreground font-mono">{maxTokens}</span>
                   </div>
                   <Input
@@ -438,6 +498,19 @@ export default function StageEditorPage({ params }: { params: Promise<PageParams
                 </CardContent>
               </Card>
             )}
+
+            {/* AI Evaluation Summary */}
+            <Card>
+              <CardHeader className="py-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <ChartBar className="h-4 w-4" />
+                  AI Evaluation Summary
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <FeedbackSummaryWidget stage={stageId} />
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>

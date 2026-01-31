@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import {
   Tooltip,
   TooltipContent,
+  TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { PencilSimple, Eye, Info } from '@phosphor-icons/react'
@@ -107,9 +108,9 @@ export function PromptPanel({
   )
 
   return (
-    <div className={cn('flex flex-col h-full', className)}>
+    <div className={cn('flex flex-col h-full min-h-0', className)}>
       {/* Prompt Editor Card */}
-      <Card className="flex-1 flex flex-col overflow-hidden">
+      <Card className="flex-1 flex flex-col overflow-hidden min-h-0">
         <CardHeader className="py-3 px-4 border-b shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -120,31 +121,40 @@ export function PromptPanel({
                 </Badge>
               )}
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant={isEditMode ? 'default' : 'outline'}
-                size="sm"
-                className="h-7 text-xs"
-                onClick={() => onEditModeChange(!isEditMode)}
-              >
-                {isEditMode ? (
-                  <>
-                    <Eye className="h-3.5 w-3.5 mr-1" />
-                    View
-                  </>
-                ) : (
-                  <>
-                    <PencilSimple className="h-3.5 w-3.5 mr-1" />
-                    Edit
-                  </>
-                )}
-              </Button>
-            </div>
+            <TooltipProvider>
+              <div className="flex items-center gap-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={isEditMode ? 'default' : 'outline'}
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => onEditModeChange(!isEditMode)}
+                    >
+                      {isEditMode ? (
+                        <>
+                          <Eye className="h-3.5 w-3.5 mr-1" />
+                          View
+                        </>
+                      ) : (
+                        <>
+                          <PencilSimple className="h-3.5 w-3.5 mr-1" />
+                          Edit
+                        </>
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{isEditMode ? '구문 강조가 있는 보기 모드로 전환' : '프롬프트 수정을 위한 편집 모드로 전환'}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            </TooltipProvider>
           </div>
         </CardHeader>
-        <CardContent className="flex-1 p-0 overflow-hidden flex flex-col">
+        <CardContent className="flex-1 p-0 overflow-hidden flex flex-col min-h-0">
           {/* Prompt content */}
-          <div className="flex-1 overflow-y-auto p-4">
+          <div className="flex-1 overflow-y-auto p-4 min-h-0">
             {isEditMode ? (
               <Textarea
                 ref={textareaRef}
@@ -179,7 +189,7 @@ export function PromptPanel({
                   </TooltipTrigger>
                   <TooltipContent>
                     <p className="max-w-xs text-xs">
-                      Variables are replaced with actual values during test execution
+                      변수는 테스트 실행 시 실제 값으로 대체됩니다
                     </p>
                   </TooltipContent>
                 </Tooltip>

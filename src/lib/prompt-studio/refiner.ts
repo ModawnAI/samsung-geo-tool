@@ -239,9 +239,11 @@ interface RefinerExecutionResult {
 export async function executeRefinerChat(
   params: RefinerExecutionParams
 ): Promise<RefinerExecutionResult> {
-  const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY
+  // Prefer GEMINI_API_KEY (AI Studio) over GOOGLE_API_KEY (Cloud)
+  // as AI Studio keys work without needing to enable any APIs
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY
   if (!apiKey) {
-    throw new Error('GOOGLE_API_KEY or GEMINI_API_KEY is not configured')
+    throw new Error('GEMINI_API_KEY or GOOGLE_API_KEY is not configured')
   }
 
   const {
@@ -287,9 +289,9 @@ export async function executeRefinerChat(
   // Initialize Gemini
   const genAI = new GoogleGenAI({ apiKey })
 
-  // Use Gemini 2.0 Flash for faster responses
+  // Use latest Gemini model for best performance
   const result = await genAI.models.generateContent({
-    model: 'gemini-2.0-flash',
+    model: 'gemini-3-flash-preview',
     contents: messages,
     config: {
       systemInstruction: systemPrompt + `\n\nContext: This is for the "${stage}" stage of a Samsung GEO content generation pipeline.`,

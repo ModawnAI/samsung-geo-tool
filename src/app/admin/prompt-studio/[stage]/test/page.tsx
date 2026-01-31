@@ -54,8 +54,10 @@ import {
   type StageTestInput,
   type QualityScore,
   type PreviousResultsResponse,
+  type StageTestInputData,
 } from '@/types/prompt-studio'
 import { STAGE_DEPENDENCIES, getDependencyInfo } from '@/lib/prompt-studio/stage-dependencies'
+import { EvaluationPanel } from '@/components/prompt-studio/evaluation-panel'
 
 interface PageParams {
   stage: string
@@ -361,16 +363,24 @@ export default function StageTestPage({ params }: { params: Promise<PageParams> 
   }
 
   return (
+    <TooltipProvider>
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href={`/admin/prompt-studio/${stageId}`}>
-              <ArrowLeft className="h-4 w-4 mr-1" />
-              Back to Editor
-            </Link>
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href={`/admin/prompt-studio/${stageId}`}>
+                  <ArrowLeft className="h-4 w-4 mr-1" />
+                  Back to Editor
+                </Link>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>프롬프트 편집 화면으로 돌아가기</p>
+            </TooltipContent>
+          </Tooltip>
           <div>
             <h2 className="text-xl font-semibold">{config.label} - Test</h2>
             <p className="text-sm text-muted-foreground">Run tests with different inputs</p>
@@ -455,30 +465,37 @@ export default function StageTestPage({ params }: { params: Promise<PageParams> 
                   )}
                 </div>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={loadPreviousResults}
-                disabled={isLoadingPreviousResults || !previousResults?.availableStages.length}
-                className="shrink-0"
-              >
-                {isLoadingPreviousResults ? (
-                  <>
-                    <Spinner className="h-4 w-4 mr-1 animate-spin" />
-                    Loading...
-                  </>
-                ) : previousResultsLoaded ? (
-                  <>
-                    <Check className="h-4 w-4 mr-1" />
-                    Loaded
-                  </>
-                ) : (
-                  <>
-                    <ArrowsClockwise className="h-4 w-4 mr-1" />
-                    Load Previous Results
-                  </>
-                )}
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={loadPreviousResults}
+                    disabled={isLoadingPreviousResults || !previousResults?.availableStages.length}
+                    className="shrink-0"
+                  >
+                    {isLoadingPreviousResults ? (
+                      <>
+                        <Spinner className="h-4 w-4 mr-1 animate-spin" />
+                        Loading...
+                      </>
+                    ) : previousResultsLoaded ? (
+                      <>
+                        <Check className="h-4 w-4 mr-1" />
+                        Loaded
+                      </>
+                    ) : (
+                      <>
+                        <ArrowsClockwise className="h-4 w-4 mr-1" />
+                        Load Previous Results
+                      </>
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>이전 단계 테스트 결과를 자동으로 불러오기</p>
+                </TooltipContent>
+              </Tooltip>
             </div>
           </CardContent>
         </Card>
@@ -494,10 +511,17 @@ export default function StageTestPage({ params }: { params: Promise<PageParams> 
                 <CardDescription>Configure test parameters</CardDescription>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={saveTestInput}>
-                  <FloppyDisk className="h-4 w-4 mr-1" />
-                  Save
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="sm" onClick={saveTestInput}>
+                      <FloppyDisk className="h-4 w-4 mr-1" />
+                      Save
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>현재 테스트 입력값을 저장하여 재사용</p>
+                  </TooltipContent>
+                </Tooltip>
               </div>
             </div>
           </CardHeader>
@@ -523,7 +547,17 @@ export default function StageTestPage({ params }: { params: Promise<PageParams> 
 
             {/* Input Fields */}
             <div className="space-y-2">
-              <Label>Product Name *</Label>
+              <div className="flex items-center gap-2">
+                <Label>Product Name *</Label>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Info className="h-4 w-4 text-muted-foreground" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>테스트할 삼성 제품명 (예: Galaxy Z Flip7)</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
               <Input
                 value={productName}
                 onChange={(e) => setProductName(e.target.value)}
@@ -533,7 +567,17 @@ export default function StageTestPage({ params }: { params: Promise<PageParams> 
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Category</Label>
+                <div className="flex items-center gap-2">
+                  <Label>Category</Label>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info className="h-4 w-4 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>제품 카테고리 선택</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
                 <Select value={category} onValueChange={setCategory}>
                   <SelectTrigger>
                     <SelectValue />
@@ -550,7 +594,17 @@ export default function StageTestPage({ params }: { params: Promise<PageParams> 
               </div>
 
               <div className="space-y-2">
-                <Label>Language</Label>
+                <div className="flex items-center gap-2">
+                  <Label>Language</Label>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info className="h-4 w-4 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>생성 결과의 언어 선택</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
                 <Select value={language} onValueChange={(v: 'en' | 'ko') => setLanguage(v)}>
                   <SelectTrigger>
                     <SelectValue />
@@ -564,7 +618,17 @@ export default function StageTestPage({ params }: { params: Promise<PageParams> 
             </div>
 
             <div className="space-y-2">
-              <Label>Keywords (comma-separated)</Label>
+              <div className="flex items-center gap-2">
+                <Label>Keywords (comma-separated)</Label>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Info className="h-4 w-4 text-muted-foreground" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>제품 관련 키워드들을 쉼표로 구분하여 입력</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
               <Textarea
                 value={keywords}
                 onChange={(e) => setKeywords(e.target.value)}
@@ -651,23 +715,30 @@ export default function StageTestPage({ params }: { params: Promise<PageParams> 
               </>
             )}
 
-            <Button
-              className="w-full"
-              onClick={runTest}
-              disabled={isRunning || !productName}
-            >
-              {isRunning ? (
-                <>
-                  <Spinner className="h-4 w-4 mr-2 animate-spin" />
-                  Running Test...
-                </>
-              ) : (
-                <>
-                  <Play className="h-4 w-4 mr-2" weight="fill" />
-                  Run Test
-                </>
-              )}
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  className="w-full"
+                  onClick={runTest}
+                  disabled={isRunning || !productName}
+                >
+                  {isRunning ? (
+                    <>
+                      <Spinner className="h-4 w-4 mr-2 animate-spin" />
+                      Running Test...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="h-4 w-4 mr-2" weight="fill" />
+                      Run Test
+                    </>
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>현재 설정으로 프롬프트 테스트 실행</p>
+              </TooltipContent>
+            </Tooltip>
           </CardContent>
         </Card>
 
@@ -759,13 +830,20 @@ export default function StageTestPage({ params }: { params: Promise<PageParams> 
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base">Output</CardTitle>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowRawOutput(!showRawOutput)}
-                    >
-                      {showRawOutput ? 'Show Parsed' : 'Show Raw'}
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowRawOutput(!showRawOutput)}
+                        >
+                          {showRawOutput ? 'Show Parsed' : 'Show Raw'}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{showRawOutput ? '파싱된 결과 보기' : '원본 응답 보기'}</p>
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -891,6 +969,21 @@ export default function StageTestPage({ params }: { params: Promise<PageParams> 
                   )}
                 </CardContent>
               </Card>
+
+              {/* AI Evaluation Panel */}
+              <EvaluationPanel
+                stage={stageId}
+                input={{
+                  productName,
+                  category,
+                  keywords: keywords.split(',').map((k) => k.trim()).filter(Boolean),
+                  videoDescription: videoDescription || undefined,
+                  srtContent: srtContent || undefined,
+                } as StageTestInputData}
+                output={testResult.output}
+                prompt={stagePrompt?.stage_system_prompt || ''}
+                testRunId={testResult.id}
+              />
             </>
           ) : (
             <Card className="h-full min-h-[400px] flex items-center justify-center">
@@ -942,14 +1035,21 @@ export default function StageTestPage({ params }: { params: Promise<PageParams> 
                           {result.metrics.latencyMs}ms
                         </span>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setTestResult(result)}
-                      >
-                        <ArrowClockwise className="h-4 w-4 mr-1" />
-                        Load
-                      </Button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setTestResult(result)}
+                          >
+                            <ArrowClockwise className="h-4 w-4 mr-1" />
+                            Load
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>이 테스트 결과 다시 보기</p>
+                        </TooltipContent>
+                      </Tooltip>
                     </div>
                   ))}
                 </div>
@@ -959,5 +1059,6 @@ export default function StageTestPage({ params }: { params: Promise<PageParams> 
         </Collapsible>
       )}
     </div>
+    </TooltipProvider>
   )
 }

@@ -4,6 +4,11 @@ import { useState, useRef, useEffect } from 'react'
 import { PaperPlaneTilt } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 interface ChatInputProps {
   onSend: (message: string) => void
@@ -50,14 +55,21 @@ export function ChatInput({ onSend, isLoading, placeholder }: ChatInputProps) {
         className="min-h-[40px] max-h-[120px] resize-none text-sm"
         rows={1}
       />
-      <Button
-        size="icon"
-        onClick={handleSubmit}
-        disabled={!message.trim() || isLoading}
-        className="flex-shrink-0"
-      >
-        <PaperPlaneTilt className="h-5 w-5" />
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            size="icon"
+            onClick={handleSubmit}
+            disabled={!message.trim() || isLoading}
+            className="flex-shrink-0"
+          >
+            <PaperPlaneTilt className="h-5 w-5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>메시지 전송 (Enter)</p>
+        </TooltipContent>
+      </Tooltip>
     </div>
   )
 }

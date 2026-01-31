@@ -3,6 +3,11 @@
 import { useState } from 'react'
 import { Copy, Check, ArrowSquareOut } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
 interface CodeBlockProps {
@@ -32,34 +37,48 @@ export function CodeBlock({ code, onApply, className }: CodeBlockProps) {
           Improved Prompt ({lineCount} lines)
         </span>
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleCopy}
-            className="h-7 px-2 text-xs"
-          >
-            {copied ? (
-              <>
-                <Check className="h-3.5 w-3.5 mr-1" />
-                Copied
-              </>
-            ) : (
-              <>
-                <Copy className="h-3.5 w-3.5 mr-1" />
-                Copy
-              </>
-            )}
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCopy}
+                className="h-7 px-2 text-xs"
+              >
+                {copied ? (
+                  <>
+                    <Check className="h-3.5 w-3.5 mr-1" />
+                    Copied
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-3.5 w-3.5 mr-1" />
+                    Copy
+                  </>
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>개선된 프롬프트를 클립보드에 복사</p>
+            </TooltipContent>
+          </Tooltip>
           {onApply && (
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => onApply(code)}
-              className="h-7 px-2 text-xs"
-            >
-              <ArrowSquareOut className="h-3.5 w-3.5 mr-1" />
-              Apply
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => onApply(code)}
+                  className="h-7 px-2 text-xs"
+                >
+                  <ArrowSquareOut className="h-3.5 w-3.5 mr-1" />
+                  Apply
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>개선된 프롬프트를 에디터에 적용</p>
+              </TooltipContent>
+            </Tooltip>
           )}
         </div>
       </div>

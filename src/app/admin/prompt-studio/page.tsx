@@ -20,6 +20,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import {
   STAGE_CONFIG,
   WORKFLOW_STATUS_CONFIG,
   PROMPT_STAGES,
@@ -88,6 +94,7 @@ export default function PromptStudioDashboard() {
   }
 
   return (
+    <TooltipProvider>
     <div className="space-y-6">
       {error && (
         <Card className="border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-900/20">
@@ -152,17 +159,31 @@ export default function PromptStudioDashboard() {
                 )}
 
                 <div className="flex gap-2 pt-2">
-                  <Button asChild variant="outline" size="sm" className="flex-1">
-                    <Link href={`/admin/prompt-studio/${stageId}`}>
-                      Edit
-                    </Link>
-                  </Button>
-                  <Button asChild size="sm" className="flex-1">
-                    <Link href={`/admin/prompt-studio/${stageId}/test`}>
-                      Test
-                      <ArrowRight className="h-4 w-4 ml-1" />
-                    </Link>
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button asChild variant="outline" size="sm" className="flex-1">
+                        <Link href={`/admin/prompt-studio/${stageId}`}>
+                          Edit
+                        </Link>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>프롬프트 내용 편집 및 버전 관리</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button asChild size="sm" className="flex-1">
+                        <Link href={`/admin/prompt-studio/${stageId}/test`}>
+                          Test
+                          <ArrowRight className="h-4 w-4 ml-1" />
+                        </Link>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>실제 제품으로 프롬프트 테스트 실행</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               </CardContent>
             </Card>
@@ -211,5 +232,6 @@ export default function PromptStudioDashboard() {
         </CardContent>
       </Card>
     </div>
+    </TooltipProvider>
   )
 }

@@ -25,12 +25,15 @@ import {
   ChartBar,
   Link as LinkIcon,
   Image as ImageIcon,
+  MagnifyingGlass,
 } from '@phosphor-icons/react'
+import { VerificationPanel } from './verification-panel'
 import { cn } from '@/lib/utils'
 
 interface ResultsDisplayProps {
   result: GEOv2GenerateResponse
   productName: string
+  keywords?: string[]
   language?: 'ko' | 'en'
   className?: string
 }
@@ -38,6 +41,7 @@ interface ResultsDisplayProps {
 export function ResultsDisplay({
   result,
   productName,
+  keywords = [],
   language = 'ko',
   className,
 }: ResultsDisplayProps) {
@@ -76,7 +80,7 @@ export function ResultsDisplay({
 
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8">
+        <TabsList className="grid w-full grid-cols-4 lg:grid-cols-9">
           <TabsTrigger value="description" className="gap-1.5">
             <TextT className="h-4 w-4" />
             <span className="hidden sm:inline">
@@ -121,6 +125,12 @@ export function ResultsDisplay({
             <ImageIcon className="h-4 w-4" />
             <span className="hidden sm:inline">
               {isKorean ? '이미지' : 'Images'}
+            </span>
+          </TabsTrigger>
+          <TabsTrigger value="verify" className="gap-1.5">
+            <MagnifyingGlass className="h-4 w-4" />
+            <span className="hidden sm:inline">
+              {isKorean ? '검증' : 'Verify'}
             </span>
           </TabsTrigger>
         </TabsList>
@@ -182,6 +192,17 @@ export function ResultsDisplay({
         <TabsContent value="image-alt" className="mt-4">
           <ImageAltSection
             imageAltResult={result.imageAltResult}
+            language={language}
+          />
+        </TabsContent>
+
+        {/* Verify Tab */}
+        <TabsContent value="verify" className="mt-4">
+          <VerificationPanel
+            productName={productName}
+            keywords={keywords.length > 0 ? keywords : result.keywords.product}
+            generatedDescription={result.description.full}
+            hashtags={result.hashtags}
             language={language}
           />
         </TabsContent>

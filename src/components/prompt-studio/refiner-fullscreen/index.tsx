@@ -182,14 +182,21 @@ export function RefinerFullscreen({
         <header className="shrink-0 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="flex items-center justify-between px-4 py-3">
             <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleBack}
-              >
-                <ArrowLeft className="h-4 w-4 mr-1" />
-                Back to Editor
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleBack}
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-1" />
+                    Back to Editor
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>편집 화면으로 돌아가기 (저장되지 않은 변경사항은 확인 후 종료)</p>
+                </TooltipContent>
+              </Tooltip>
               <div className="h-6 w-px bg-border" />
               <div>
                 <h1 className="text-lg font-semibold">
@@ -202,31 +209,45 @@ export function RefinerFullscreen({
               {refinerState.hasUnsavedChanges && (
                 <span className="text-xs text-yellow-600 mr-2">Unsaved changes</span>
               )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSave}
-                disabled={isSaving || !refinerState.hasUnsavedChanges}
-              >
-                {isSaving ? (
-                  <Spinner className="h-4 w-4 mr-1 animate-spin" />
-                ) : (
-                  <FloppyDisk className="h-4 w-4 mr-1" />
-                )}
-                Save
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleSaveAndClose}
-                disabled={isSaving}
-              >
-                {isSaving ? (
-                  <Spinner className="h-4 w-4 mr-1 animate-spin" />
-                ) : (
-                  <FloppyDisk className="h-4 w-4 mr-1" />
-                )}
-                Save & Close
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSave}
+                    disabled={isSaving || !refinerState.hasUnsavedChanges}
+                  >
+                    {isSaving ? (
+                      <Spinner className="h-4 w-4 mr-1 animate-spin" />
+                    ) : (
+                      <FloppyDisk className="h-4 w-4 mr-1" />
+                    )}
+                    Save
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>변경사항 저장 후 계속 편집</p>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    onClick={handleSaveAndClose}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? (
+                      <Spinner className="h-4 w-4 mr-1 animate-spin" />
+                    ) : (
+                      <FloppyDisk className="h-4 w-4 mr-1" />
+                    )}
+                    Save & Close
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>변경사항 저장 후 편집 화면으로 돌아가기</p>
+                </TooltipContent>
+              </Tooltip>
             </div>
           </div>
         </header>
@@ -263,8 +284,8 @@ export function RefinerFullscreen({
         )}
 
         {/* Main content - Split view */}
-        <main className="flex-1 overflow-hidden p-4">
-          <div className="grid grid-cols-2 gap-4 h-full">
+        <main className="flex-1 overflow-hidden p-4 min-h-0">
+          <div className="grid grid-cols-2 gap-4 h-full min-h-0">
             {/* Left: Prompt Panel */}
             <PromptPanel
               stageId={stageId}

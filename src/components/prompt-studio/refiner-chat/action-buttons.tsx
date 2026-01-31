@@ -21,6 +21,7 @@ const ACTIONS: {
   labelKo: string
   icon: typeof MagnifyingGlass
   description: string
+  descriptionKo: string
 }[] = [
   {
     action: 'analyze',
@@ -28,6 +29,7 @@ const ACTIONS: {
     labelKo: '분석',
     icon: MagnifyingGlass,
     description: 'Analyze strengths, weaknesses, and recommendations',
+    descriptionKo: '프롬프트의 강점, 약점 및 개선 권장사항 분석',
   },
   {
     action: 'improve',
@@ -35,6 +37,7 @@ const ACTIONS: {
     labelKo: '개선',
     icon: Lightning,
     description: 'Generate an improved version of the prompt',
+    descriptionKo: '개선된 프롬프트 버전 생성',
   },
   {
     action: 'test',
@@ -42,6 +45,7 @@ const ACTIONS: {
     labelKo: '테스트',
     icon: TestTube,
     description: 'Compare current vs improved prompt',
+    descriptionKo: '현재 프롬프트와 개선된 프롬프트 비교',
   },
   {
     action: 'chat',
@@ -49,13 +53,14 @@ const ACTIONS: {
     labelKo: '대화',
     icon: ChatCircle,
     description: 'Free-form conversation about the prompt',
+    descriptionKo: '프롬프트에 대한 자유로운 대화',
   },
 ]
 
 export function ActionButtons({ onAction, isLoading, disabled }: ActionButtonsProps) {
   return (
     <div className="flex gap-2 flex-wrap">
-      {ACTIONS.map(({ action, label, icon: Icon, description }) => (
+      {ACTIONS.map(({ action, label, icon: Icon, descriptionKo }) => (
         <Tooltip key={action}>
           <TooltipTrigger asChild>
             <Button
@@ -70,7 +75,7 @@ export function ActionButtons({ onAction, isLoading, disabled }: ActionButtonsPr
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            <p>{description}</p>
+            <p>{descriptionKo}</p>
           </TooltipContent>
         </Tooltip>
       ))}

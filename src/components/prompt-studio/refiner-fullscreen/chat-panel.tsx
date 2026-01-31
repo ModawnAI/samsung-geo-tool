@@ -145,7 +145,7 @@ export function ChatPanel({
 
   return (
     <TooltipProvider>
-      <Card className={cn('flex flex-col h-full overflow-hidden', className)}>
+      <Card className={cn('flex flex-col h-full overflow-hidden min-h-0', className)}>
         {/* Header */}
         <CardHeader className="py-3 px-4 border-b shrink-0">
           <div className="flex items-center justify-between">
@@ -163,8 +163,8 @@ export function ChatPanel({
         </CardHeader>
 
         {/* Messages area */}
-        <CardContent className="flex-1 overflow-hidden p-0">
-          <div className="h-full p-4 overflow-y-auto">
+        <CardContent className="flex-1 overflow-hidden p-0 min-h-0">
+          <div className="h-full p-4 overflow-y-auto min-h-0">
             <ChatMessages
               messages={messages}
               onApplyPrompt={onApplyPrompt}
