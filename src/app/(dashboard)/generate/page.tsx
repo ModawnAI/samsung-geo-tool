@@ -88,6 +88,7 @@ export default function GeneratePage() {
   // Selective Zustand subscriptions for better performance
   const step = useGenerationStore((state) => state.step)
   const setStep = useGenerationStore((state) => state.setStep)
+  const platform = useGenerationStore((state) => state.platform)
   const productId = useGenerationStore((state) => state.productId)
   const srtContent = useGenerationStore((state) => state.srtContent)
   const selectedKeywords = useGenerationStore((state) => state.selectedKeywords)
@@ -168,6 +169,7 @@ export default function GeneratePage() {
     try {
       const {
         productName,
+        platform,
         srtContent,
         selectedKeywords,
         videoUrl,
@@ -187,6 +189,7 @@ export default function GeneratePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           productName,
+          platform,
           youtubeUrl: videoUrl || '',
           srtContent,
           keywords: selectedKeywords,
@@ -222,9 +225,12 @@ export default function GeneratePage() {
         : data.timestamps || ''
 
       const faqContent = data.faq?.faqs
-        ? data.faq.faqs.map((f: { question: string; answer: string }) =>
-            `Q: ${f.question}\nA: ${f.answer}`
-          ).join('\n\n')
+        ? data.faq.faqs.map((f: { question: string; answer: string }) => {
+            // Strip any existing Q:/A: prefixes to avoid duplication
+            const cleanQuestion = f.question.replace(/^Q:\s*/i, '').trim()
+            const cleanAnswer = f.answer.replace(/^A:\s*/i, '').trim()
+            return `Q: ${cleanQuestion}\nA: ${cleanAnswer}`
+          }).join('\n\n')
         : data.faq || ''
 
       // Build breakdown from v2 grounding metadata and USP result
@@ -265,6 +271,10 @@ export default function GeneratePage() {
         breakdown,
         tuningMetadata: data.tuningMetadata,
         imageAltResult: data.imageAltResult,
+        // Instagram-specific outputs
+        instagramDescription: data.instagramDescription,
+        engagementComments: data.engagementComments,
+        instagramAltText: data.instagramAltText,
       })
 
       setStep('output')
