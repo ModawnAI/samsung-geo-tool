@@ -64,12 +64,81 @@ export interface GeminiAnalysisResponse {
   rawText: string
 }
 
+export interface AnalysisContext {
+  platform?: string
+  productName?: string
+  productCategory?: string
+}
+
+/**
+ * Build contextual prompt based on platform and product
+ */
+function buildContextualPrompt(context: AnalysisContext): string {
+  const platformGuidance: Record<string, string> = {
+    youtube: `
+PLATFORM: YouTube
+- Optimize for YouTube's algorithm: watch time, CTR, engagement
+- Generate timestamps for video chapters
+- Focus on searchable titles and descriptions
+- Consider thumbnail moments for maximum click-through
+- Include calls to action for likes, comments, subscribes`,
+    
+    tiktok: `
+PLATFORM: TikTok
+- Short-form content optimization (15-60 seconds focus)
+- Trending hashtags and sounds consideration
+- Hook within first 3 seconds is critical
+- Vertical video framing analysis
+- Gen-Z/millennial language and trends`,
+    
+    instagram: `
+PLATFORM: Instagram Reels
+- Visual-first content optimization
+- Aesthetic and brand consistency
+- Hashtag strategy for discovery
+- Story/Reel cross-promotion opportunities
+- Influencer collaboration potential`,
+    
+    shorts: `
+PLATFORM: YouTube Shorts
+- Vertical format optimization
+- 60-second maximum content
+- Loop-friendly endings
+- Trending audio integration
+- Quick hook and payoff structure`,
+  }
+
+  let contextPrompt = ''
+
+  if (context.platform && platformGuidance[context.platform.toLowerCase()]) {
+    contextPrompt += platformGuidance[context.platform.toLowerCase()]
+  }
+
+  if (context.productName) {
+    contextPrompt += `
+
+PRODUCT CONTEXT: ${context.productName}
+- Focus keywords and descriptions on this specific product
+- Extract product features and specifications mentioned
+- Identify unique selling points (USPs) highlighted
+- Note any competitor comparisons or differentiators`
+  }
+
+  if (context.productCategory) {
+    contextPrompt += `
+- Product Category: ${context.productCategory}`
+  }
+
+  return contextPrompt
+}
+
 /**
  * Analyze a video using Gemini 3 Flash Preview
  * Supports both uploaded files (via file_uri) and base64 inline data
  */
 export async function analyzeVideoWithGemini(
-  videoSource: { type: 'uri'; uri: string; mimeType: string } | { type: 'base64'; data: string; mimeType: string }
+  videoSource: { type: 'uri'; uri: string; mimeType: string } | { type: 'base64'; data: string; mimeType: string },
+  context?: AnalysisContext
 ): Promise<GeminiAnalysisResponse> {
   if (!GEMINI_API_KEY) {
     throw new Error('GEMINI_API_KEY is not configured')
@@ -94,9 +163,15 @@ export async function analyzeVideoWithGemini(
     })
   }
 
+  // Build prompt with context
+  const contextualAddition = context ? buildContextualPrompt(context) : ''
+  const fullPrompt = contextualAddition 
+    ? `${contextualAddition}\n\n---\n\n${VIDEO_ANALYSIS_PROMPT}`
+    : VIDEO_ANALYSIS_PROMPT
+
   // Add analysis prompt
   parts.push({
-    text: VIDEO_ANALYSIS_PROMPT,
+    text: fullPrompt,
   })
 
   const response = await fetch(

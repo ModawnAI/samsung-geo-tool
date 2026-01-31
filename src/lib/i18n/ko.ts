@@ -342,6 +342,8 @@ export const ko: TranslationDictionary = {
       bestQualityHint: '최상의 조합: 영상 메타데이터 + 자막/텍스트가 모두 활용됩니다.',
       urlOnlyHint: 'YouTube 자막이 자동 추출됩니다. 더 정확한 결과를 위해 SRT/텍스트도 입력해보세요.',
       textOnlyHint: '입력된 텍스트로 생성됩니다. YouTube URL을 추가하면 영상 메타데이터도 활용됩니다.',
+      videoUpload: 'AI 비디오 분석',
+      videoUploadDesc: '동영상 업로드 → AI가 내용 분석 → 자동 텍스트 추출',
     },
     // Keyword selector
     keywordSelector: {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import type { VideoAnalysis } from '@/types/video-analysis'
 
 const MAX_FILE_SIZE = 500 * 1024 * 1024 // 500MB
@@ -76,8 +77,10 @@ export async function POST(request: NextRequest) {
       .from('videos')
       .getPublicUrl(filePath)
 
-    // Create video analysis record
-    const { data: analysisRecord, error: dbError } = await (supabase as any)
+    // Create video analysis record using admin client (bypasses RLS)
+    // User is already authenticated via the regular client above
+    const adminClient = createAdminClient()
+    const { data: analysisRecord, error: dbError } = await (adminClient as any)
       .from('video_analyses')
       .insert({
         user_id: user.id,

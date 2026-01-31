@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import {
   analyzeVideoWithGemini,
   uploadVideoToGemini,
@@ -18,14 +19,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { analysis_id } = await request.json()
+    const { analysis_id, platform, product_name, product_category } = await request.json()
 
     if (!analysis_id) {
       return NextResponse.json({ error: 'analysis_id is required' }, { status: 400 })
     }
 
-    // Get the analysis record (use type assertion for new table)
-    const { data: analysis, error: fetchError } = await (supabase as any)
+    // Build context for analysis
+    const analysisContext = {
+      platform: platform || undefined,
+      productName: product_name || undefined,
+      productCategory: product_category || undefined,
+    }
+
+    // Use admin client for database operations (bypasses RLS)
+    const adminClient = createAdminClient()
+
+    // Get the analysis record
+    const { data: analysis, error: fetchError } = await (adminClient as any)
       .from('video_analyses')
       .select('*')
       .eq('id', analysis_id)
@@ -41,7 +52,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update status to processing
-    await (supabase as any)
+    await (adminClient as any)
       .from('video_analyses')
       .update({ status: 'processing' })
       .eq('id', analysis_id)
@@ -73,12 +84,12 @@ export async function POST(request: NextRequest) {
         // Wait for processing
         await waitForFileProcessing(uploadResult.uri)
 
-        // Analyze with file URI
+        // Analyze with file URI + context
         geminiResult = await analyzeVideoWithGemini({
           type: 'uri',
           uri: uploadResult.uri,
           mimeType: uploadResult.mimeType,
-        })
+        }, analysisContext)
       } else {
         // For smaller videos, use inline base64
         console.log(`Analyzing video inline (${videoSizeMB.toFixed(2)}MB)...`)
@@ -87,7 +98,7 @@ export async function POST(request: NextRequest) {
           type: 'base64',
           data: videoBuffer.toString('base64'),
           mimeType: analysis.mime_type || 'video/mp4',
-        })
+        }, analysisContext)
       }
 
       const { analysis: analysisData, usage, rawText } = geminiResult
@@ -98,7 +109,7 @@ export async function POST(request: NextRequest) {
       )?.tokenCount || 0
 
       // Update the analysis record with results
-      const { error: updateError } = await (supabase as any)
+      const { error: updateError } = await (adminClient as any)
         .from('video_analyses')
         .update({
           status: 'completed',
@@ -159,7 +170,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Fetch updated record
-      const { data: updatedAnalysis } = await (supabase as any)
+      const { data: updatedAnalysis } = await (adminClient as any)
         .from('video_analyses')
         .select('*')
         .eq('id', analysis_id)
@@ -168,7 +179,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(updatedAnalysis)
     } catch (analysisError) {
       // Update status to failed
-      await (supabase as any)
+      await (adminClient as any)
         .from('video_analyses')
         .update({
           status: 'failed',

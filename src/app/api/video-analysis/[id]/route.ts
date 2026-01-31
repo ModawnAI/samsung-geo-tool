@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import type { VideoAnalysis } from '@/types/video-analysis'
 
 // GET - Get a specific video analysis
@@ -16,8 +17,9 @@ export async function GET(
     }
 
     const { id } = await params
+    const adminClient = createAdminClient()
 
-    const { data, error } = await (supabase as any)
+    const { data, error } = await (adminClient as any)
       .from('video_analyses')
       .select('*')
       .eq('id', id)
@@ -53,6 +55,7 @@ export async function PATCH(
 
     const { id } = await params
     const updates = await request.json()
+    const adminClient = createAdminClient()
 
     // Only allow certain fields to be updated
     const filteredUpdates: Record<string, any> = {}
@@ -68,7 +71,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
     }
 
-    const { data, error } = await (supabase as any)
+    const { data, error } = await (adminClient as any)
       .from('video_analyses')
       .update(filteredUpdates)
       .eq('id', id)

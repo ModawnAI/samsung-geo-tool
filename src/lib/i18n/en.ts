@@ -342,6 +342,8 @@ export const en: TranslationDictionary = {
       bestQualityHint: 'Best combination: Both video metadata and subtitles/text will be used.',
       urlOnlyHint: 'YouTube captions will be auto-extracted. Add SRT/text for more accurate results.',
       textOnlyHint: 'Will generate using provided text. Add YouTube URL to also use video metadata.',
+      videoUpload: 'AI Video Analysis',
+      videoUploadDesc: 'Upload video → AI analyzes content → Auto-extract text',
     },
     // Keyword selector
     keywordSelector: {

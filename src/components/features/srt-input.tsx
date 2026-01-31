@@ -7,8 +7,9 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
-import { UploadSimple, Warning, CheckCircle, Clock, TextAa, Hash, Info, YoutubeLogo, TextT, Check, CaretDown, Lightbulb, Question } from '@phosphor-icons/react'
+import { UploadSimple, Warning, CheckCircle, Clock, TextAa, Hash, Info, YoutubeLogo, TextT, Check, CaretDown, Lightbulb, Question, VideoCamera } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
+import { VideoUploadInput } from './video-upload-input'
 
 // Minimum requirements for meaningful content generation
 const MIN_WORD_COUNT = 50
@@ -330,6 +331,9 @@ export function SrtInput() {
           </div>
         )}
       </div>
+
+      {/* 0. AI Video Analysis - NEW */}
+      <VideoUploadInput />
 
       {/* 1. YouTube URL Input */}
       <div className="space-y-3 p-4 rounded-lg border bg-card">

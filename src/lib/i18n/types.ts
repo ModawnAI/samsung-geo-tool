@@ -344,6 +344,8 @@ export interface TranslationDictionary {
       bestQualityHint: string
       urlOnlyHint: string
       textOnlyHint: string
+      videoUpload: string
+      videoUploadDesc: string
     }
     // Keyword selector
     keywordSelector: {
