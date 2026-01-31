@@ -96,6 +96,7 @@ export const ko: TranslationDictionary = {
   nav: {
     dashboard: '대시보드',
     generate: '생성',
+    review: '검수',
     history: '히스토리',
     briefs: '브리프',
     analytics: '분석',

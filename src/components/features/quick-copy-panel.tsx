@@ -232,13 +232,13 @@ export function QuickCopyPanel({
       )}
     >
       {/* Header */}
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
-      >
-        <div className="flex items-center gap-3">
+      <div className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors">
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex items-center gap-3 flex-1 text-left"
+        >
           {getPlatformIcon()}
-          <div className="text-left">
+          <div>
             <h3 className="font-semibold flex items-center gap-2">
               빠른 복사
               {copiedCount > 0 && (
@@ -251,27 +251,29 @@ export function QuickCopyPanel({
               클릭하여 개별 항목 복사
             </p>
           </div>
-        </div>
+        </button>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
-            onClick={(e) => {
-              e.stopPropagation()
-              handleCopyAll()
-            }}
+            onClick={handleCopyAll}
             className="gap-1.5"
           >
             <Files className="h-4 w-4" />
             전체 복사
           </Button>
-          {isExpanded ? (
-            <CaretUp className="h-5 w-5 text-muted-foreground" />
-          ) : (
-            <CaretDown className="h-5 w-5 text-muted-foreground" />
-          )}
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="p-1 hover:bg-muted rounded"
+          >
+            {isExpanded ? (
+              <CaretUp className="h-5 w-5 text-muted-foreground" />
+            ) : (
+              <CaretDown className="h-5 w-5 text-muted-foreground" />
+            )}
+          </button>
         </div>
-      </button>
+      </div>
 
       {/* Copy Items Grid */}
       <AnimatePresence>

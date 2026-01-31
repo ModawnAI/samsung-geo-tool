@@ -96,6 +96,7 @@ export const en: TranslationDictionary = {
   nav: {
     dashboard: 'Dashboard',
     generate: 'Generate',
+    review: 'Review',
     history: 'History',
     briefs: 'Briefs',
     analytics: 'Analytics',
