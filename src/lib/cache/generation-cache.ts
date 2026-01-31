@@ -141,6 +141,7 @@ class LRUCache<T> {
 
 interface GenerationCacheKey {
   productName: string
+  platform?: string
   srtContent: string
   keywords: string[]
   language?: string
@@ -153,6 +154,7 @@ interface GenerationCacheKey {
 export function createGenerationCacheKey(params: GenerationCacheKey): string {
   const normalized = {
     productName: params.productName.trim().toLowerCase(),
+    platform: params.platform || 'youtube',
     // Use first 1000 chars of SRT for hash (avoid huge strings)
     srtContent: params.srtContent.slice(0, 1000).trim(),
     keywords: [...params.keywords].sort().map(k => k.toLowerCase()),

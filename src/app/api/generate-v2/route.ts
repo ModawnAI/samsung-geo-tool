@@ -485,6 +485,7 @@ export async function POST(request: NextRequest) {
     // ==========================================
     const cacheKey = createGenerationCacheKey({
       productName,
+      platform,
       srtContent,
       keywords,
       language,
