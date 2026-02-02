@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { Providers } from "@/components/providers";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export const metadata: Metadata = {
   title: "Samsung GEO Tool",
@@ -19,6 +20,7 @@ export default function RootLayout({
         <Providers>
           {children}
           <Toaster />
+          <SpeedInsights />
         </Providers>
       </body>
     </html>

@@ -37,17 +37,31 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     // Fetch stage prompt (use type assertion until migration is applied)
-    const { data, error } = await (supabase
-      .from('stage_prompts' as any)
-      .select('*')
-      .eq('stage', stage)
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .single() as any)
+    // Handle case where table doesn't exist yet (PGRST204) or record not found (PGRST116)
+    let data = null
+    let fetchError = null
 
-    if (error) {
-      if (error.code === 'PGRST116') {
-        // No stage-specific record found, load the base prompt from prompt_versions
+    try {
+      const result = await (supabase
+        .from('stage_prompts' as any)
+        .select('*')
+        .eq('stage', stage)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .single() as any)
+      data = result.data
+      fetchError = result.error
+    } catch (e) {
+      // Table might not exist
+      console.warn('[API] stage_prompts table access failed:', e)
+      fetchError = { code: 'TABLE_ERROR' }
+    }
+
+    // If no record found or table doesn't exist, return default prompt
+    if (fetchError) {
+      if (fetchError.code === 'PGRST116' || fetchError.code === '42P01' || fetchError.code === 'TABLE_ERROR') {
+        // No stage-specific record found or table doesn't exist
+        // Load the base prompt from prompt_versions
         const { data: activePrompt } = await supabase
           .from('prompt_versions')
           .select('system_prompt')
@@ -70,7 +84,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           basePrompt: basePrompt,
         })
       }
-      throw error
+      throw fetchError
     }
 
     return NextResponse.json({ stagePrompt: data })
