@@ -8,7 +8,10 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
 
     const engine = searchParams.get('engine')
-    const isActive = searchParams.get('is_active')
+    // Support both 'activeOnly' (frontend) and 'is_active' (legacy) params
+    const activeOnlyParam = searchParams.get('activeOnly')
+    const isActiveParam = searchParams.get('is_active')
+    const isActive = activeOnlyParam ?? isActiveParam
     const limit = parseInt(searchParams.get('limit') || '100')
     const offset = parseInt(searchParams.get('offset') || '0')
 
@@ -59,7 +62,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, version, engine, system_prompt, description } = body
+    const { name, version, engine, system_prompt, description, is_active } = body
 
     if (!name || !version || !engine || !system_prompt) {
       return NextResponse.json(
@@ -75,13 +78,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // If setting this prompt as active, deactivate others for the same engine first
+    if (is_active === true) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase as any)
+        .from('prompt_versions')
+        .update({ is_active: false })
+        .eq('engine', engine)
+        .eq('is_active', true)
+    }
+
     const insertData = {
       name,
       version,
       engine,
       system_prompt,
       description: description || null,
-      is_active: false,
+      is_active: is_active === true,
       created_by: user.id,
     }
 
