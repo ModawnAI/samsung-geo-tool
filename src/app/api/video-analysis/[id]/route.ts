@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { featureFlags } from '@/lib/feature-flags'
 import type { VideoAnalysis } from '@/types/video-analysis'
 
 // GET - Get a specific video analysis
@@ -8,6 +9,13 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  if (!featureFlags.videoAnalysis) {
+    return NextResponse.json(
+      { error: 'Video analysis feature is not enabled' },
+      { status: 403 }
+    )
+  }
+
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -45,6 +53,13 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  if (!featureFlags.videoAnalysis) {
+    return NextResponse.json(
+      { error: 'Video analysis feature is not enabled' },
+      { status: 403 }
+    )
+  }
+
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()

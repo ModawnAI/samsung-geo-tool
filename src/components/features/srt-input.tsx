@@ -22,6 +22,7 @@ import {
   Info,
 } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
+import { featureFlags } from '@/lib/feature-flags'
 import { VideoUploadInput } from './video-upload-input'
 
 // Minimum requirements
@@ -42,8 +43,11 @@ export function SrtInput() {
   const [parseError, setParseError] = useState<string | null>(null)
   const [contentStats, setContentStats] = useState<SrtValidationResult['stats']>(null)
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<string>('text')
+  const [activeTab, setActiveTab] = useState<string>(featureFlags.videoAnalysis ? 'video' : 'text')
   const [showAdvanced, setShowAdvanced] = useState(false)
+
+  // Feature flag for video analysis tabs
+  const showVideoTabs = featureFlags.videoAnalysis
 
   // Determine what inputs are provided
   const hasContent = useMemo(() => {
@@ -134,15 +138,22 @@ export function SrtInput() {
 
       {/* Main Input Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="video" className="gap-2">
-            <VideoCamera className="h-4 w-4" />
-            <span className="hidden sm:inline">AI 분석</span>
-          </TabsTrigger>
-          <TabsTrigger value="youtube" className="gap-2">
-            <YoutubeLogo className="h-4 w-4" weight="fill" />
-            <span className="hidden sm:inline">YouTube</span>
-          </TabsTrigger>
+        <TabsList className={cn(
+          "grid w-full",
+          showVideoTabs ? "grid-cols-3" : "grid-cols-1"
+        )}>
+          {showVideoTabs && (
+            <>
+              <TabsTrigger value="video" className="gap-2">
+                <VideoCamera className="h-4 w-4" />
+                <span className="hidden sm:inline">AI 분석</span>
+              </TabsTrigger>
+              <TabsTrigger value="youtube" className="gap-2">
+                <YoutubeLogo className="h-4 w-4" weight="fill" />
+                <span className="hidden sm:inline">YouTube</span>
+              </TabsTrigger>
+            </>
+          )}
           <TabsTrigger value="text" className="gap-2">
             <TextT className="h-4 w-4" />
             <span className="hidden sm:inline">텍스트</span>
@@ -150,35 +161,39 @@ export function SrtInput() {
         </TabsList>
 
         {/* Video Analysis Tab */}
-        <TabsContent value="video" className="mt-4">
-          <VideoUploadInput />
-        </TabsContent>
+        {showVideoTabs && (
+          <TabsContent value="video" className="mt-4">
+            <VideoUploadInput />
+          </TabsContent>
+        )}
 
         {/* YouTube Tab */}
-        <TabsContent value="youtube" className="mt-4 space-y-4">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <YoutubeLogo className="h-5 w-5 text-red-500" weight="fill" />
-              <Label htmlFor="video-url">YouTube URL</Label>
-              {hasContent.hasUrl && (
-                <Badge variant="outline" className="text-green-600 border-green-600">
-                  <Check className="h-3 w-3 mr-1" />
-                </Badge>
-              )}
+        {showVideoTabs && (
+          <TabsContent value="youtube" className="mt-4 space-y-4">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <YoutubeLogo className="h-5 w-5 text-red-500" weight="fill" />
+                <Label htmlFor="video-url">YouTube URL</Label>
+                {hasContent.hasUrl && (
+                  <Badge variant="outline" className="text-green-600 border-green-600">
+                    <Check className="h-3 w-3 mr-1" />
+                  </Badge>
+                )}
+              </div>
+              <Input
+                id="video-url"
+                type="url"
+                value={videoUrl}
+                onChange={(e) => setVideoUrl(e.target.value)}
+                placeholder="https://youtube.com/watch?v=..."
+                className={cn(hasContent.hasUrl && 'border-green-500/50')}
+              />
+              <p className="text-xs text-muted-foreground">
+                자막과 메타데이터를 자동으로 추출합니다
+              </p>
             </div>
-            <Input
-              id="video-url"
-              type="url"
-              value={videoUrl}
-              onChange={(e) => setVideoUrl(e.target.value)}
-              placeholder="https://youtube.com/watch?v=..."
-              className={cn(hasContent.hasUrl && 'border-green-500/50')}
-            />
-            <p className="text-xs text-muted-foreground">
-              자막과 메타데이터를 자동으로 추출합니다
-            </p>
-          </div>
-        </TabsContent>
+          </TabsContent>
+        )}
 
         {/* Text/SRT Tab */}
         <TabsContent value="text" className="mt-4 space-y-4">
@@ -258,19 +273,23 @@ export function SrtInput() {
             <div>
               <p className="font-medium">입력 우선순위</p>
               <p className="text-muted-foreground text-xs">
-                직접 입력한 내용이 우선됩니다. AI 분석과 YouTube 추출은 참고용으로 병합됩니다.
+                {showVideoTabs
+                  ? '직접 입력한 내용이 우선됩니다. AI 분석과 YouTube 추출은 참고용으로 병합됩니다.'
+                  : '직접 입력한 텍스트가 콘텐츠 생성에 사용됩니다.'}
               </p>
             </div>
           </div>
-          <div className="flex items-start gap-2">
-            <Lightning className="h-4 w-4 mt-0.5 text-violet-500" />
-            <div>
-              <p className="font-medium">AI 비디오 분석</p>
-              <p className="text-muted-foreground text-xs">
-                Gemini 3 Flash가 동영상에서 제품 정보, 기능, 스펙, USP를 자동 추출합니다.
-              </p>
+          {showVideoTabs && (
+            <div className="flex items-start gap-2">
+              <Lightning className="h-4 w-4 mt-0.5 text-violet-500" />
+              <div>
+                <p className="font-medium">AI 비디오 분석</p>
+                <p className="text-muted-foreground text-xs">
+                  Gemini 3 Flash가 동영상에서 제품 정보, 기능, 스펙, USP를 자동 추출합니다.
+                </p>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 

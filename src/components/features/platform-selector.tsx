@@ -7,10 +7,11 @@
  * Iteration 2: UI/UX Improvements
  */
 
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useMemo } from 'react'
 import { useGenerationStore } from '@/store/generation-store'
 import { PLATFORM_CONFIGS, type Platform } from '@/types/geo-v2'
 import { cn } from '@/lib/utils'
+import { featureFlags } from '@/lib/feature-flags'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   YoutubeLogo,
@@ -69,11 +70,27 @@ export function PlatformSelector({ onContinue, className }: PlatformSelectorProp
   const setPlatform = useGenerationStore((state) => state.setPlatform)
   const setStep = useGenerationStore((state) => state.setStep)
 
+  // Filter platforms based on feature flags
+  const availablePlatforms = useMemo(() => {
+    const all = Object.keys(PLATFORM_CONFIGS) as Platform[]
+    return all.filter(p => {
+      if (p === 'tiktok' && !featureFlags.tiktok) return false
+      return PLATFORM_CONFIGS[p].enabled
+    })
+  }, [])
+
+  // Fallback to youtube if current platform is not available
+  useEffect(() => {
+    if (!availablePlatforms.includes(platform)) {
+      setPlatform('youtube')
+    }
+  }, [availablePlatforms, platform, setPlatform])
+
   const handleSelectPlatform = useCallback((selectedPlatform: Platform) => {
-    if (PLATFORM_CONFIGS[selectedPlatform].enabled) {
+    if (availablePlatforms.includes(selectedPlatform)) {
       setPlatform(selectedPlatform)
     }
-  }, [setPlatform])
+  }, [availablePlatforms, setPlatform])
 
   const handleContinue = useCallback(() => {
     setStep('product')
@@ -82,39 +99,36 @@ export function PlatformSelector({ onContinue, className }: PlatformSelectorProp
 
   // Keyboard navigation
   useEffect(() => {
-    const platforms = Object.keys(PLATFORM_CONFIGS) as Platform[]
-    const enabledPlatforms = platforms.filter(p => PLATFORM_CONFIGS[p].enabled)
-    
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return
       }
 
-      const currentIndex = enabledPlatforms.indexOf(platform)
+      const currentIndex = availablePlatforms.indexOf(platform)
 
       if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
         e.preventDefault()
-        const newIndex = currentIndex > 0 ? currentIndex - 1 : enabledPlatforms.length - 1
-        handleSelectPlatform(enabledPlatforms[newIndex])
+        const newIndex = currentIndex > 0 ? currentIndex - 1 : availablePlatforms.length - 1
+        handleSelectPlatform(availablePlatforms[newIndex])
       } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
         e.preventDefault()
-        const newIndex = currentIndex < enabledPlatforms.length - 1 ? currentIndex + 1 : 0
-        handleSelectPlatform(enabledPlatforms[newIndex])
+        const newIndex = currentIndex < availablePlatforms.length - 1 ? currentIndex + 1 : 0
+        handleSelectPlatform(availablePlatforms[newIndex])
       } else if (e.key === 'Enter') {
         e.preventDefault()
         handleContinue()
-      } else if (e.key === '1') {
-        handleSelectPlatform('youtube')
-      } else if (e.key === '2') {
-        handleSelectPlatform('instagram')
-      } else if (e.key === '3' && PLATFORM_CONFIGS.tiktok.enabled) {
-        handleSelectPlatform('tiktok')
+      } else {
+        // Number keys select platforms by position in available list
+        const keyNum = parseInt(e.key)
+        if (keyNum >= 1 && keyNum <= availablePlatforms.length) {
+          handleSelectPlatform(availablePlatforms[keyNum - 1])
+        }
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [platform, handleSelectPlatform, handleContinue])
+  }, [platform, availablePlatforms, handleSelectPlatform, handleContinue])
 
   const getPlatformIcon = (p: Platform, size: 'sm' | 'lg' = 'lg') => {
     const sizeClass = size === 'lg' ? 'h-10 w-10' : 'h-5 w-5'
@@ -161,8 +175,11 @@ export function PlatformSelector({ onContinue, className }: PlatformSelectorProp
       </div>
 
       {/* Platform Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
-        {(Object.keys(PLATFORM_CONFIGS) as Platform[]).map((p, index) => {
+      <div className={cn(
+        "grid grid-cols-1 gap-4 lg:gap-6",
+        availablePlatforms.length === 2 ? "md:grid-cols-2" : "md:grid-cols-3"
+      )}>
+        {availablePlatforms.map((p, index) => {
           const config = PLATFORM_CONFIGS[p]
           const details = PLATFORM_DETAILS[p]
           const isSelected = platform === p

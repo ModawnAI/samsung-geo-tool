@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { featureFlags } from '@/lib/feature-flags'
 import type { VideoAnalysis } from '@/types/video-analysis'
 
 // GET - List all video analyses for the user
 export async function GET(request: NextRequest) {
+  if (!featureFlags.videoAnalysis) {
+    return NextResponse.json(
+      { error: 'Video analysis feature is not enabled' },
+      { status: 403 }
+    )
+  }
+
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -51,6 +59,13 @@ export async function GET(request: NextRequest) {
 
 // DELETE - Delete a video analysis
 export async function DELETE(request: NextRequest) {
+  if (!featureFlags.videoAnalysis) {
+    return NextResponse.json(
+      { error: 'Video analysis feature is not enabled' },
+      { status: 403 }
+    )
+  }
+
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
