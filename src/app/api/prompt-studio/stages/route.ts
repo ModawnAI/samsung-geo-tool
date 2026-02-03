@@ -16,6 +16,8 @@ interface StagePromptRow {
   test_count: number
   last_tested_at: string | null
   updated_at: string
+  current_version?: number
+  total_versions?: number
 }
 
 export async function GET() {
@@ -55,6 +57,8 @@ export async function GET() {
               testCount: prompt.test_count,
               lastTestedAt: prompt.last_tested_at,
               updatedAt: prompt.updated_at,
+              currentVersion: prompt.current_version ?? 1,
+              totalVersions: prompt.total_versions ?? 1,
             }
           }
         }

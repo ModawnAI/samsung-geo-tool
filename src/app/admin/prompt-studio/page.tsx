@@ -136,12 +136,25 @@ export default function PromptStudioDashboard() {
                 <CardDescription className="text-xs">{config.description}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="grid grid-cols-3 gap-2 text-sm">
                   <div>
-                    <p className="text-muted-foreground text-xs">Avg Score</p>
+                    <p className="text-muted-foreground text-xs">Version</p>
+                    <p className="font-medium">
+                      {status?.currentVersion
+                        ? `v${status.currentVersion}`
+                        : '--'}
+                      {status?.totalVersions && status.totalVersions > 1 && (
+                        <span className="text-muted-foreground text-xs ml-1">
+                          ({status.totalVersions})
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs">Score</p>
                     <p className="font-medium">
                       {status?.avgQualityScore != null
-                        ? `${status.avgQualityScore.toFixed(1)}%`
+                        ? `${status.avgQualityScore.toFixed(0)}%`
                         : '--'}
                     </p>
                   </div>

@@ -347,6 +347,9 @@ export interface StageStatusSummary {
   testCount: number
   lastTestedAt: string | null
   updatedAt: string
+  // Version info
+  currentVersion?: number
+  totalVersions?: number
 }
 
 // ============================================================================

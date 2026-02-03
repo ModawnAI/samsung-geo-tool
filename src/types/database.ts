@@ -889,7 +889,7 @@ export interface Database {
         Row: {
           id: string
           prompt_version_id: string | null
-          stage: 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
+          stage: 'grounding' | 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
           stage_system_prompt: string | null
           temperature: number
           max_tokens: number
@@ -899,6 +899,8 @@ export interface Database {
           avg_quality_score: number | null
           test_count: number
           last_tested_at: string | null
+          current_version: number
+          total_versions: number
           created_by: string | null
           created_at: string
           updated_at: string
@@ -906,7 +908,7 @@ export interface Database {
         Insert: {
           id?: string
           prompt_version_id?: string | null
-          stage: 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
+          stage: 'grounding' | 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
           stage_system_prompt?: string | null
           temperature?: number
           max_tokens?: number
@@ -916,6 +918,8 @@ export interface Database {
           avg_quality_score?: number | null
           test_count?: number
           last_tested_at?: string | null
+          current_version?: number
+          total_versions?: number
           created_by?: string | null
           created_at?: string
           updated_at?: string
@@ -923,7 +927,7 @@ export interface Database {
         Update: {
           id?: string
           prompt_version_id?: string | null
-          stage?: 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
+          stage?: 'grounding' | 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
           stage_system_prompt?: string | null
           temperature?: number
           max_tokens?: number
@@ -933,9 +937,61 @@ export interface Database {
           avg_quality_score?: number | null
           test_count?: number
           last_tested_at?: string | null
+          current_version?: number
+          total_versions?: number
           created_by?: string | null
           created_at?: string
           updated_at?: string
+        }
+      }
+      stage_prompt_versions: {
+        Row: {
+          id: string
+          stage: 'grounding' | 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
+          version: number
+          stage_system_prompt: string | null
+          temperature: number
+          max_tokens: number
+          top_p: number
+          model: string
+          change_summary: string | null
+          is_active: boolean
+          avg_quality_score: number | null
+          test_count: number
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          stage: 'grounding' | 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
+          version: number
+          stage_system_prompt?: string | null
+          temperature?: number
+          max_tokens?: number
+          top_p?: number
+          model?: string
+          change_summary?: string | null
+          is_active?: boolean
+          avg_quality_score?: number | null
+          test_count?: number
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          stage?: 'grounding' | 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
+          version?: number
+          stage_system_prompt?: string | null
+          temperature?: number
+          max_tokens?: number
+          top_p?: number
+          model?: string
+          change_summary?: string | null
+          is_active?: boolean
+          avg_quality_score?: number | null
+          test_count?: number
+          created_by?: string | null
+          created_at?: string
         }
       }
       prompt_test_runs: {
@@ -1001,7 +1057,7 @@ export interface Database {
         Row: {
           id: string
           name: string
-          stage: 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
+          stage: 'grounding' | 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
           input_data: Json
           is_default: boolean
           is_shared: boolean
@@ -1012,7 +1068,7 @@ export interface Database {
         Insert: {
           id?: string
           name: string
-          stage: 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
+          stage: 'grounding' | 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
           input_data: Json
           is_default?: boolean
           is_shared?: boolean
@@ -1023,7 +1079,7 @@ export interface Database {
         Update: {
           id?: string
           name?: string
-          stage?: 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
+          stage?: 'grounding' | 'description' | 'usp' | 'faq' | 'chapters' | 'case_studies' | 'keywords' | 'hashtags'
           input_data?: Json
           is_default?: boolean
           is_shared?: boolean

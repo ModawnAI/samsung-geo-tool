@@ -216,6 +216,30 @@ export default function StageEditorPage({ params }: { params: Promise<PageParams
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-semibold">{config.label}</h2>
+                {stagePrompt && (
+                  <Badge variant="outline" className="text-blue-600 border-blue-300 font-mono">
+                    v{(stagePrompt as any).current_version || 1}
+                    {(stagePrompt as any).total_versions > 1 && (
+                      <span className="text-muted-foreground ml-1">
+                        / {(stagePrompt as any).total_versions}
+                      </span>
+                    )}
+                  </Badge>
+                )}
+                {stagePrompt?.workflow_status && (
+                  <Badge
+                    variant={stagePrompt.workflow_status === 'active' ? 'default' : 'secondary'}
+                    className={
+                      stagePrompt.workflow_status === 'active'
+                        ? 'bg-green-100 text-green-700 border-green-300'
+                        : stagePrompt.workflow_status === 'draft'
+                          ? 'bg-gray-100 text-gray-700'
+                          : ''
+                    }
+                  >
+                    {stagePrompt.workflow_status}
+                  </Badge>
+                )}
                 {hasChanges && (
                   <Badge variant="outline" className="text-yellow-600 border-yellow-300">
                     Unsaved changes
