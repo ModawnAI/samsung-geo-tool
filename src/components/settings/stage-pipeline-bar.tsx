@@ -210,7 +210,7 @@ export function StagePipelineBar({
                     </div>
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-[250px]">
+                <TooltipContent side="bottom" className="max-w-[280px]">
                   <div className="space-y-2">
                     <div>
                       <p className="font-medium">{config.label}</p>
@@ -220,15 +220,21 @@ export function StagePipelineBar({
                     </div>
                     <div className="text-xs space-y-1 pt-1 border-t">
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Engine:</span>
+                        <span className="text-muted-foreground">
+                          {language === 'ko' ? '엔진:' : 'Engine:'}
+                        </span>
                         <span className={engineConfig.color}>{engineConfig.label}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Model:</span>
+                        <span className="text-muted-foreground">
+                          {language === 'ko' ? '모델:' : 'Model:'}
+                        </span>
                         <span className="font-mono">{model}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Temperature:</span>
+                        <span className="text-muted-foreground">
+                          {language === 'ko' ? '온도 (0=결정적, 2=창의적):' : 'Temperature (0=deterministic, 2=creative):'}
+                        </span>
                         <span>{temperature}</span>
                       </div>
                       {status && (

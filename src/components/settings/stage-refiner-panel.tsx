@@ -185,8 +185,8 @@ export function StageRefinerPanel({
                 <TooltipContent>
                   <p>
                     {language === 'ko'
-                      ? '전체화면 모드에서 고급 기능 사용'
-                      : 'Use advanced features in fullscreen mode'}
+                      ? '전체 화면 모드에서 프롬프트 편집 및 AI 대화'
+                      : 'Edit prompt and chat with AI in fullscreen mode'}
                   </p>
                 </TooltipContent>
               </Tooltip>
@@ -211,8 +211,8 @@ export function StageRefinerPanel({
                 <TooltipContent>
                   <p>
                     {language === 'ko'
-                      ? '현재 프롬프트의 강점과 약점 분석'
-                      : 'Analyze strengths and weaknesses'}
+                      ? '현재 프롬프트의 강점, 약점, 개선점을 AI가 분석'
+                      : 'AI analyzes current prompt strengths, weaknesses, improvements'}
                   </p>
                 </TooltipContent>
               </Tooltip>
@@ -233,8 +233,8 @@ export function StageRefinerPanel({
                 <TooltipContent>
                   <p>
                     {language === 'ko'
-                      ? 'AI가 개선된 프롬프트 버전 생성'
-                      : 'Generate improved prompt version'}
+                      ? 'AI가 개선된 프롬프트 버전을 생성하여 제안'
+                      : 'AI generates an improved version of the prompt'}
                   </p>
                 </TooltipContent>
               </Tooltip>
@@ -255,8 +255,8 @@ export function StageRefinerPanel({
                 <TooltipContent>
                   <p>
                     {language === 'ko'
-                      ? '현재 프롬프트와 개선안 비교'
-                      : 'Compare current vs improved prompt'}
+                      ? '현재 프롬프트와 개선안을 동일 입력으로 비교 테스트'
+                      : 'Compare test current vs improved prompt with same input'}
                   </p>
                 </TooltipContent>
               </Tooltip>
@@ -280,7 +280,7 @@ export function StageRefinerPanel({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>{language === 'ko' ? '대화 초기화' : 'Reset conversation'}</p>
+                  <p>{language === 'ko' ? '대화 기록 초기화하고 새 세션 시작' : 'Clear chat history and start new session'}</p>
                 </TooltipContent>
               </Tooltip>
             </div>
@@ -339,7 +339,7 @@ export function StageRefinerPanel({
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>{language === 'ko' ? '복사' : 'Copy'}</p>
+                        <p>{language === 'ko' ? '개선된 프롬프트를 클립보드에 복사' : 'Copy improved prompt to clipboard'}</p>
                       </TooltipContent>
                     </Tooltip>
                     <Tooltip>
@@ -356,8 +356,8 @@ export function StageRefinerPanel({
                       <TooltipContent>
                         <p>
                           {language === 'ko'
-                            ? '이 프롬프트를 현재 편집기에 적용'
-                            : 'Apply this prompt to editor'}
+                            ? '개선된 프롬프트를 에디터에 적용 (저장은 별도)'
+                            : 'Apply improved prompt to editor (save separately)'}
                         </p>
                       </TooltipContent>
                     </Tooltip>

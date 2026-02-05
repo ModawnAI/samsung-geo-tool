@@ -15,6 +15,7 @@ import type {
   FeedbackAnalysis,
   PromptStudioFeedback,
 } from '@/types/prompt-studio'
+import { getEvaluationConfig, getDimensionLabel } from './stage-evaluation-config'
 
 // ============================================================================
 // Statistical Analysis
@@ -177,10 +178,10 @@ Feedback suggestions (aggregated):
 {suggestions}
 
 Scores summary:
-- Overall average: {overall_avg}
-- Relevance average: {relevance_avg}
-- Quality average: {quality_avg}
-- Creativity average: {creativity_avg}
+- {overall_avg}
+- {relevance_avg}
+- {quality_avg}
+- {creativity_avg}
 
 Identify 3-5 common weakness patterns and provide:
 1. A clear pattern description
@@ -212,7 +213,8 @@ Respond in valid JSON format:
  */
 async function detectPatternsWithLLM(
   feedbackRecords: PromptStudioFeedback[],
-  averageScores: EvaluationScores
+  averageScores: EvaluationScores,
+  stage: PromptStage
 ): Promise<{ patterns: WeaknessPattern[]; improvementPriorities: FeedbackAnalysis['improvementPriorities'] }> {
   const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY
 
@@ -238,13 +240,16 @@ async function detectPatternsWithLLM(
   const uniqueWeaknesses = [...new Set(weaknesses)].slice(0, 20)
   const uniqueSuggestions = [...new Set(suggestions)].slice(0, 20)
 
+  const config = getEvaluationConfig(stage)
+  const [d1, d2, d3, d4] = config.dimensions
+
   const prompt = PATTERN_DETECTION_PROMPT
     .replace('{weaknesses}', uniqueWeaknesses.join('\n- '))
     .replace('{suggestions}', uniqueSuggestions.join('\n- '))
-    .replace('{overall_avg}', averageScores.overall.toFixed(1))
-    .replace('{relevance_avg}', averageScores.relevance.toFixed(1))
-    .replace('{quality_avg}', averageScores.quality.toFixed(1))
-    .replace('{creativity_avg}', averageScores.creativity.toFixed(1))
+    .replace('{overall_avg}', `${d1.label} average: ${averageScores.overall.toFixed(1)}`)
+    .replace('{relevance_avg}', `${d2.label} average: ${averageScores.relevance.toFixed(1)}`)
+    .replace('{quality_avg}', `${d3.label} average: ${averageScores.quality.toFixed(1)}`)
+    .replace('{creativity_avg}', `${d4.label} average: ${averageScores.creativity.toFixed(1)}`)
 
   try {
     const genAI = new GoogleGenAI({ apiKey })
@@ -368,7 +373,7 @@ export async function analyzeFeedback(
   let improvementPriorities: FeedbackAnalysis['improvementPriorities'] = []
 
   if (options?.includePatternDetection !== false && records.length >= 3) {
-    const patternResult = await detectPatternsWithLLM(records, averageScores)
+    const patternResult = await detectPatternsWithLLM(records, averageScores, stage)
     weaknessPatterns = patternResult.patterns
     improvementPriorities = patternResult.improvementPriorities
   }
@@ -400,7 +405,10 @@ export async function analyzeFeedback(
 /**
  * Get feedback summary for display in UI
  */
-export async function getFeedbackSummary(stage: PromptStage): Promise<{
+export async function getFeedbackSummary(
+  stage: PromptStage,
+  language: 'ko' | 'en' = 'en'
+): Promise<{
   avgScore: number
   testCount: number
   trend: FeedbackStats['recentTrend']
@@ -416,18 +424,11 @@ export async function getFeedbackSummary(stage: PromptStage): Promise<{
       return null
     }
 
-    const dimensionLabels: Record<keyof EvaluationScores, string> = {
-      overall: 'Overall',
-      relevance: 'Relevance',
-      quality: 'Quality',
-      creativity: 'Creativity',
-    }
-
     return {
       avgScore: analysis.stats.averageScores.overall,
       testCount: analysis.stats.totalFeedback,
       trend: analysis.stats.recentTrend,
-      weakestArea: dimensionLabels[analysis.stats.weakestDimension],
+      weakestArea: getDimensionLabel(stage, analysis.stats.weakestDimension, language),
     }
   } catch (error) {
     console.error('Error getting feedback summary:', error)

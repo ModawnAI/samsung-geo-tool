@@ -52,6 +52,14 @@ import {
 import { getDependencyInfo } from '@/lib/prompt-studio/stage-dependencies'
 import { EvaluationPanel } from '@/components/prompt-studio/evaluation-panel'
 
+const SCORE_TOOLTIPS: Record<string, { ko: string; en: string }> = {
+  keywordDensity: { ko: '키워드가 콘텐츠에 자연스럽게 포함된 정도 (0-20점)', en: 'How naturally keywords are integrated in content (0-20)' },
+  questionPatterns: { ko: 'FAQ에서 질문 형식과 답변 품질 (0-20점)', en: 'Question format and answer quality in FAQs (0-20)' },
+  sentenceStructure: { ko: '문장 구조의 AI 파싱 최적화 정도 (0-15점)', en: 'How well sentence structure is optimized for AI parsing (0-15)' },
+  lengthCompliance: { ko: '길이 요구사항 충족 여부 (0-15점)', en: 'Whether length requirements are met (0-15)' },
+  aiExposure: { ko: 'AI 검색엔진에 노출될 가능성 점수 (0-30점)', en: 'Score for likelihood of appearing in AI search results (0-30)' },
+}
+
 interface StageTestPanelProps {
   stage: PromptStage
   stagePrompt: StagePrompt | null
@@ -258,6 +266,7 @@ export function StageTestPanel({ stage, stagePrompt, language }: StageTestPanelP
                                 </Badge>
                               </TooltipTrigger>
                               <TooltipContent>
+                                <p>{language === 'ko' ? '이 스테이지의 테스트 결과를 사용할 수 있습니다' : 'Test results available from this stage'}</p>
                                 <p>Product: {result?.productName || 'N/A'}</p>
                                 <p>
                                   Tested: {result?.createdAt ? formatDate(result.createdAt) : 'N/A'}
@@ -278,8 +287,7 @@ export function StageTestPanel({ stage, stagePrompt, language }: StageTestPanelP
                               </Badge>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>No test result found</p>
-                              <p>Run a test in {STAGE_CONFIG[s].label} first</p>
+                              <p>{language === 'ko' ? '이 스테이지의 결과가 없습니다. 먼저 실행해주세요' : 'No results from this stage. Run it first'}</p>
                             </TooltipContent>
                           </Tooltip>
                         ))}
@@ -294,10 +302,17 @@ export function StageTestPanel({ stage, stagePrompt, language }: StageTestPanelP
                       {language === 'ko' ? '로딩...' : 'Loading...'}
                     </Badge>
                   ) : previousResultsLoaded ? (
-                    <Badge variant="secondary" className="text-xs text-green-600">
-                      <Check className="h-3 w-3 mr-1" />
-                      {language === 'ko' ? '자동 로드됨' : 'Auto-loaded'}
-                    </Badge>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Badge variant="secondary" className="text-xs text-green-600">
+                          <Check className="h-3 w-3 mr-1" />
+                          {language === 'ko' ? '자동 로드됨' : 'Auto-loaded'}
+                        </Badge>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{language === 'ko' ? '의존 스테이지 결과가 자동으로 입력에 반영됨' : 'Dependent stage results automatically populated'}</p>
+                      </TooltipContent>
+                    </Tooltip>
                   ) : (
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -315,8 +330,8 @@ export function StageTestPanel({ stage, stagePrompt, language }: StageTestPanelP
                       <TooltipContent>
                         <p>
                           {language === 'ko'
-                            ? '이전 단계 테스트 결과를 다시 불러오기'
-                            : 'Reload previous stage test results'}
+                            ? '최신 스테이지 결과를 다시 불러오기'
+                            : 'Refresh with latest stage results'}
                         </p>
                       </TooltipContent>
                     </Tooltip>
@@ -347,9 +362,16 @@ export function StageTestPanel({ stage, stagePrompt, language }: StageTestPanelP
             <CardContent className="space-y-3">
               {/* Product Name */}
               <div className="space-y-1">
-                <Label className="text-xs">
-                  {language === 'ko' ? '제품명' : 'Product Name'} *
-                </Label>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Label className="text-xs cursor-default">
+                      {language === 'ko' ? '제품명' : 'Product Name'} *
+                    </Label>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{language === 'ko' ? '테스트할 삼성 제품명 (예: Galaxy S25 Ultra)' : 'Samsung product name to test (e.g., Galaxy S25 Ultra)'}</p>
+                  </TooltipContent>
+                </Tooltip>
                 <Input
                   value={productName}
                   onChange={(e) => setProductName(e.target.value)}
@@ -361,7 +383,14 @@ export function StageTestPanel({ stage, stagePrompt, language }: StageTestPanelP
               <div className="grid grid-cols-2 gap-2">
                 {/* Category */}
                 <div className="space-y-1">
-                  <Label className="text-xs">{language === 'ko' ? '카테고리' : 'Category'}</Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Label className="text-xs cursor-default">{language === 'ko' ? '카테고리' : 'Category'}</Label>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{language === 'ko' ? '제품 카테고리 - 프롬프트의 {{category}} 변수에 매핑' : 'Product category - maps to {{category}} in prompts'}</p>
+                    </TooltipContent>
+                  </Tooltip>
                   <Select value={category} onValueChange={setCategory}>
                     <SelectTrigger className="h-8 text-sm">
                       <SelectValue />
@@ -379,7 +408,14 @@ export function StageTestPanel({ stage, stagePrompt, language }: StageTestPanelP
 
                 {/* Language */}
                 <div className="space-y-1">
-                  <Label className="text-xs">{language === 'ko' ? '언어' : 'Language'}</Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Label className="text-xs cursor-default">{language === 'ko' ? '언어' : 'Language'}</Label>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{language === 'ko' ? '출력 언어 선택 (프롬프트 생성 언어)' : 'Output language selection for generation'}</p>
+                    </TooltipContent>
+                  </Tooltip>
                   <Select
                     value={testLanguage}
                     onValueChange={(v: 'en' | 'ko') => setTestLanguage(v)}
@@ -397,7 +433,14 @@ export function StageTestPanel({ stage, stagePrompt, language }: StageTestPanelP
 
               {/* Keywords */}
               <div className="space-y-1">
-                <Label className="text-xs">{language === 'ko' ? '키워드' : 'Keywords'}</Label>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Label className="text-xs cursor-default">{language === 'ko' ? '키워드' : 'Keywords'}</Label>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{language === 'ko' ? '타겟 키워드 - 쉼표로 구분. GEO 최적화의 핵심' : 'Target keywords (comma-separated). Core of GEO optimization'}</p>
+                  </TooltipContent>
+                </Tooltip>
                 <Textarea
                   value={keywords}
                   onChange={(e) => setKeywords(e.target.value)}
@@ -509,35 +552,70 @@ export function StageTestPanel({ stage, stagePrompt, language }: StageTestPanelP
                       <CardTitle className="text-sm">
                         {language === 'ko' ? '결과' : 'Result'}
                       </CardTitle>
-                      <Badge className={cn(getGradeColor(testResult.qualityScore.grade), 'border-0')}>
-                        Grade: {testResult.qualityScore.grade}
-                      </Badge>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge className={cn(getGradeColor(testResult.qualityScore.grade), 'border-0')}>
+                            Grade: {testResult.qualityScore.grade}
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{language === 'ko' ? '종합 품질 등급. A+=90+, A=85+, B=75+, C=65+, D=50+' : 'Overall quality grade. A+=90+, A=85+, B=75+, C=65+, D=50+'}</p>
+                        </TooltipContent>
+                      </Tooltip>
                     </div>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-4 gap-2 text-center">
-                      <div className="p-2 rounded-lg bg-muted/50">
-                        <p className="text-lg font-bold">{testResult.qualityScore.total}</p>
-                        <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
-                          <Lightning className="h-3 w-3" />
-                          Score
-                        </p>
-                      </div>
-                      <div className="p-2 rounded-lg bg-muted/50">
-                        <p className="text-lg font-bold">{testResult.metrics.latencyMs}ms</p>
-                        <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          Latency
-                        </p>
-                      </div>
-                      <div className="p-2 rounded-lg bg-muted/50">
-                        <p className="text-lg font-bold">{testResult.metrics.inputTokens}</p>
-                        <p className="text-[10px] text-muted-foreground">In Tokens</p>
-                      </div>
-                      <div className="p-2 rounded-lg bg-muted/50">
-                        <p className="text-lg font-bold">{testResult.metrics.outputTokens}</p>
-                        <p className="text-[10px] text-muted-foreground">Out Tokens</p>
-                      </div>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="p-2 rounded-lg bg-muted/50 cursor-default">
+                            <p className="text-lg font-bold">{testResult.qualityScore.total}</p>
+                            <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
+                              <Lightning className="h-3 w-3" />
+                              Score
+                            </p>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{language === 'ko' ? '5개 항목의 합산 품질 점수 (0-100점)' : 'Combined quality score from 5 categories (0-100)'}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="p-2 rounded-lg bg-muted/50 cursor-default">
+                            <p className="text-lg font-bold">{testResult.metrics.latencyMs}ms</p>
+                            <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              Latency
+                            </p>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{language === 'ko' ? 'AI 응답 생성까지 걸린 시간 (밀리초)' : 'Time taken to generate AI response (milliseconds)'}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="p-2 rounded-lg bg-muted/50 cursor-default">
+                            <p className="text-lg font-bold">{testResult.metrics.inputTokens}</p>
+                            <p className="text-[10px] text-muted-foreground">In Tokens</p>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{language === 'ko' ? 'AI에 전송된 프롬프트의 토큰 수 (비용 관련)' : 'Tokens sent to AI as prompt (affects cost)'}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="p-2 rounded-lg bg-muted/50 cursor-default">
+                            <p className="text-lg font-bold">{testResult.metrics.outputTokens}</p>
+                            <p className="text-[10px] text-muted-foreground">Out Tokens</p>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{language === 'ko' ? 'AI가 생성한 응답의 토큰 수 (비용 관련)' : 'Tokens generated by AI in response (affects cost)'}</p>
+                        </TooltipContent>
+                      </Tooltip>
                     </div>
                   </CardContent>
                 </Card>
@@ -561,22 +639,34 @@ export function StageTestPanel({ stage, stagePrompt, language }: StageTestPanelP
                     </CollapsibleTrigger>
                     <CollapsibleContent>
                       <CardContent className="pt-0 space-y-2">
-                        {Object.entries(testResult.qualityScore.breakdown).map(([key, value]) => (
-                          <div key={key} className="flex items-center justify-between text-sm">
-                            <span className="capitalize text-xs">
-                              {key.replace(/([A-Z])/g, ' $1').trim()}
-                            </span>
-                            <div className="flex items-center gap-2">
-                              <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
-                                <div
-                                  className="h-full bg-primary rounded-full"
-                                  style={{ width: `${(value / 30) * 100}%` }}
-                                />
-                              </div>
-                              <span className="text-xs font-mono w-6 text-right">{value}</span>
-                            </div>
-                          </div>
-                        ))}
+                        {Object.entries(testResult.qualityScore.breakdown).map(([key, value]) => {
+                          const tip = SCORE_TOOLTIPS[key]
+                          return (
+                            <Tooltip key={key}>
+                              <TooltipTrigger asChild>
+                                <div className="flex items-center justify-between text-sm cursor-default">
+                                  <span className="capitalize text-xs">
+                                    {key.replace(/([A-Z])/g, ' $1').trim()}
+                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
+                                      <div
+                                        className="h-full bg-primary rounded-full"
+                                        style={{ width: `${(value / 30) * 100}%` }}
+                                      />
+                                    </div>
+                                    <span className="text-xs font-mono w-6 text-right">{value}</span>
+                                  </div>
+                                </div>
+                              </TooltipTrigger>
+                              {tip && (
+                                <TooltipContent>
+                                  <p>{language === 'ko' ? tip.ko : tip.en}</p>
+                                </TooltipContent>
+                              )}
+                            </Tooltip>
+                          )
+                        })}
 
                         {testResult.qualityScore.suggestions.length > 0 && (
                           <div className="pt-2 border-t space-y-1">
@@ -603,14 +693,21 @@ export function StageTestPanel({ stage, stagePrompt, language }: StageTestPanelP
                   <CardHeader className="py-2">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-sm">Output</CardTitle>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowRawOutput(!showRawOutput)}
-                        className="h-6 text-xs"
-                      >
-                        {showRawOutput ? 'Parsed' : 'Raw'}
-                      </Button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowRawOutput(!showRawOutput)}
+                            className="h-6 text-xs"
+                          >
+                            {showRawOutput ? 'Parsed' : 'Raw'}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{language === 'ko' ? 'Parsed: 구조화된 보기, Raw: AI 원본 응답' : 'Parsed: structured view, Raw: original AI response'}</p>
+                        </TooltipContent>
+                      </Tooltip>
                     </div>
                   </CardHeader>
                   <CardContent className="pt-0">
@@ -620,12 +717,60 @@ export function StageTestPanel({ stage, stagePrompt, language }: StageTestPanelP
                       </pre>
                     ) : (
                       <div className="text-xs space-y-2 max-h-[200px] overflow-y-auto">
+                        {/* Grounding */}
+                        {testResult.output.grounding_keywords && testResult.output.grounding_keywords.length > 0 && (
+                          <div>
+                            <p className="font-medium mb-1">
+                              Keywords ({testResult.output.grounding_keywords.length})
+                            </p>
+                            <div className="space-y-1">
+                              {testResult.output.grounding_keywords.slice(0, 6).map((kw, i) => (
+                                <div key={i} className="bg-muted p-2 rounded flex items-center justify-between">
+                                  <span className="font-medium">{kw.term}</span>
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-16 h-1.5 bg-background rounded-full overflow-hidden">
+                                      <div
+                                        className="h-full bg-primary rounded-full"
+                                        style={{ width: `${kw.score}%` }}
+                                      />
+                                    </div>
+                                    <span className="text-muted-foreground w-6 text-right">{kw.score}</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {testResult.output.grounding_sources && testResult.output.grounding_sources.length > 0 && (
+                          <div>
+                            <p className="font-medium mb-1">
+                              Sources ({testResult.output.grounding_sources.length})
+                            </p>
+                            <div className="space-y-1">
+                              {testResult.output.grounding_sources.slice(0, 5).map((src, i) => (
+                                <div key={i} className="bg-muted p-2 rounded flex items-center justify-between gap-2">
+                                  <div className="min-w-0 flex-1">
+                                    <p className="font-medium truncate">{src.title}</p>
+                                    <p className="text-muted-foreground truncate">{src.uri}</p>
+                                  </div>
+                                  <Badge variant="outline" className="text-[10px] shrink-0">
+                                    Tier {src.tier}
+                                  </Badge>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Description */}
                         {testResult.output.first_130 && (
                           <div>
                             <p className="font-medium mb-1">First 130 Characters</p>
                             <p className="bg-muted p-2 rounded">{testResult.output.first_130}</p>
                           </div>
                         )}
+
+                        {/* USP */}
                         {testResult.output.usps && testResult.output.usps.length > 0 && (
                           <div>
                             <p className="font-medium mb-1">USPs ({testResult.output.usps.length})</p>
@@ -639,6 +784,8 @@ export function StageTestPanel({ stage, stagePrompt, language }: StageTestPanelP
                             </div>
                           </div>
                         )}
+
+                        {/* FAQ */}
                         {testResult.output.faqs && testResult.output.faqs.length > 0 && (
                           <div>
                             <p className="font-medium mb-1">FAQs ({testResult.output.faqs.length})</p>
@@ -652,6 +799,73 @@ export function StageTestPanel({ stage, stagePrompt, language }: StageTestPanelP
                             </div>
                           </div>
                         )}
+
+                        {/* Chapters */}
+                        {testResult.output.chapters && testResult.output.chapters.length > 0 && (
+                          <div>
+                            <p className="font-medium mb-1">Chapters ({testResult.output.chapters.length})</p>
+                            <div className="space-y-1">
+                              {testResult.output.chapters.map((ch, i) => (
+                                <div key={i} className="bg-muted p-2 rounded flex items-center gap-2">
+                                  <Badge variant="outline" className="text-[10px] font-mono shrink-0">
+                                    {ch.time}
+                                  </Badge>
+                                  <span>{ch.title}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Case Studies */}
+                        {testResult.output.case_studies && testResult.output.case_studies.length > 0 && (
+                          <div>
+                            <p className="font-medium mb-1">Case Studies ({testResult.output.case_studies.length})</p>
+                            <div className="space-y-1">
+                              {testResult.output.case_studies.slice(0, 3).map((cs, i) => (
+                                <div key={i} className="bg-muted p-2 rounded">
+                                  <p className="font-medium">{cs.persona}</p>
+                                  <p className="text-muted-foreground">{cs.solution}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Keywords */}
+                        {testResult.output.product_keywords && testResult.output.product_keywords.length > 0 && (
+                          <div>
+                            <p className="font-medium mb-1">
+                              Product Keywords ({testResult.output.product_keywords.length})
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {testResult.output.product_keywords.map((kw, i) => (
+                                <Badge key={i} variant="secondary" className="text-xs">
+                                  {kw.keyword}
+                                  {kw.search_volume && (
+                                    <span className="ml-1 opacity-60">{kw.search_volume}</span>
+                                  )}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {testResult.output.generic_keywords && testResult.output.generic_keywords.length > 0 && (
+                          <div>
+                            <p className="font-medium mb-1">
+                              Generic Keywords ({testResult.output.generic_keywords.length})
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {testResult.output.generic_keywords.map((kw, i) => (
+                                <Badge key={i} variant="outline" className="text-xs">
+                                  {kw.keyword}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Hashtags */}
                         {testResult.output.hashtags && testResult.output.hashtags.length > 0 && (
                           <div>
                             <p className="font-medium mb-1">Hashtags</p>
@@ -664,13 +878,21 @@ export function StageTestPanel({ stage, stagePrompt, language }: StageTestPanelP
                             </div>
                           </div>
                         )}
-                        {testResult.output.parsed &&
+
+                        {/* Fallback: content or generic JSON */}
+                        {testResult.output.content &&
+                          !testResult.output.grounding_keywords &&
                           !testResult.output.first_130 &&
                           !testResult.output.usps &&
                           !testResult.output.faqs &&
+                          !testResult.output.chapters &&
+                          !testResult.output.case_studies &&
+                          !testResult.output.product_keywords &&
                           !testResult.output.hashtags && (
-                            <pre className="font-mono bg-muted p-2 rounded overflow-x-auto">
-                              {JSON.stringify(testResult.output.parsed, null, 2)}
+                            <pre className="font-mono bg-muted p-2 rounded overflow-x-auto whitespace-pre-wrap">
+                              {typeof testResult.output.content === 'string'
+                                ? testResult.output.content.slice(0, 500)
+                                : JSON.stringify(testResult.output.content, null, 2).slice(0, 500)}
                             </pre>
                           )}
                       </div>
@@ -681,6 +903,7 @@ export function StageTestPanel({ stage, stagePrompt, language }: StageTestPanelP
                 {/* AI Evaluation Panel */}
                 <EvaluationPanel
                   stage={stage}
+                  language={language}
                   input={
                     {
                       productName,

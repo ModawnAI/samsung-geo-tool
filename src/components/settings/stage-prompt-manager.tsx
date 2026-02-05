@@ -279,31 +279,59 @@ export function StagePromptManager({ language, getAuthToken }: StagePromptManage
                       {language === 'ko' ? config.labelKo : config.label}
                     </CardTitle>
                     {/* Engine badge */}
-                    <Badge className={cn('text-xs', engineConfig.bgColor, engineConfig.color, 'border-0')}>
-                      {engineConfig.label}
-                    </Badge>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Badge className={cn('text-xs', engineConfig.bgColor, engineConfig.color, 'border-0')}>
+                          {engineConfig.label}
+                        </Badge>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{language === 'ko' ? '이 스테이지에서 사용하는 AI 엔진' : 'AI engine used by this stage'}</p>
+                      </TooltipContent>
+                    </Tooltip>
                     {stagePrompt && (
-                      <Badge variant="outline" className="text-blue-600 border-blue-300 font-mono text-xs">
-                        v{(stagePrompt as any).current_version || 1}
-                      </Badge>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge variant="outline" className="text-blue-600 border-blue-300 font-mono text-xs">
+                            v{(stagePrompt as any).current_version || 1}
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{language === 'ko' ? '현재 활성 프롬프트 버전 번호' : 'Current active prompt version number'}</p>
+                        </TooltipContent>
+                      </Tooltip>
                     )}
                     {currentStatus?.workflowStatus && (
-                      <Badge
-                        variant={currentStatus.workflowStatus === 'active' ? 'default' : 'secondary'}
-                        className={cn(
-                          'text-xs',
-                          currentStatus.workflowStatus === 'active'
-                            ? 'bg-green-100 text-green-700 border-green-300'
-                            : ''
-                        )}
-                      >
-                        {currentStatus.workflowStatus}
-                      </Badge>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge
+                            variant={currentStatus.workflowStatus === 'active' ? 'default' : 'secondary'}
+                            className={cn(
+                              'text-xs',
+                              currentStatus.workflowStatus === 'active'
+                                ? 'bg-green-100 text-green-700 border-green-300'
+                                : ''
+                            )}
+                          >
+                            {currentStatus.workflowStatus}
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{language === 'ko' ? '프롬프트 상태: draft(초안) → testing(테스트중) → active(활성)' : 'Prompt status: draft → testing → active'}</p>
+                        </TooltipContent>
+                      </Tooltip>
                     )}
                     {hasChanges && (
-                      <Badge variant="outline" className="text-yellow-600 border-yellow-300 text-xs">
-                        {language === 'ko' ? '변경됨' : 'Modified'}
-                      </Badge>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge variant="outline" className="text-yellow-600 border-yellow-300 text-xs">
+                            {language === 'ko' ? '변경됨' : 'Modified'}
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{language === 'ko' ? '저장되지 않은 변경사항이 있습니다' : 'You have unsaved changes'}</p>
+                        </TooltipContent>
+                      </Tooltip>
                     )}
                   </div>
                   <CardDescription className="text-xs">
@@ -320,7 +348,7 @@ export function StagePromptManager({ language, getAuthToken }: StagePromptManage
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>{language === 'ko' ? '변경사항 되돌리기' : 'Revert changes'}</p>
+                    <p>{language === 'ko' ? '저장된 상태로 되돌리기 (편집 내용 취소)' : 'Revert to last saved state (discard edits)'}</p>
                   </TooltipContent>
                 </Tooltip>
                 <Tooltip>
@@ -335,7 +363,7 @@ export function StagePromptManager({ language, getAuthToken }: StagePromptManage
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>{language === 'ko' ? '프롬프트 저장' : 'Save prompt'}</p>
+                    <p>{language === 'ko' ? '현재 프롬프트와 파라미터를 저장하고 새 버전 생성' : 'Save current prompt & parameters as new version'}</p>
                   </TooltipContent>
                 </Tooltip>
               </div>
@@ -399,9 +427,16 @@ export function StagePromptManager({ language, getAuthToken }: StagePromptManage
                   {/* Template Variables */}
                   {config.templateVariables.length > 0 && (
                     <div className="space-y-2">
-                      <Label className="text-xs text-muted-foreground">
-                        {language === 'ko' ? '사용 가능한 변수' : 'Available Variables'}
-                      </Label>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Label className="text-xs text-muted-foreground cursor-default">
+                            {language === 'ko' ? '사용 가능한 변수' : 'Available Variables'}
+                          </Label>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{language === 'ko' ? '클릭하면 프롬프트에 변수 삽입. 테스트 시 실제 값으로 대체됨' : 'Click to insert variable. Replaced with actual values during test'}</p>
+                        </TooltipContent>
+                      </Tooltip>
                       <div className="flex flex-wrap gap-2">
                         {config.templateVariables.map((v) => (
                           <Tooltip key={v.name}>
@@ -441,7 +476,14 @@ export function StagePromptManager({ language, getAuthToken }: StagePromptManage
                     <CardContent className="space-y-4">
                       {/* Model */}
                       <div className="space-y-2">
-                        <Label className="text-xs">Model</Label>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Label className="text-xs cursor-default">Model</Label>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{language === 'ko' ? 'AI 모델 선택. Flash는 빠르고 저렴, Pro는 높은 품질' : 'Select AI model. Flash is fast & cheap, Pro is higher quality'}</p>
+                          </TooltipContent>
+                        </Tooltip>
                         <Select value={model} onValueChange={setModel}>
                           <SelectTrigger className="h-8 text-sm">
                             <SelectValue />
@@ -459,7 +501,14 @@ export function StagePromptManager({ language, getAuthToken }: StagePromptManage
                       {/* Temperature */}
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <Label className="text-xs">Temperature</Label>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Label className="text-xs cursor-default">Temperature</Label>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{language === 'ko' ? '높을수록 창의적, 낮을수록 일관된 결과. 권장: 설명 0.7, FAQ 0.5, 해시태그 0.9' : 'Higher = more creative, lower = more consistent. Recommended: Description 0.7, FAQ 0.5, Hashtags 0.9'}</p>
+                            </TooltipContent>
+                          </Tooltip>
                           <span className="text-xs text-muted-foreground font-mono">
                             {temperature.toFixed(2)}
                           </span>
@@ -475,7 +524,14 @@ export function StagePromptManager({ language, getAuthToken }: StagePromptManage
 
                       {/* Max Tokens */}
                       <div className="space-y-2">
-                        <Label className="text-xs">Max Tokens</Label>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Label className="text-xs cursor-default">Max Tokens</Label>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{language === 'ko' ? 'AI 응답의 최대 길이 (토큰 수). 1토큰 ≈ 한글 1자 또는 영어 4자' : 'Maximum AI response length in tokens. 1 token ≈ 1 Korean char or 4 English chars'}</p>
+                          </TooltipContent>
+                        </Tooltip>
                         <Input
                           type="number"
                           value={maxTokens}
@@ -492,33 +548,54 @@ export function StagePromptManager({ language, getAuthToken }: StagePromptManage
                   {currentStatus && (
                     <Card>
                       <CardContent className="py-3 space-y-2">
-                        <div className="flex justify-between text-xs">
-                          <span className="text-muted-foreground">
-                            {language === 'ko' ? '테스트 수' : 'Test Count'}
-                          </span>
-                          <span>{currentStatus.testCount}</span>
-                        </div>
-                        <div className="flex justify-between text-xs">
-                          <span className="text-muted-foreground">
-                            {language === 'ko' ? '평균 점수' : 'Avg Score'}
-                          </span>
-                          <span>
-                            {currentStatus.avgQualityScore != null
-                              ? `${currentStatus.avgQualityScore.toFixed(0)}%`
-                              : '--'}
-                          </span>
-                        </div>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="flex justify-between text-xs cursor-default">
+                              <span className="text-muted-foreground">
+                                {language === 'ko' ? '테스트 수' : 'Test Count'}
+                              </span>
+                              <span>{currentStatus.testCount}</span>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{language === 'ko' ? '이 스테이지의 총 테스트 실행 횟수' : 'Total test executions for this stage'}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="flex justify-between text-xs cursor-default">
+                              <span className="text-muted-foreground">
+                                {language === 'ko' ? '평균 점수' : 'Avg Score'}
+                              </span>
+                              <span>
+                                {currentStatus.avgQualityScore != null
+                                  ? `${currentStatus.avgQualityScore.toFixed(0)}%`
+                                  : '--'}
+                              </span>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{language === 'ko' ? '최근 테스트들의 평균 품질 점수 (0-100%)' : 'Average quality score from recent tests (0-100%)'}</p>
+                          </TooltipContent>
+                        </Tooltip>
                         {currentStatus.lastTestedAt && (
-                          <div className="flex justify-between text-xs">
-                            <span className="text-muted-foreground">
-                              {language === 'ko' ? '마지막 테스트' : 'Last Tested'}
-                            </span>
-                            <span>
-                              {new Date(currentStatus.lastTestedAt).toLocaleDateString(
-                                language === 'ko' ? 'ko-KR' : 'en-US'
-                              )}
-                            </span>
-                          </div>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex justify-between text-xs cursor-default">
+                                <span className="text-muted-foreground">
+                                  {language === 'ko' ? '마지막 테스트' : 'Last Tested'}
+                                </span>
+                                <span>
+                                  {new Date(currentStatus.lastTestedAt).toLocaleDateString(
+                                    language === 'ko' ? 'ko-KR' : 'en-US'
+                                  )}
+                                </span>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{language === 'ko' ? '가장 최근 테스트가 실행된 시간' : 'When the most recent test was run'}</p>
+                            </TooltipContent>
+                          </Tooltip>
                         )}
                       </CardContent>
                     </Card>
@@ -532,26 +609,61 @@ export function StagePromptManager({ language, getAuthToken }: StagePromptManage
         {/* Feature Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-flex">
-            <TabsTrigger value="test" className="gap-2">
-              <Play className="h-4 w-4" />
-              <span className="hidden sm:inline">{language === 'ko' ? '테스트' : 'Test'}</span>
-            </TabsTrigger>
-            <TabsTrigger value="pipeline" className="gap-2">
-              <ArrowsClockwise className="h-4 w-4" />
-              <span className="hidden sm:inline">{language === 'ko' ? '파이프라인' : 'Pipeline'}</span>
-            </TabsTrigger>
-            <TabsTrigger value="refiner" className="gap-2">
-              <Robot className="h-4 w-4" />
-              <span className="hidden sm:inline">AI Refiner</span>
-            </TabsTrigger>
-            <TabsTrigger value="versions" className="gap-2">
-              <ClockCounterClockwise className="h-4 w-4" />
-              <span className="hidden sm:inline">{language === 'ko' ? '버전' : 'Versions'}</span>
-            </TabsTrigger>
-            <TabsTrigger value="feedback" className="gap-2">
-              <ChartBar className="h-4 w-4" />
-              <span className="hidden sm:inline">{language === 'ko' ? '피드백' : 'Feedback'}</span>
-            </TabsTrigger>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <TabsTrigger value="test" className="gap-2">
+                  <Play className="h-4 w-4" />
+                  <span className="hidden sm:inline">{language === 'ko' ? '테스트' : 'Test'}</span>
+                </TabsTrigger>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{language === 'ko' ? '프롬프트를 실제 입력으로 테스트하고 결과 확인' : 'Test prompt with real inputs and review output'}</p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <TabsTrigger value="pipeline" className="gap-2">
+                  <ArrowsClockwise className="h-4 w-4" />
+                  <span className="hidden sm:inline">{language === 'ko' ? '파이프라인' : 'Pipeline'}</span>
+                </TabsTrigger>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{language === 'ko' ? '전체 파이프라인에서 이 스테이지의 위치와 의존성 확인' : 'View this stage\'s position and dependencies in the pipeline'}</p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <TabsTrigger value="refiner" className="gap-2">
+                  <Robot className="h-4 w-4" />
+                  <span className="hidden sm:inline">AI Refiner</span>
+                </TabsTrigger>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{language === 'ko' ? 'AI가 프롬프트를 분석하고 개선안을 제안' : 'AI analyzes your prompt and suggests improvements'}</p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <TabsTrigger value="versions" className="gap-2">
+                  <ClockCounterClockwise className="h-4 w-4" />
+                  <span className="hidden sm:inline">{language === 'ko' ? '버전' : 'Versions'}</span>
+                </TabsTrigger>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{language === 'ko' ? '프롬프트 버전 히스토리 관리 및 롤백' : 'Manage prompt version history and rollback'}</p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <TabsTrigger value="feedback" className="gap-2">
+                  <ChartBar className="h-4 w-4" />
+                  <span className="hidden sm:inline">{language === 'ko' ? '피드백' : 'Feedback'}</span>
+                </TabsTrigger>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{language === 'ko' ? 'LLM-as-Judge 평가 결과 및 개선 우선순위' : 'LLM-as-Judge evaluation results and improvement priorities'}</p>
+              </TooltipContent>
+            </Tooltip>
           </TabsList>
 
           <TabsContent value="test">
@@ -593,7 +705,7 @@ export function StagePromptManager({ language, getAuthToken }: StagePromptManage
           </TabsContent>
 
           <TabsContent value="feedback">
-            <FeedbackDashboard stage={selectedStage} />
+            <FeedbackDashboard stage={selectedStage} language={language} />
           </TabsContent>
         </Tabs>
 

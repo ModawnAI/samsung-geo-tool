@@ -139,7 +139,7 @@ export function StageVersionHistory({
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{language === 'ko' ? '새로고침' : 'Refresh'}</p>
+                <p>{language === 'ko' ? '버전 목록 새로고침' : 'Refresh version list'}</p>
               </TooltipContent>
             </Tooltip>
           </div>
@@ -178,16 +178,30 @@ export function StageVersionHistory({
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-sm font-medium">v{version.version}</span>
                         {version.version === currentVersion && (
-                          <Badge variant="outline" className="text-[10px] border-primary text-primary">
-                            {language === 'ko' ? '현재' : 'Current'}
-                          </Badge>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge variant="outline" className="text-[10px] border-primary text-primary">
+                                {language === 'ko' ? '현재' : 'Current'}
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{language === 'ko' ? '현재 활성화된 프롬프트 버전' : 'Currently active prompt version'}</p>
+                            </TooltipContent>
+                          </Tooltip>
                         )}
-                        <Badge
-                          variant="outline"
-                          className={cn('text-[10px]', getStatusColor(version.workflow_status))}
-                        >
-                          {version.workflow_status}
-                        </Badge>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge
+                              variant="outline"
+                              className={cn('text-[10px]', getStatusColor(version.workflow_status))}
+                            >
+                              {version.workflow_status}
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{language === 'ko' ? '버전 상태: active=운영중, testing=테스트중, archived=보관됨' : 'Version status: active=live, testing=in test, archived=stored'}</p>
+                          </TooltipContent>
+                        </Tooltip>
                       </div>
                       <span className="text-xs text-muted-foreground">
                         {formatDate(version.created_at)}
@@ -195,14 +209,28 @@ export function StageVersionHistory({
                     </div>
 
                     <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                      <span>
-                        {language === 'ko' ? '테스트' : 'Tests'}: {version.test_count}
-                      </span>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="cursor-default">
+                            {language === 'ko' ? '테스트' : 'Tests'}: {version.test_count}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{language === 'ko' ? '이 버전으로 실행된 테스트 횟수' : 'Number of tests run with this version'}</p>
+                        </TooltipContent>
+                      </Tooltip>
                       {version.avg_quality_score != null && (
-                        <span>
-                          {language === 'ko' ? '평균 점수' : 'Avg Score'}:{' '}
-                          {version.avg_quality_score.toFixed(0)}%
-                        </span>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="cursor-default">
+                              {language === 'ko' ? '평균 점수' : 'Avg Score'}:{' '}
+                              {version.avg_quality_score.toFixed(0)}%
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{language === 'ko' ? '이 버전의 테스트 평균 품질 점수' : 'Average test quality score for this version'}</p>
+                          </TooltipContent>
+                        </Tooltip>
                       )}
                       <span>T: {version.temperature.toFixed(2)}</span>
                       <span>{version.max_tokens} tokens</span>
@@ -296,8 +324,8 @@ export function StageVersionHistory({
                     <TooltipContent>
                       <p>
                         {language === 'ko'
-                          ? '현재 버전과 이 버전 비교'
-                          : 'Compare this version with current'}
+                          ? '현재 활성 버전과 이 버전의 프롬프트를 나란히 비교'
+                          : 'Compare this version\'s prompt side-by-side with current'}
                       </p>
                     </TooltipContent>
                   </Tooltip>
@@ -318,8 +346,8 @@ export function StageVersionHistory({
                     <TooltipContent>
                       <p>
                         {language === 'ko'
-                          ? '이 버전의 설정으로 복원'
-                          : 'Restore settings from this version'}
+                          ? '이 버전의 프롬프트와 파라미터로 되돌리기 (새 버전으로 저장됨)'
+                          : 'Revert to this version\'s prompt & parameters (saved as new version)'}
                       </p>
                     </TooltipContent>
                   </Tooltip>

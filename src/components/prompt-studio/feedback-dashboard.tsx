@@ -33,25 +33,20 @@ import type {
   EvaluationScores,
   WeaknessPattern,
 } from '@/types/prompt-studio'
+import { getEvaluationConfig, getDimensionLabel } from '@/lib/prompt-studio/stage-evaluation-config'
 
 interface FeedbackDashboardProps {
   stage: PromptStage
+  language?: 'ko' | 'en'
   className?: string
   compact?: boolean
 }
 
-const SCORE_ICONS = {
+const DIMENSION_ICONS = {
   overall: ChartLine,
   relevance: Target,
   quality: Star,
   creativity: Sparkle,
-}
-
-const SCORE_LABELS = {
-  overall: 'Overall',
-  relevance: 'Relevance',
-  quality: 'Quality',
-  creativity: 'Creativity',
 }
 
 function getScoreColor(score: number): string {
@@ -96,8 +91,10 @@ function TrendIndicator({ trend }: { trend: 'improving' | 'stable' | 'declining'
 
 function ScoreDistributionBar({
   distribution,
+  language = 'en',
 }: {
   distribution: Record<string, number>
+  language?: 'ko' | 'en'
 }) {
   const total = Object.values(distribution).reduce((a, b) => a + b, 0)
   if (total === 0) return null
@@ -126,7 +123,7 @@ function ScoreDistributionBar({
             </TooltipTrigger>
             <TooltipContent>
               <p>
-                {range}: {count} ({percentage.toFixed(0)}%)
+                {language === 'ko' ? `점수 ${range}` : `Score ${range}`}: {count} ({percentage.toFixed(0)}%)
               </p>
             </TooltipContent>
           </Tooltip>
@@ -136,7 +133,7 @@ function ScoreDistributionBar({
   )
 }
 
-function WeaknessPatternCard({ pattern }: { pattern: WeaknessPattern }) {
+function WeaknessPatternCard({ pattern, stage, language = 'en' }: { pattern: WeaknessPattern; stage: PromptStage; language?: 'ko' | 'en' }) {
   return (
     <div className="rounded-lg border p-3 space-y-2">
       <div className="flex items-start gap-2">
@@ -146,7 +143,7 @@ function WeaknessPatternCard({ pattern }: { pattern: WeaknessPattern }) {
       <div className="flex items-center gap-2 flex-wrap">
         {pattern.affectedDimensions.map((dim) => (
           <Badge key={dim} variant="outline" className="text-xs">
-            {SCORE_LABELS[dim]}
+            {getDimensionLabel(stage, dim, language)}
           </Badge>
         ))}
       </div>
@@ -160,7 +157,7 @@ function WeaknessPatternCard({ pattern }: { pattern: WeaknessPattern }) {
   )
 }
 
-export function FeedbackDashboard({ stage, className, compact = false }: FeedbackDashboardProps) {
+export function FeedbackDashboard({ stage, language = 'en', className, compact = false }: FeedbackDashboardProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [analysis, setAnalysis] = useState<FeedbackAnalysis | null>(null)
@@ -250,7 +247,7 @@ export function FeedbackDashboard({ stage, className, compact = false }: Feedbac
                       </span>
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent>Average overall score</TooltipContent>
+                  <TooltipContent>{language === 'ko' ? '전체 평가의 평균 종합 점수' : 'Average overall score across all evaluations'}</TooltipContent>
                 </Tooltip>
 
                 <Tooltip>
@@ -260,10 +257,15 @@ export function FeedbackDashboard({ stage, className, compact = false }: Feedbac
                       <span>{stats.totalFeedback} tests</span>
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent>Total evaluations</TooltipContent>
+                  <TooltipContent>{language === 'ko' ? '실행된 총 LLM-as-Judge 평가 횟수' : 'Total LLM-as-Judge evaluations performed'}</TooltipContent>
                 </Tooltip>
 
-                <TrendIndicator trend={stats.recentTrend} />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span><TrendIndicator trend={stats.recentTrend} /></span>
+                  </TooltipTrigger>
+                  <TooltipContent>{language === 'ko' ? '최근 점수 추이: Improving=상승, Stable=유지, Declining=하락' : 'Recent score trend direction'}</TooltipContent>
+                </Tooltip>
               </div>
 
               <div className="flex items-center gap-2">
@@ -271,11 +273,11 @@ export function FeedbackDashboard({ stage, className, compact = false }: Feedbac
                   <TooltipTrigger asChild>
                     <Badge variant="outline" className="text-xs">
                       <Warning className="h-3 w-3 mr-1 text-yellow-600" />
-                      {SCORE_LABELS[stats.weakestDimension]}:{' '}
+                      {getDimensionLabel(stage, stats.weakestDimension, language)}:{' '}
                       {stats.averageScores[stats.weakestDimension].toFixed(1)}
                     </Badge>
                   </TooltipTrigger>
-                  <TooltipContent>Weakest dimension - focus on improving this</TooltipContent>
+                  <TooltipContent>{language === 'ko' ? '가장 점수가 낮아 개선이 필요한 평가 차원' : 'Lowest-scoring dimension that needs improvement'}</TooltipContent>
                 </Tooltip>
 
                 <Button variant="ghost" size="icon" className="h-6 w-6" onClick={fetchAnalysis}>
@@ -298,9 +300,14 @@ export function FeedbackDashboard({ stage, className, compact = false }: Feedbac
             <div className="flex items-center gap-2">
               <ChartBar className="h-5 w-5 text-primary" />
               <CardTitle className="text-base">Feedback Analytics</CardTitle>
-              <Badge variant="secondary" className="ml-2">
-                {stats.totalFeedback} evaluations
-              </Badge>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="secondary" className="ml-2">
+                    {stats.totalFeedback} evaluations
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>{language === 'ko' ? '실행된 총 LLM-as-Judge 평가 횟수' : 'Total LLM-as-Judge evaluations performed'}</TooltipContent>
+              </Tooltip>
             </div>
             <Button variant="outline" size="sm" onClick={fetchAnalysis}>
               <ArrowsClockwise className="h-4 w-4 mr-1" />
@@ -314,27 +321,33 @@ export function FeedbackDashboard({ stage, className, compact = false }: Feedbac
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-medium">Score Overview</h4>
-              <TrendIndicator trend={stats.recentTrend} />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span><TrendIndicator trend={stats.recentTrend} /></span>
+                </TooltipTrigger>
+                <TooltipContent>{language === 'ko' ? '최근 점수 추이: Improving=상승, Stable=유지, Declining=하락' : 'Recent score trend direction'}</TooltipContent>
+              </Tooltip>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              {(Object.keys(stats.averageScores) as Array<keyof EvaluationScores>).map((key) => {
-                const Icon = SCORE_ICONS[key]
-                const score = stats.averageScores[key]
-                const distribution = stats.scoreDistribution[key]
+              {getEvaluationConfig(stage).dimensions.map((dim) => {
+                const Icon = DIMENSION_ICONS[dim.key]
+                const score = stats.averageScores[dim.key]
+                const distribution = stats.scoreDistribution[dim.key]
+                const label = language === 'ko' ? dim.labelKo : dim.label
 
                 return (
-                  <div key={key} className={cn('p-3 rounded-lg', getScoreBgColor(score))}>
+                  <div key={dim.key} className={cn('p-3 rounded-lg', getScoreBgColor(score))}>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <Icon className={cn('h-4 w-4', getScoreColor(score))} weight="duotone" />
-                        <span className="text-sm font-medium">{SCORE_LABELS[key]}</span>
+                        <span className="text-sm font-medium">{label}</span>
                       </div>
                       <span className={cn('text-lg font-bold', getScoreColor(score))}>
                         {score.toFixed(1)}
                       </span>
                     </div>
-                    <ScoreDistributionBar distribution={distribution} />
+                    <ScoreDistributionBar distribution={distribution} language={language} />
                   </div>
                 )
               })}
@@ -344,13 +357,18 @@ export function FeedbackDashboard({ stage, className, compact = false }: Feedbac
           {/* Weakness Patterns */}
           {weaknessPatterns.length > 0 && (
             <div className="space-y-3">
-              <h4 className="text-sm font-medium flex items-center gap-2">
-                <Warning className="h-4 w-4 text-yellow-600" />
-                Identified Weakness Patterns
-              </h4>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <h4 className="text-sm font-medium flex items-center gap-2 cursor-default">
+                    <Warning className="h-4 w-4 text-yellow-600" />
+                    {language === 'ko' ? '약점 패턴' : 'Identified Weakness Patterns'}
+                  </h4>
+                </TooltipTrigger>
+                <TooltipContent>{language === 'ko' ? '반복적으로 발견되는 품질 문제 패턴' : 'Recurring quality issue patterns'}</TooltipContent>
+              </Tooltip>
               <div className="space-y-2">
                 {weaknessPatterns.map((pattern, idx) => (
-                  <WeaknessPatternCard key={idx} pattern={pattern} />
+                  <WeaknessPatternCard key={idx} pattern={pattern} stage={stage} language={language} />
                 ))}
               </div>
             </div>
@@ -359,10 +377,15 @@ export function FeedbackDashboard({ stage, className, compact = false }: Feedbac
           {/* Improvement Priorities */}
           {improvementPriorities.length > 0 && (
             <div className="space-y-3">
-              <h4 className="text-sm font-medium flex items-center gap-2">
-                <Lightning className="h-4 w-4 text-blue-600" />
-                Improvement Priorities
-              </h4>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <h4 className="text-sm font-medium flex items-center gap-2 cursor-default">
+                    <Lightning className="h-4 w-4 text-blue-600" />
+                    {language === 'ko' ? '개선 우선순위' : 'Improvement Priorities'}
+                  </h4>
+                </TooltipTrigger>
+                <TooltipContent>{language === 'ko' ? '개선 시 가장 큰 효과가 예상되는 항목 순위' : 'Items ranked by expected improvement impact'}</TooltipContent>
+              </Tooltip>
               <div className="space-y-2">
                 {improvementPriorities.map((priority, idx) => (
                   <div key={idx} className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
@@ -372,7 +395,7 @@ export function FeedbackDashboard({ stage, className, compact = false }: Feedbac
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-sm">
-                          {SCORE_LABELS[priority.dimension as keyof EvaluationScores]}
+                          {getDimensionLabel(stage, priority.dimension, language)}
                         </span>
                         <span className="text-xs text-muted-foreground">
                           {priority.currentScore.toFixed(1)} → {priority.targetScore.toFixed(1)}
@@ -400,12 +423,14 @@ export function FeedbackDashboard({ stage, className, compact = false }: Feedbac
  */
 export function FeedbackSummaryWidget({
   stage,
+  language,
   className,
 }: {
   stage: PromptStage
+  language?: 'ko' | 'en'
   className?: string
 }) {
-  return <FeedbackDashboard stage={stage} className={className} compact />
+  return <FeedbackDashboard stage={stage} language={language} className={className} compact />
 }
 
 export type { FeedbackDashboardProps }

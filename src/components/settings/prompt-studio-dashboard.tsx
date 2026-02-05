@@ -147,37 +147,58 @@ export function PromptStudioDashboard({ language, getAuthToken }: PromptStudioDa
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="grid grid-cols-3 gap-2 text-sm">
-                  <div>
-                    <p className="text-muted-foreground text-xs">
-                      {language === 'ko' ? '버전' : 'Version'}
-                    </p>
-                    <p className="font-medium">
-                      {status?.currentVersion
-                        ? `v${status.currentVersion}`
-                        : '--'}
-                      {status?.totalVersions && status.totalVersions > 1 && (
-                        <span className="text-muted-foreground text-xs ml-1">
-                          ({status.totalVersions})
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-xs">
-                      {language === 'ko' ? '점수' : 'Score'}
-                    </p>
-                    <p className="font-medium">
-                      {status?.avgQualityScore != null
-                        ? `${status.avgQualityScore.toFixed(0)}%`
-                        : '--'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-xs">
-                      {language === 'ko' ? '테스트' : 'Tests'}
-                    </p>
-                    <p className="font-medium">{status?.testCount || 0}</p>
-                  </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="cursor-default">
+                        <p className="text-muted-foreground text-xs">
+                          {language === 'ko' ? '버전' : 'Version'}
+                        </p>
+                        <p className="font-medium">
+                          {status?.currentVersion
+                            ? `v${status.currentVersion}`
+                            : '--'}
+                          {status?.totalVersions && status.totalVersions > 1 && (
+                            <span className="text-muted-foreground text-xs ml-1">
+                              ({status.totalVersions})
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{language === 'ko' ? '활성 버전 (총 버전 수)' : 'Active version (total versions)'}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="cursor-default">
+                        <p className="text-muted-foreground text-xs">
+                          {language === 'ko' ? '점수' : 'Score'}
+                        </p>
+                        <p className="font-medium">
+                          {status?.avgQualityScore != null
+                            ? `${status.avgQualityScore.toFixed(0)}%`
+                            : '--'}
+                        </p>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{language === 'ko' ? '최근 테스트의 평균 품질 점수' : 'Average quality from recent tests'}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="cursor-default">
+                        <p className="text-muted-foreground text-xs">
+                          {language === 'ko' ? '테스트' : 'Tests'}
+                        </p>
+                        <p className="font-medium">{status?.testCount || 0}</p>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{language === 'ko' ? '이 스테이지의 총 테스트 횟수' : 'Total tests for this stage'}</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
 
                 {status?.lastTestedAt && (
@@ -232,43 +253,71 @@ export function PromptStudioDashboard({ language, getAuthToken }: PromptStudioDa
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center p-4 rounded-lg bg-muted/50">
-              <p className="text-3xl font-bold">
-                {stages.filter(s => s.workflowStatus === 'active').length}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {language === 'ko' ? '활성 프롬프트' : 'Active Prompts'}
-              </p>
-            </div>
-            <div className="text-center p-4 rounded-lg bg-muted/50">
-              <p className="text-3xl font-bold">
-                {stages.filter(s => s.workflowStatus === 'testing').length}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {language === 'ko' ? '테스트 중' : 'Testing'}
-              </p>
-            </div>
-            <div className="text-center p-4 rounded-lg bg-muted/50">
-              <p className="text-3xl font-bold">
-                {stages.reduce((sum, s) => sum + (s.testCount || 0), 0)}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {language === 'ko' ? '총 테스트' : 'Total Tests'}
-              </p>
-            </div>
-            <div className="text-center p-4 rounded-lg bg-muted/50">
-              <p className="text-3xl font-bold">
-                {(() => {
-                  const scoresWithValue = stages.filter(s => s.avgQualityScore != null)
-                  if (scoresWithValue.length === 0) return '--'
-                  const avg = scoresWithValue.reduce((sum, s) => sum + (s.avgQualityScore || 0), 0) / scoresWithValue.length
-                  return `${avg.toFixed(0)}%`
-                })()}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {language === 'ko' ? '평균 품질' : 'Avg Quality'}
-              </p>
-            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="text-center p-4 rounded-lg bg-muted/50 cursor-default">
+                  <p className="text-3xl font-bold">
+                    {stages.filter(s => s.workflowStatus === 'active').length}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {language === 'ko' ? '활성 프롬프트' : 'Active Prompts'}
+                  </p>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{language === 'ko' ? '현재 \'활성\' 상태인 스테이지 프롬프트 수' : 'Number of stage prompts currently in \'active\' status'}</p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="text-center p-4 rounded-lg bg-muted/50 cursor-default">
+                  <p className="text-3xl font-bold">
+                    {stages.filter(s => s.workflowStatus === 'testing').length}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {language === 'ko' ? '테스트 중' : 'Testing'}
+                  </p>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{language === 'ko' ? '현재 \'테스트 중\' 상태인 프롬프트 수' : 'Number of prompts currently being tested'}</p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="text-center p-4 rounded-lg bg-muted/50 cursor-default">
+                  <p className="text-3xl font-bold">
+                    {stages.reduce((sum, s) => sum + (s.testCount || 0), 0)}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {language === 'ko' ? '총 테스트' : 'Total Tests'}
+                  </p>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{language === 'ko' ? '전체 스테이지에서 실행된 총 테스트 수' : 'Total test runs across all stages'}</p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="text-center p-4 rounded-lg bg-muted/50 cursor-default">
+                  <p className="text-3xl font-bold">
+                    {(() => {
+                      const scoresWithValue = stages.filter(s => s.avgQualityScore != null)
+                      if (scoresWithValue.length === 0) return '--'
+                      const avg = scoresWithValue.reduce((sum, s) => sum + (s.avgQualityScore || 0), 0) / scoresWithValue.length
+                      return `${avg.toFixed(0)}%`
+                    })()}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {language === 'ko' ? '평균 품질' : 'Avg Quality'}
+                  </p>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{language === 'ko' ? '전체 스테이지의 평균 품질 점수' : 'Average quality score across all stages'}</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
         </CardContent>
       </Card>

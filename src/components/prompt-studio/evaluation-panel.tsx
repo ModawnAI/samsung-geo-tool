@@ -35,8 +35,8 @@ import type {
   StageTestInputData,
   StageOutput,
   LLMJudgeEvaluation,
-  EvaluationScores,
 } from '@/types/prompt-studio'
+import { getEvaluationConfig } from '@/lib/prompt-studio/stage-evaluation-config'
 
 interface EvaluationPanelProps {
   stage: PromptStage
@@ -44,28 +44,15 @@ interface EvaluationPanelProps {
   output: StageOutput
   prompt: string
   testRunId?: string
+  language?: 'ko' | 'en'
   className?: string
 }
 
-const SCORE_ICONS = {
+const DIMENSION_ICONS = {
   overall: ChartLine,
   relevance: Target,
   quality: Star,
   creativity: Sparkle,
-}
-
-const SCORE_LABELS = {
-  overall: 'Overall',
-  relevance: 'Relevance',
-  quality: 'Quality',
-  creativity: 'Creativity',
-}
-
-const SCORE_DESCRIPTIONS = {
-  overall: 'Holistic GEO/AEO effectiveness assessment',
-  relevance: 'How well output matches input requirements',
-  quality: 'Writing quality and structure',
-  creativity: 'Originality and engagement',
 }
 
 function getScoreColor(score: number): string {
@@ -107,6 +94,7 @@ export function EvaluationPanel({
   output,
   prompt,
   testRunId,
+  language = 'en',
   className,
 }: EvaluationPanelProps) {
   const [isEvaluating, setIsEvaluating] = useState(false)
@@ -217,7 +205,7 @@ export function EvaluationPanel({
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>LLM-as-Judge 평가 실행 (4차원 점수 분석)</p>
+                <p>{language === 'ko' ? 'LLM-as-Judge로 4차원 품질 평가 실행 (별도 AI가 채점)' : 'Run 4-dimension quality evaluation via LLM-as-Judge'}</p>
               </TooltipContent>
             </Tooltip>
           </div>
@@ -242,12 +230,14 @@ export function EvaluationPanel({
             <div className="space-y-4">
               {/* Score Grid */}
               <div className="grid grid-cols-2 gap-3">
-                {(Object.keys(evaluation.scores) as Array<keyof EvaluationScores>).map((key) => {
-                  const Icon = SCORE_ICONS[key]
-                  const score = evaluation.scores[key]
+                {getEvaluationConfig(stage).dimensions.map((dim) => {
+                  const Icon = DIMENSION_ICONS[dim.key]
+                  const score = evaluation.scores[dim.key]
+                  const label = language === 'ko' ? dim.labelKo : dim.label
+                  const desc = language === 'ko' ? dim.descriptionKo : dim.description
 
                   return (
-                    <Tooltip key={key}>
+                    <Tooltip key={dim.key}>
                       <TooltipTrigger asChild>
                         <div
                           className={cn(
@@ -258,7 +248,7 @@ export function EvaluationPanel({
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2">
                               <Icon className={cn('h-4 w-4', getScoreColor(score))} weight="duotone" />
-                              <span className="text-sm font-medium">{SCORE_LABELS[key]}</span>
+                              <span className="text-sm font-medium">{label}</span>
                             </div>
                             <span className={cn('text-lg font-bold', getScoreColor(score))}>
                               {score.toFixed(1)}
@@ -268,7 +258,7 @@ export function EvaluationPanel({
                         </div>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>{SCORE_DESCRIPTIONS[key]}</p>
+                        <p>{desc}</p>
                       </TooltipContent>
                     </Tooltip>
                   )
