@@ -46,7 +46,7 @@ export async function executeStageTest(
   const startTime = Date.now()
 
   try {
-    // Special handling for grounding stage (uses Perplexity API instead of Gemini)
+    // Special handling for grounding stage (uses Gemini with Google Search grounding)
     if (params.stage === 'grounding') {
       return await executeGroundingStage(params, startTime)
     }
@@ -109,7 +109,7 @@ export async function executeStageTest(
 }
 
 /**
- * Execute grounding stage using Perplexity Sonar API
+ * Execute grounding stage using Gemini with Google Search grounding
  */
 async function executeGroundingStage(
   params: StageExecutorParams,
@@ -119,10 +119,10 @@ async function executeGroundingStage(
   const productName = testInput.productName || ''
   const launchDate = testInput.launchDate
 
-  const apiKey = process.env.PERPLEXITY_API_KEY
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY
 
   if (!apiKey) {
-    console.warn('[Grounding] Perplexity API key not set, using mock data')
+    console.warn('[Grounding] Gemini API key not set, using mock data')
     return createGroundingResponse(
       getMockGroundingData(productName),
       [],
@@ -132,96 +132,63 @@ async function executeGroundingStage(
   }
 
   try {
-    // Search queries for different user intent signals
-    const queries = [
-      `What are users saying about ${productName}? What are the most discussed features and topics in reviews and forums?`,
-      `What are the main highlights and concerns about ${productName} from tech reviews and user feedback?`,
-      `What are the key comparisons between ${productName} and its competitors? What features stand out?`,
-    ]
+    const genAI = new GoogleGenAI({ apiKey })
+    const modelName = params.parameters.model || 'gemini-3-flash-preview'
 
-    const allSources: GroundingSource[] = []
-    const seenUrls = new Set<string>()
-    const keywordCounts = new Map<string, { count: number; sources: GroundingSource[] }>()
+    // Build grounding prompt
+    const groundingPrompt = `You are a product research analyst. Analyze "${productName}" and provide:
+1. Key features and topics users discuss most in reviews and forums
+2. Main highlights and concerns from tech reviews
+3. Key competitive comparisons and standout features
+${launchDate ? `Only consider content from after ${launchDate}.` : ''}
 
-    // Execute searches in parallel using Perplexity chat/completions with Sonar
-    const searchPromises = queries.map(async (query) => {
-      try {
-        const response = await fetch('https://api.perplexity.ai/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'sonar',
-            messages: [
-              {
-                role: 'system',
-                content: `You are a product research analyst. Extract key topics, features, and user interests about the product. Focus on identifying what users care about most. Be concise and factual.${launchDate ? ` Only consider content from after ${launchDate}.` : ''}`,
-              },
-              {
-                role: 'user',
-                content: query,
-              },
-            ],
-            max_tokens: 1024,
-            temperature: 0.2,
-            return_citations: true,
-            search_recency_filter: launchDate ? 'month' : 'year',
-          }),
-        })
+Focus on identifying what real users care about most. Be specific and factual with sources.
+Provide your analysis as a structured summary with clear topic headings.`
 
-        if (!response.ok) {
-          const errorText = await response.text()
-          console.error(`[Grounding] Perplexity API error (${response.status}):`, errorText)
-          return null
-        }
-
-        interface PerplexityResponse {
-          choices: Array<{ message: { content: string } }>
-          citations?: Array<string | { url: string; title?: string }>
-        }
-
-        const data: PerplexityResponse = await response.json()
-
-        // Extract citations/sources
-        if (data.citations && Array.isArray(data.citations)) {
-          for (const citation of data.citations) {
-            let url: string
-            let title: string
-
-            if (typeof citation === 'string') {
-              url = citation
-              title = extractTitleFromUrl(citation)
-            } else {
-              url = citation.url
-              title = citation.title || extractTitleFromUrl(citation.url)
-            }
-
-            if (!seenUrls.has(url)) {
-              seenUrls.add(url)
-              const tier = getSourceTier(url)
-              allSources.push({ uri: url, title, tier })
-            }
-          }
-        }
-
-        // Extract content for keyword analysis
-        const content = data.choices?.[0]?.message?.content || ''
-        return { content, citations: data.citations || [] }
-      } catch (searchError) {
-        console.error(`[Grounding] Search error:`, searchError)
-        return null
-      }
+    // Execute with Gemini + Google Search grounding
+    const result = await genAI.models.generateContent({
+      model: modelName,
+      contents: groundingPrompt,
+      config: {
+        temperature: params.parameters.temperature || 0.2,
+        maxOutputTokens: params.parameters.maxTokens || 2048,
+        tools: [{ googleSearch: {} }],
+      },
     })
 
-    const results = await Promise.all(searchPromises)
-    const validResults = results.filter((r) => r !== null) as { content: string; citations: unknown[] }[]
+    const text = result.text || ''
 
-    console.log(`[Grounding] Perplexity responses ${validResults.length}/${queries.length}, sources ${allSources.length}`)
+    // Extract grounding sources from Gemini's grounding metadata
+    const allSources: GroundingSource[] = []
+    const seenUrls = new Set<string>()
 
-    if (validResults.length === 0) {
-      console.warn('[Grounding] No Perplexity results, using mock data')
+    // Extract from groundingMetadata if available
+    const candidate = result.candidates?.[0]
+    const groundingMeta = candidate?.groundingMetadata
+    if (groundingMeta?.groundingChunks) {
+      for (const chunk of groundingMeta.groundingChunks) {
+        const web = chunk.web
+        if (web?.uri && !seenUrls.has(web.uri)) {
+          seenUrls.add(web.uri)
+          const tier = getSourceTier(web.uri)
+          allSources.push({
+            uri: web.uri,
+            title: web.title || extractTitleFromUrl(web.uri),
+            tier,
+          })
+        }
+      }
+    }
+
+    // Extract token counts
+    const usageMetadata = result.usageMetadata
+    const inputTokens = usageMetadata?.promptTokenCount || estimateTokens(groundingPrompt)
+    const outputTokens = usageMetadata?.candidatesTokenCount || estimateTokens(text)
+
+    console.log(`[Grounding] Gemini Google Search responses, sources ${allSources.length}`)
+
+    if (!text && allSources.length === 0) {
+      console.warn('[Grounding] No Gemini results, using mock data')
       return createGroundingResponse(
         getMockGroundingData(productName),
         [],
@@ -230,9 +197,9 @@ async function executeGroundingStage(
       )
     }
 
-    // Extract keywords from all content
-    const combinedContent = validResults.map(r => r.content).join(' ')
-    extractKeywordsFromContent(combinedContent, productName, allSources, keywordCounts)
+    // Extract keywords from Gemini's response
+    const keywordCounts = new Map<string, { count: number; sources: GroundingSource[] }>()
+    extractKeywordsFromContent(text, productName, allSources, keywordCounts)
 
     // Convert to sorted keywords array
     const keywords: GroundingKeyword[] = Array.from(keywordCounts.entries())
@@ -248,21 +215,60 @@ async function executeGroundingStage(
     allSources.sort((a, b) => a.tier - b.tier)
 
     const finalKeywords = keywords.length > 0 ? keywords : getMockGroundingData(productName)
+    const latencyMs = Date.now() - startTime
 
-    return createGroundingResponse(
-      finalKeywords,
-      allSources,
-      Date.now() - startTime,
-      JSON.stringify({ keywords: finalKeywords, sources: allSources }, null, 2)
-    )
+    return {
+      id: crypto.randomUUID(),
+      output: {
+        grounding_keywords: finalKeywords,
+        grounding_sources: allSources,
+      },
+      metrics: {
+        latencyMs,
+        inputTokens,
+        outputTokens,
+        totalTokens: inputTokens + outputTokens,
+      },
+      qualityScore: calculateGroundingQuality(finalKeywords, allSources),
+      rawResponse: JSON.stringify({ content: text, keywords: finalKeywords, sources: allSources }, null, 2),
+      status: 'completed',
+    }
   } catch (error) {
-    console.error('[Grounding] Perplexity search error:', error)
+    console.error('[Grounding] Gemini search error:', error)
     return createGroundingResponse(
       getMockGroundingData(productName),
       [],
       Date.now() - startTime,
       `Error: ${error instanceof Error ? error.message : 'Unknown error'}`
     )
+  }
+}
+
+/**
+ * Calculate quality score for grounding results
+ */
+function calculateGroundingQuality(
+  keywords: GroundingKeyword[],
+  sources: GroundingSource[]
+): QualityScore {
+  const keywordScore = Math.min(20, keywords.length * 2)
+  const sourceScore = Math.min(20, sources.length * 2)
+  const tierScore = sources.filter(s => s.tier <= 2).length * 3
+  const total = keywordScore + sourceScore + Math.min(20, tierScore) + 20
+
+  return {
+    total: Math.min(100, total),
+    grade: getGrade(total),
+    breakdown: {
+      keywordDensity: keywordScore,
+      questionPatterns: 5,
+      sentenceStructure: sourceScore,
+      lengthCompliance: Math.min(20, tierScore),
+      aiExposure: 20,
+    },
+    suggestions: keywords.length < 5
+      ? ['Try a more specific product name for better results']
+      : [],
   }
 }
 
@@ -503,9 +509,9 @@ async function executeGemini(
   prompt: string,
   params: StageExecutorParams
 ): Promise<ExecutorResult> {
-  const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY
   if (!apiKey) {
-    throw new Error('GOOGLE_API_KEY or GEMINI_API_KEY is not configured')
+    throw new Error('GEMINI_API_KEY or GOOGLE_API_KEY is not configured')
   }
 
   const genAI = new GoogleGenAI({ apiKey })

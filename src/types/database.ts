@@ -1581,6 +1581,14 @@ export interface Database {
           base_system_prompt: string | null
         }[]
       }
+      get_next_stage_version: {
+        Args: { p_stage: string }
+        Returns: number
+      }
+      activate_stage_version: {
+        Args: { p_stage: string; p_version: number }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

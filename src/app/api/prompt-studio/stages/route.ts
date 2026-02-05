@@ -5,7 +5,7 @@
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { PROMPT_STAGES, type StageStatusSummary, type PromptStage, type WorkflowStatus } from '@/types/prompt-studio'
+import { PROMPT_STAGES, STAGE_ENGINE_MAP, ENGINE_CONFIG, type StageStatusSummary, type PromptStage, type WorkflowStatus } from '@/types/prompt-studio'
 
 // Type for stage_prompts row (until DB migration is applied and types regenerated)
 interface StagePromptRow {
@@ -18,6 +18,8 @@ interface StagePromptRow {
   updated_at: string
   current_version?: number
   total_versions?: number
+  model?: string
+  temperature?: number
 }
 
 export async function GET() {
@@ -48,6 +50,7 @@ export async function GET() {
         // Group by stage, taking the most recent for each
         for (const prompt of data as StagePromptRow[]) {
           if (!stagePrompts[prompt.stage]) {
+            const engine = STAGE_ENGINE_MAP[prompt.stage]
             stagePrompts[prompt.stage] = {
               stage: prompt.stage,
               hasActivePrompt: prompt.workflow_status === 'active',
@@ -59,6 +62,10 @@ export async function GET() {
               updatedAt: prompt.updated_at,
               currentVersion: prompt.current_version ?? 1,
               totalVersions: prompt.total_versions ?? 1,
+              // Engine info
+              engine,
+              model: prompt.model ?? ENGINE_CONFIG[engine].defaultModel,
+              temperature: prompt.temperature ?? 0.7,
             }
           }
         }
@@ -73,6 +80,7 @@ export async function GET() {
       if (stagePrompts[stage]) {
         return stagePrompts[stage]
       }
+      const engine = STAGE_ENGINE_MAP[stage]
       return {
         stage,
         hasActivePrompt: false,
@@ -81,6 +89,13 @@ export async function GET() {
         testCount: 0,
         lastTestedAt: null,
         updatedAt: new Date().toISOString(),
+        // Version info (default)
+        currentVersion: undefined,
+        totalVersions: undefined,
+        // Default engine info
+        engine,
+        model: ENGINE_CONFIG[engine].defaultModel,
+        temperature: 0.7,
       }
     })
 

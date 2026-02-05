@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { useTheme } from 'next-themes'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/lib/i18n'
@@ -40,15 +39,11 @@ import {
   CaretRight,
   CubeTransparent,
   Prohibit,
-  ArrowSquareOut,
-  Flask,
 } from '@phosphor-icons/react'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 import type { Language } from '@/lib/i18n'
-import { PromptFlowDiagram, type NodeId } from '@/components/settings/prompt-flow-diagram'
-import { PromptEditorPanel } from '@/components/settings/prompt-editor-panel'
-import { PromptList } from '@/components/settings/prompt-list'
 import { BlacklistManager } from '@/components/settings/blacklist-manager'
+import { PromptStudioOverview } from '@/components/settings/prompt-studio-overview'
 
 interface PlaybookDocument {
   id: string
@@ -112,10 +107,6 @@ export default function SettingsPage() {
   const [vectorsPrefix, setVectorsPrefix] = useState('')
   const [expandedVectorId, setExpandedVectorId] = useState<string | null>(null)
 
-  // Prompts tab state
-  const [selectedPromptNode, setSelectedPromptNode] = useState<NodeId | null>(null)
-  const [showPromptEditor, setShowPromptEditor] = useState(false)
-  const [selectedEngine, setSelectedEngine] = useState<'gemini' | 'perplexity' | 'cohere' | null>(null)
 
   // Prevent hydration mismatch for theme
   useEffect(() => {
@@ -393,7 +384,7 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-flex">
+        <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 lg:w-auto lg:inline-flex">
           <TabsTrigger value="profile" className="gap-2">
             <User className="h-4 w-4" />
             <span className="hidden sm:inline">{t.settings.tabs.profile}</span>
@@ -402,9 +393,9 @@ export default function SettingsPage() {
             <PaintBrush className="h-4 w-4" />
             <span className="hidden sm:inline">{language === 'ko' ? '환경설정' : 'Preferences'}</span>
           </TabsTrigger>
-          <TabsTrigger value="prompts" className="gap-2">
+          <TabsTrigger value="prompt-management" className="gap-2">
             <Sparkle className="h-4 w-4" />
-            <span className="hidden sm:inline">{language === 'ko' ? '프롬프트' : 'Prompts'}</span>
+            <span className="hidden sm:inline">{language === 'ko' ? '프롬프트 관리' : 'Prompt Management'}</span>
           </TabsTrigger>
           <TabsTrigger value="sources" className="gap-2">
             <Prohibit className="h-4 w-4" />
@@ -639,122 +630,12 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        {/* Prompts Tab */}
-        <TabsContent value="prompts" className="space-y-6">
-          {/* Prompt Studio Link Card */}
-          <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
-            <CardContent className="flex items-center justify-between py-4">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-lg bg-primary/10">
-                  <Flask className="h-6 w-6 text-primary" weight="duotone" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">
-                    {language === 'ko' ? 'Prompt Studio' : 'Prompt Studio'}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {language === 'ko'
-                      ? '스테이지별 프롬프트 관리, 테스트 및 버전 관리'
-                      : 'Stage-by-stage prompt management, testing and versioning'}
-                  </p>
-                </div>
-              </div>
-              <Button asChild>
-                <Link href="/admin/prompt-studio">
-                  {language === 'ko' ? '열기' : 'Open'}
-                  <ArrowSquareOut className="h-4 w-4 ml-2" />
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Visual Flow Diagram */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Sparkle className="h-5 w-5" />
-                {language === 'ko' ? 'AI 생성 파이프라인' : 'AI Generation Pipeline'}
-              </CardTitle>
-              <CardDescription>
-                {language === 'ko'
-                  ? '각 노드를 클릭하여 프롬프트를 편집할 수 있습니다'
-                  : 'Click on any node to edit its prompt'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <PromptFlowDiagram
-                onNodeClick={(nodeId) => {
-                  setSelectedPromptNode(nodeId)
-                  setShowPromptEditor(true)
-                  // Map node to engine
-                  if (nodeId === 'grounding') {
-                    setSelectedEngine('perplexity')
-                  } else if (nodeId === 'rag') {
-                    setSelectedEngine('cohere')
-                  } else {
-                    setSelectedEngine('gemini')
-                  }
-                }}
-                selectedNode={selectedPromptNode}
-                language={language}
-              />
-            </CardContent>
-          </Card>
-
-          {/* Prompt List and Editor */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Prompt List - Left Side */}
-            <div className="lg:col-span-1">
-              <PromptList
-                language={language}
-                getAuthToken={getAuthToken}
-                onSelectPrompt={(engine) => {
-                  setSelectedEngine(engine)
-                  setShowPromptEditor(true)
-                  // Map engine to node
-                  if (engine === 'perplexity') {
-                    setSelectedPromptNode('grounding')
-                  } else if (engine === 'cohere') {
-                    setSelectedPromptNode('rag')
-                  } else {
-                    setSelectedPromptNode('description')
-                  }
-                }}
-                selectedEngine={selectedEngine}
-              />
-            </div>
-
-            {/* Prompt Editor Panel - Right Side */}
-            <div className="lg:col-span-2">
-              {showPromptEditor && selectedEngine ? (
-                <PromptEditorPanel
-                  language={language}
-                  getAuthToken={getAuthToken}
-                  selectedEngine={selectedEngine}
-                  selectedNode={selectedPromptNode}
-                  onClose={() => {
-                    setShowPromptEditor(false)
-                    setSelectedPromptNode(null)
-                    setSelectedEngine(null)
-                  }}
-                />
-              ) : (
-                <Card className="h-full min-h-[400px] flex items-center justify-center">
-                  <div className="text-center text-muted-foreground">
-                    <Sparkle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p className="font-medium">
-                      {language === 'ko' ? '프롬프트를 선택하세요' : 'Select a prompt to edit'}
-                    </p>
-                    <p className="text-sm mt-1">
-                      {language === 'ko'
-                        ? '왼쪽 목록이나 위의 플로우 다이어그램에서 선택'
-                        : 'Choose from the list or flow diagram above'}
-                    </p>
-                  </div>
-                </Card>
-              )}
-            </div>
-          </div>
+        {/* Prompt Management Tab - Integrated Prompt Studio */}
+        <TabsContent value="prompt-management" className="space-y-6">
+          <PromptStudioOverview
+            language={language}
+            getAuthToken={getAuthToken}
+          />
         </TabsContent>
 
         {/* Sources Tab */}

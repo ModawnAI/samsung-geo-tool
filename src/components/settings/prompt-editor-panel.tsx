@@ -555,7 +555,7 @@ export function PromptEditorPanel({
 
   // Determine engine based on selected node
   const getEngineForNode = (nodeId: NodeId): 'gemini' | 'perplexity' | 'cohere' | null => {
-    if (nodeId === 'grounding') return 'perplexity'
+    if (nodeId === 'grounding') return 'gemini'
     if (nodeId === 'rag') return 'cohere'
     if (['description', 'usp', 'faq', 'chapters', 'case_studies', 'keywords', 'hashtags'].includes(nodeId)) {
       return 'gemini'

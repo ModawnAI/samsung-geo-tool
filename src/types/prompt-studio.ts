@@ -350,6 +350,10 @@ export interface StageStatusSummary {
   // Version info
   currentVersion?: number
   totalVersions?: number
+  // Engine info (for pipeline display)
+  engine?: 'gemini' | 'perplexity' | 'cohere'
+  model?: string
+  temperature?: number
 }
 
 // ============================================================================
@@ -366,6 +370,50 @@ export const PROMPT_STAGES: PromptStage[] = [
   'keywords',
   'hashtags',
 ]
+
+// Stage to Engine mapping
+export type AIEngine = 'gemini' | 'perplexity' | 'cohere'
+
+export const STAGE_ENGINE_MAP: Record<PromptStage, AIEngine> = {
+  grounding: 'gemini',        // Gemini with Google Search grounding
+  description: 'gemini',      // Content generation
+  usp: 'perplexity',          // USP analysis with web context
+  faq: 'gemini',              // FAQ generation
+  chapters: 'gemini',         // Chapter generation
+  case_studies: 'gemini',     // Case study generation
+  keywords: 'gemini',         // Keyword analysis
+  hashtags: 'gemini',         // Hashtag generation
+}
+
+export const ENGINE_CONFIG: Record<AIEngine, {
+  label: string
+  labelKo: string
+  color: string
+  bgColor: string
+  defaultModel: string
+}> = {
+  gemini: {
+    label: 'Gemini',
+    labelKo: 'Gemini',
+    color: 'text-blue-700',
+    bgColor: 'bg-blue-100',
+    defaultModel: 'gemini-3-flash-preview',
+  },
+  perplexity: {
+    label: 'Perplexity',
+    labelKo: 'Perplexity',
+    color: 'text-purple-700',
+    bgColor: 'bg-purple-100',
+    defaultModel: 'sonar-pro',
+  },
+  cohere: {
+    label: 'Cohere',
+    labelKo: 'Cohere',
+    color: 'text-orange-700',
+    bgColor: 'bg-orange-100',
+    defaultModel: 'command-r-plus',
+  },
+}
 
 export const WORKFLOW_STATUS_CONFIG: Record<WorkflowStatus, {
   label: string
@@ -427,7 +475,7 @@ export const STAGE_CONFIG: Record<PromptStage, StageConfig> = {
         { name: 'grounding_sources', type: 'array', label: 'Sources', labelKo: '소스' },
       ],
     },
-    templateVariables: [], // Grounding uses Perplexity API, no prompt templates
+    templateVariables: [], // Grounding uses Gemini with Google Search
   },
   description: {
     id: 'description',

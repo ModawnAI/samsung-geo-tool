@@ -116,6 +116,7 @@ export interface TranslationDictionary {
     reports: string
     content: string
     tools: string
+    promptStudio: string
   }
 
   // Auth
@@ -1427,6 +1428,33 @@ export interface TranslationDictionary {
       reject: string
       activate: string
       archive: string
+    }
+    pipeline: {
+      title: string
+      subtitle: string
+      runFull: string
+      runFrom: string
+      stop: string
+      reset: string
+      running: string
+      done: string
+      stages: string
+      parallel: string
+      resultSummary: string
+      passed: string
+      failed: string
+      avgScore: string
+      totalTime: string
+      min: string
+      max: string
+      skipped: string
+      autoLoaded: string
+      reload: string
+      runFromHere: string
+      runFromHereTooltip: string
+      additionalOptions: string
+      includeChapters: string
+      upstreamFailed: string
     }
     messages: {
       loadError: string

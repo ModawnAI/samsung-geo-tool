@@ -41,6 +41,7 @@ const navItemsConfig = [
   { href: '/analytics', labelKey: 'analytics' as const, icon: ChartLineUp },
   // Hidden until after Unpacked - may re-enable later
   // { href: '/tuning', labelKey: 'tuning' as const, icon: Sliders },
+  // { href: '/prompt-studio', labelKey: 'promptStudio' as const, icon: Sliders },
   { href: '/activity-logs', labelKey: 'activityLogs' as const, icon: ListBullets },
 ]
 

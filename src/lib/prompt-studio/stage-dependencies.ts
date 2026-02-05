@@ -4,6 +4,7 @@
  */
 
 import type { PromptStage } from '@/types/prompt-studio'
+import type { ExecutionLevel } from '@/types/pipeline'
 
 export interface StageDependencyConfig {
   dependsOn: PromptStage[]
@@ -171,6 +172,97 @@ export function checkDependenciesReady(
     missing,
     available,
   }
+}
+
+/**
+ * Build execution levels (topological sort) from dependency graph.
+ * Stages in the same level can run in parallel.
+ */
+export function buildExecutionLevels(includeChapters = true): ExecutionLevel[] {
+  const allStages = Object.keys(STAGE_DEPENDENCIES) as PromptStage[]
+  const stages = includeChapters ? allStages : allStages.filter((s) => s !== 'chapters')
+  const assigned = new Set<PromptStage>()
+  const levels: ExecutionLevel[] = []
+
+  // Keep assigning stages whose dependencies are all assigned
+  while (assigned.size < stages.length) {
+    const levelStages: PromptStage[] = []
+
+    for (const stage of stages) {
+      if (assigned.has(stage)) continue
+
+      const deps = STAGE_DEPENDENCIES[stage].dependsOn
+      const allDepsAssigned = deps.every((d) => assigned.has(d))
+      if (allDepsAssigned) {
+        levelStages.push(stage)
+      }
+    }
+
+    if (levelStages.length === 0) break // safety: avoid infinite loop
+
+    levels.push({ level: levels.length, stages: levelStages })
+    for (const s of levelStages) assigned.add(s)
+  }
+
+  return levels
+}
+
+/**
+ * Get all downstream stages that depend (directly or transitively) on the given stage.
+ */
+export function getDownstreamStages(stage: PromptStage): PromptStage[] {
+  const downstream = new Set<PromptStage>()
+  const queue: PromptStage[] = [stage]
+
+  while (queue.length > 0) {
+    const current = queue.shift()!
+    // Find all stages that directly depend on current
+    for (const [s, config] of Object.entries(STAGE_DEPENDENCIES) as [PromptStage, StageDependencyConfig][]) {
+      if (config.dependsOn.includes(current) && !downstream.has(s)) {
+        downstream.add(s)
+        queue.push(s)
+      }
+    }
+  }
+
+  return Array.from(downstream)
+}
+
+/**
+ * Get the upstream chain of execution levels needed to run a target stage (target included).
+ *
+ * getUpstreamChain('faq')      → [{level:0, stages:['grounding']}, {level:1, stages:['description']}, {level:2, stages:['usp']}, {level:3, stages:['faq']}]
+ * getUpstreamChain('hashtags') → [{level:0, stages:['grounding']}, {level:1, stages:['description']}, {level:2, stages:['usp','keywords']}, {level:3, stages:['hashtags']}]
+ * getUpstreamChain('grounding')→ [{level:0, stages:['grounding']}]
+ */
+export function getUpstreamChain(target: PromptStage): ExecutionLevel[] {
+  // 1. BFS backwards: collect all required stages (target + transitive dependsOn)
+  const required = new Set<PromptStage>([target])
+  const queue: PromptStage[] = [target]
+
+  while (queue.length > 0) {
+    const current = queue.shift()!
+    for (const dep of STAGE_DEPENDENCIES[current].dependsOn) {
+      if (!required.has(dep)) {
+        required.add(dep)
+        queue.push(dep)
+      }
+    }
+  }
+
+  // 2. Build full execution levels (excluding chapters since pipeline doesn't need it)
+  const fullLevels = buildExecutionLevels(false)
+
+  // 3. Filter each level to only include required stages, drop empty levels, renumber
+  const filtered: ExecutionLevel[] = []
+  for (const level of fullLevels) {
+    const stages = level.stages.filter((s) => required.has(s))
+    if (stages.length > 0) {
+      filtered.push({ level: filtered.length, stages })
+    }
+  }
+
+  return filtered
 }
 
 /**

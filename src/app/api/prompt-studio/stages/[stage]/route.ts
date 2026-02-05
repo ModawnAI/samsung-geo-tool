@@ -1,15 +1,47 @@
 /**
  * API: /api/prompt-studio/stages/[stage]
  * CRUD operations for individual stage prompts
+ *
+ * NOTE: Uses explicit type assertions because the stage_prompts table
+ * may not exist in the database yet. Apply migration APPLY_PROMPT_STUDIO_TABLES.sql
+ * to create the required tables.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { PROMPT_STAGES, type PromptStage, type WorkflowStatus } from '@/types/prompt-studio'
 import { composeStagePrompt } from '@/lib/tuning/prompt-loader'
+import type { Database } from '@/types/database'
+
+// Type aliases for clarity
+type StagePromptRow = Database['public']['Tables']['stage_prompts']['Row']
+type StagePromptInsert = Database['public']['Tables']['stage_prompts']['Insert']
+type StagePromptVersionInsert = Database['public']['Tables']['stage_prompt_versions']['Insert']
 
 interface RouteParams {
   params: Promise<{ stage: string }>
+}
+
+/**
+ * Check if the stage_prompts table exists by attempting a query
+ * Returns true if table exists, false otherwise
+ */
+async function checkTableExists(supabase: Awaited<ReturnType<typeof createClient>>): Promise<boolean> {
+  try {
+    // Use raw SQL query to check if table exists
+    const { error } = await supabase
+      .from('stage_prompts')
+      .select('id')
+      .limit(1)
+
+    // Table doesn't exist if we get a 42P01 error (undefined_table)
+    if (error && (error.code === '42P01' || error.message?.includes('does not exist'))) {
+      return false
+    }
+    return true
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -36,40 +68,61 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Fetch stage prompt (use type assertion until migration is applied)
-    // Handle case where table doesn't exist yet (PGRST204) or record not found (PGRST116)
-    let data = null
-    let fetchError = null
+    // Check if table exists first
+    const tableExists = await checkTableExists(supabase)
+    if (!tableExists) {
+      console.warn('[API] stage_prompts table does not exist. Please apply migration APPLY_PROMPT_STUDIO_TABLES.sql')
 
-    try {
-      const result = await (supabase
-        .from('stage_prompts' as any)
-        .select('*')
-        .eq('stage', stage)
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .single() as any)
-      data = result.data
-      fetchError = result.error
-    } catch (e) {
-      // Table might not exist
-      console.warn('[API] stage_prompts table access failed:', e)
-      fetchError = { code: 'TABLE_ERROR' }
+      // Fall back to base prompt from prompt_versions
+      const { data: activePromptData } = await supabase
+        .from('prompt_versions')
+        .select('system_prompt')
+        .eq('engine', 'gemini')
+        .eq('is_active', true)
+        .single()
+
+      const activePrompt = activePromptData as { system_prompt: string } | null
+      const basePrompt = activePrompt?.system_prompt || ''
+      const composedPrompt = basePrompt ? composeStagePrompt({
+        stage: stage as PromptStage,
+        basePrompt,
+        language: 'en',
+      }) : ''
+
+      return NextResponse.json({
+        stagePrompt: null,
+        defaultPrompt: composedPrompt,
+        basePrompt: basePrompt,
+        tableExists: false,
+      })
     }
 
-    // If no record found or table doesn't exist, return default prompt
+    // Fetch stage prompt with type assertion
+    const result = await supabase
+      .from('stage_prompts')
+      .select('*')
+      .eq('stage', stage)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    const data = result.data as StagePromptRow | null
+    const fetchError = result.error
+
+    // If no record found, return default prompt
     if (fetchError) {
-      if (fetchError.code === 'PGRST116' || fetchError.code === '42P01' || fetchError.code === 'TABLE_ERROR') {
-        // No stage-specific record found or table doesn't exist
+      if (fetchError.code === 'PGRST116') {
+        // No stage-specific record found
         // Load the base prompt from prompt_versions
-        const { data: activePrompt } = await supabase
+        const { data: activePromptData } = await supabase
           .from('prompt_versions')
           .select('system_prompt')
           .eq('engine', 'gemini')
           .eq('is_active', true)
-          .single() as { data: { system_prompt: string } | null }
+          .single()
 
         // Compose the default stage prompt
+        const activePrompt = activePromptData as { system_prompt: string } | null
         const basePrompt = activePrompt?.system_prompt || ''
         const composedPrompt = basePrompt ? composeStagePrompt({
           stage: stage as PromptStage,
@@ -122,6 +175,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Check if table exists first
+    const tableExists = await checkTableExists(supabase)
+    if (!tableExists) {
+      return NextResponse.json({
+        error: 'stage_prompts table does not exist. Please apply migration APPLY_PROMPT_STUDIO_TABLES.sql',
+        code: 'TABLE_NOT_FOUND',
+      }, { status: 503 })
+    }
+
     const {
       stageSystemPrompt,
       temperature = 0.7,
@@ -133,45 +195,58 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       changeSummary,
     } = body
 
-    // Get next version number
-    const { data: versionData } = await (supabase
-      .rpc('get_next_stage_version', { p_stage: stage }) as any)
-    const nextVersion = versionData || 1
+    // Get next version number via RPC (may fail if function doesn't exist)
+    let nextVersion = 1
+    try {
+      const { data: versionData } = await supabase
+        .rpc('get_next_stage_version' as never, { p_stage: stage } as never)
+      nextVersion = (versionData as unknown as number) || 1
+    } catch (rpcError) {
+      console.warn('[API] RPC get_next_stage_version failed, using default version 1:', rpcError)
+    }
 
     // Create version history record
-    await (supabase
-      .from('stage_prompt_versions' as any)
-      .insert({
-        stage: stage as PromptStage,
-        version: nextVersion,
-        stage_system_prompt: stageSystemPrompt || null,
-        temperature,
-        max_tokens: maxTokens,
-        top_p: topP,
-        model,
-        is_active: workflowStatus === 'active',
-        change_summary: changeSummary || `Initial version`,
-        created_by: user.id,
-      } as any) as any)
+    const versionInsert: StagePromptVersionInsert = {
+      stage: stage as PromptStage,
+      version: nextVersion,
+      stage_system_prompt: stageSystemPrompt || null,
+      temperature,
+      max_tokens: maxTokens,
+      top_p: topP,
+      model,
+      is_active: workflowStatus === 'active',
+      change_summary: changeSummary || 'Initial version',
+      created_by: user.id,
+    }
 
-    // Create new stage prompt (use type assertion until migration is applied)
-    const { data, error } = await (supabase
-      .from('stage_prompts' as any)
-      .insert({
-        stage: stage as PromptStage,
-        stage_system_prompt: stageSystemPrompt || null,
-        temperature,
-        max_tokens: maxTokens,
-        top_p: topP,
-        model,
-        workflow_status: workflowStatus as WorkflowStatus,
-        prompt_version_id: promptVersionId || null,
-        current_version: nextVersion,
-        total_versions: nextVersion,
-        created_by: user.id,
-      } as any)
+    const { error: versionError } = await supabase
+      .from('stage_prompt_versions')
+      .insert(versionInsert as never)
+
+    if (versionError) {
+      console.warn('[API] Failed to create version history:', versionError)
+    }
+
+    // Create new stage prompt
+    const stagePromptInsert: StagePromptInsert = {
+      stage: stage as PromptStage,
+      stage_system_prompt: stageSystemPrompt || null,
+      temperature,
+      max_tokens: maxTokens,
+      top_p: topP,
+      model,
+      workflow_status: workflowStatus as WorkflowStatus,
+      prompt_version_id: promptVersionId || null,
+      current_version: nextVersion,
+      total_versions: nextVersion,
+      created_by: user.id,
+    }
+
+    const { data, error } = await supabase
+      .from('stage_prompts')
+      .insert(stagePromptInsert as never)
       .select()
-      .single() as any)
+      .single()
 
     if (error) {
       console.error('[API] Insert error:', error)
@@ -217,6 +292,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Check if table exists first
+    const tableExists = await checkTableExists(supabase)
+    if (!tableExists) {
+      return NextResponse.json({
+        error: 'stage_prompts table does not exist. Please apply migration APPLY_PROMPT_STUDIO_TABLES.sql',
+        code: 'TABLE_NOT_FOUND',
+      }, { status: 503 })
+    }
+
     const {
       stageSystemPrompt,
       temperature,
@@ -227,53 +311,64 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       changeSummary,
     } = body
 
-    // First check if there's an existing record (use type assertion)
-    const { data: existing } = await (supabase
-      .from('stage_prompts' as any)
+    // First check if there's an existing record
+    const { data: existingData } = await supabase
+      .from('stage_prompts')
       .select('id, current_version, total_versions, stage_system_prompt')
       .eq('stage', stage)
       .order('updated_at', { ascending: false })
       .limit(1)
-      .single() as any)
+      .single()
+
+    const existing = existingData as StagePromptRow | null
 
     if (!existing) {
-      // No existing record, create via POST logic
-      const { data: versionData } = await (supabase
-        .rpc('get_next_stage_version', { p_stage: stage }) as any)
-      const nextVersion = versionData || 1
+      // No existing record, create a new one
+      let nextVersion = 1
+      try {
+        const { data: versionData } = await supabase
+          .rpc('get_next_stage_version' as never, { p_stage: stage } as never)
+        nextVersion = (versionData as unknown as number) || 1
+      } catch {
+        console.warn('[API] RPC get_next_stage_version failed, using version 1')
+      }
 
       // Create version history
-      await (supabase
-        .from('stage_prompt_versions' as any)
-        .insert({
-          stage: stage as PromptStage,
-          version: nextVersion,
-          stage_system_prompt: stageSystemPrompt || null,
-          temperature: temperature ?? 0.7,
-          max_tokens: maxTokens ?? 4096,
-          top_p: topP ?? 0.9,
-          model: model ?? 'gemini-3-flash-preview',
-          is_active: workflowStatus === 'active',
-          change_summary: changeSummary || 'Initial version',
-          created_by: user.id,
-        } as any) as any)
+      const versionInsert: StagePromptVersionInsert = {
+        stage: stage as PromptStage,
+        version: nextVersion,
+        stage_system_prompt: stageSystemPrompt || null,
+        temperature: temperature ?? 0.7,
+        max_tokens: maxTokens ?? 4096,
+        top_p: topP ?? 0.9,
+        model: model ?? 'gemini-3-flash-preview',
+        is_active: workflowStatus === 'active',
+        change_summary: changeSummary || 'Initial version',
+        created_by: user.id,
+      }
 
-      const { data, error } = await (supabase
-        .from('stage_prompts' as any)
-        .insert({
-          stage: stage as PromptStage,
-          stage_system_prompt: stageSystemPrompt || null,
-          temperature: temperature ?? 0.7,
-          max_tokens: maxTokens ?? 4096,
-          top_p: topP ?? 0.9,
-          model: model ?? 'gemini-3-flash-preview',
-          workflow_status: workflowStatus ?? 'draft',
-          current_version: nextVersion,
-          total_versions: nextVersion,
-          created_by: user.id,
-        } as any)
+      await supabase
+        .from('stage_prompt_versions')
+        .insert(versionInsert as never)
+
+      const stagePromptInsert: StagePromptInsert = {
+        stage: stage as PromptStage,
+        stage_system_prompt: stageSystemPrompt || null,
+        temperature: temperature ?? 0.7,
+        max_tokens: maxTokens ?? 4096,
+        top_p: topP ?? 0.9,
+        model: model ?? 'gemini-3-flash-preview',
+        workflow_status: (workflowStatus ?? 'draft') as WorkflowStatus,
+        current_version: nextVersion,
+        total_versions: nextVersion,
+        created_by: user.id,
+      }
+
+      const { data, error } = await supabase
+        .from('stage_prompts')
+        .insert(stagePromptInsert as never)
         .select()
-        .single() as any)
+        .single()
 
       if (error) throw error
       return NextResponse.json({ stagePrompt: data, version: nextVersion }, { status: 201 })
@@ -288,36 +383,42 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     // Create new version if content changed
     if (contentChanged) {
-      const { data: versionData } = await (supabase
-        .rpc('get_next_stage_version', { p_stage: stage }) as any)
-      newVersion = versionData || (totalVersions + 1)
+      try {
+        const { data: versionData } = await supabase
+          .rpc('get_next_stage_version' as never, { p_stage: stage } as never)
+        newVersion = (versionData as unknown as number) || (totalVersions + 1)
+      } catch {
+        newVersion = totalVersions + 1
+      }
       totalVersions = newVersion
 
       // Save version history
-      await (supabase
-        .from('stage_prompt_versions' as any)
-        .insert({
-          stage: stage as PromptStage,
-          version: newVersion,
-          stage_system_prompt: stageSystemPrompt,
-          temperature: temperature ?? 0.7,
-          max_tokens: maxTokens ?? 4096,
-          top_p: topP ?? 0.9,
-          model: model ?? 'gemini-3-flash-preview',
-          is_active: workflowStatus === 'active',
-          change_summary: changeSummary || `Version ${newVersion}`,
-          created_by: user.id,
-        } as any) as any)
+      const versionInsert: StagePromptVersionInsert = {
+        stage: stage as PromptStage,
+        version: newVersion,
+        stage_system_prompt: stageSystemPrompt,
+        temperature: temperature ?? 0.7,
+        max_tokens: maxTokens ?? 4096,
+        top_p: topP ?? 0.9,
+        model: model ?? 'gemini-3-flash-preview',
+        is_active: workflowStatus === 'active',
+        change_summary: changeSummary || `Version ${newVersion}`,
+        created_by: user.id,
+      }
+
+      await supabase
+        .from('stage_prompt_versions')
+        .insert(versionInsert as never)
     }
 
     // Build update object
-    const updateData: Record<string, unknown> = {}
+    const updateData: Database['public']['Tables']['stage_prompts']['Update'] = {}
     if (stageSystemPrompt !== undefined) updateData.stage_system_prompt = stageSystemPrompt
     if (temperature !== undefined) updateData.temperature = temperature
     if (maxTokens !== undefined) updateData.max_tokens = maxTokens
     if (topP !== undefined) updateData.top_p = topP
     if (model !== undefined) updateData.model = model
-    if (workflowStatus !== undefined) updateData.workflow_status = workflowStatus
+    if (workflowStatus !== undefined) updateData.workflow_status = workflowStatus as WorkflowStatus
     if (contentChanged) {
       updateData.current_version = newVersion
       updateData.total_versions = totalVersions
@@ -325,9 +426,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     // If activating this prompt, deactivate any other active prompts for this stage
     if (workflowStatus === 'active') {
-      const { error: deactivateError } = await (supabase
-        .from('stage_prompts' as any) as any)
-        .update({ workflow_status: 'archived' })
+      const { error: deactivateError } = await supabase
+        .from('stage_prompts')
+        .update({ workflow_status: 'archived' } as never)
         .eq('stage', stage)
         .eq('workflow_status', 'active')
         .neq('id', existing.id)
@@ -337,15 +438,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       }
 
       // Also update version history
-      await (supabase
-        .from('stage_prompt_versions' as any) as any)
-        .update({ is_active: false })
+      await supabase
+        .from('stage_prompt_versions')
+        .update({ is_active: false } as never)
         .eq('stage', stage)
         .eq('is_active', true)
 
-      await (supabase
-        .from('stage_prompt_versions' as any) as any)
-        .update({ is_active: true })
+      await supabase
+        .from('stage_prompt_versions')
+        .update({ is_active: true } as never)
         .eq('stage', stage)
         .eq('version', newVersion)
 
@@ -353,9 +454,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     // Update existing record
-    const { data, error } = await (supabase
-      .from('stage_prompts' as any) as any)
-      .update(updateData)
+    const { data, error } = await supabase
+      .from('stage_prompts')
+      .update(updateData as never)
       .eq('id', existing.id)
       .select()
       .single()
